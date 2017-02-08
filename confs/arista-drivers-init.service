@@ -1,13 +1,13 @@
 [Unit]
 Description=Arista kernel modules init
 After=local-fs.target
+Before=opennsl-modules-3.16.0-4-amd64.service`
 ConditionKernelCommandLine=Aboot
 
 [Service]
 Type=oneshot
-ExecStart=-/usr/share/arista/init
-TimeoutSec=0
-StandardInput=tty
+ExecStart=/usr/bin/arista setup --reset
+ExecStop=/usr/bin/arista clean
 RemainAfterExit=yes
 
 [Install]

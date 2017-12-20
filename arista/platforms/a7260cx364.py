@@ -97,8 +97,9 @@ class Gardena(Platform):
       cpld.addSmbusMasterRange(0x8000, 4, 0x80, 4)
       cpld.addComponents([
          I2cKernelComponent(I2cAddr(73, 0x4c), 'max6658', '/sys/class/hwmon/hwmon2'),
-         I2cKernelComponent(I2cAddr(74, 0x4e), 'pmbus',
-                            priority=Priority.BACKGROUND),
+         # Handling of the DPM is disabled because this functionality is unstable.
+         # I2cKernelComponent(I2cAddr(74, 0x4e), 'pmbus',
+         #                    priority=Priority.BACKGROUND),
          I2cKernelComponent(I2cAddr(85, 0x60), 'rook_cpld', '/sys/class/hwmon/hwmon3'),
          I2cKernelComponent(I2cAddr(88, 0x20), 'rook_leds'),
          I2cKernelComponent(I2cAddr(88, 0x48), 'lm73'),

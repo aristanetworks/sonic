@@ -34,14 +34,16 @@ class Clearlake(Platform):
          I2cKernelComponent(I2cAddr(2, 0x4c), 'max6658', '/sys/class/hwmon/hwmon2'),
          I2cKernelComponent(I2cAddr(3, 0x4c), 'max6658', '/sys/class/hwmon/hwmon3'),
          I2cKernelComponent(I2cAddr(3, 0x60), 'crow_cpld', '/sys/class/hwmon/hwmon4'),
-         I2cKernelComponent(I2cAddr(3, 0x4e), 'pmbus',
-                            priority=Priority.BACKGROUND), # ucd90120A
+         # Handling of the DPM is disabled because this functionality is unstable.
+         # I2cKernelComponent(I2cAddr(3, 0x4e), 'pmbus',
+         #                    priority=Priority.BACKGROUND), # ucd90120A
          I2cKernelComponent(I2cAddr(5, 0x58), 'pmbus',
                             priority=Priority.BACKGROUND),
          I2cKernelComponent(I2cAddr(6, 0x58), 'pmbus',
                             priority=Priority.BACKGROUND),
-         I2cKernelComponent(I2cAddr(7, 0x4e), 'pmbus',
-                            priority=Priority.BACKGROUND), # ucd90120A
+         # Handling of the DPM is disabled because this functionality is unstable.
+         # I2cKernelComponent(I2cAddr(7, 0x4e), 'pmbus',
+         #                    priority=Priority.BACKGROUND), # ucd90120A
          Ds125Br(I2cAddr(8, 0xff)),
       ])
 

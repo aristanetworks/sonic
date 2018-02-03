@@ -15,7 +15,7 @@ Architecture: amd64
 Depends:
    ${python:Depends},
    ${misc:Depends},
-   linux-image-3.16.0-4-amd64,
+   linux-image-3.16.0-5-amd64,
    python-smbus,
    i2c-tools
 Recommends: python3-smbus

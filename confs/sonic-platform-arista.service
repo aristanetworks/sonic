@@ -1,7 +1,7 @@
 [Unit]
 Description=Arista kernel modules init
 After=local-fs.target
-Before=opennsl-modules-4.9.0-7-amd64.service
+Before=opennsl-modules-4.9.0-7-1-amd64.service
 ConditionKernelCommandLine=Aboot
 
 [Service]

@@ -115,7 +115,8 @@ class Ucd(I2cComponent):
 
       if len(reg) < self.Registers.LOGGED_FAULT_DETAIL_COUNT:
          logging.debug('invalid unknown cause %s', reg)
-         causes.append(UcdReloadCauseEntry('unknown'))
+         time = datetime.datetime.now()
+         causes.append(UcdReloadCauseEntry('unknown', rcTime=datetimeToStr(time)))
          return causes
 
       paged, ftype, page, value, days, msecs = self._parseFaultDetail(reg)
@@ -181,7 +182,8 @@ class Ucd(I2cComponent):
                logging.debug('clearing faults')
                drv.clearFaults()
             if not causes:
-               causes = [UcdReloadCauseEntry('unknown')]
+               time = datetime.datetime.now()
+               causes = [UcdReloadCauseEntry('unknown', rcTime=datetimeToStr(time))]
          rebootCauses.writeList(causes)
 
       return rebootCauses.readList(UcdReloadCauseEntry)

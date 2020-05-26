@@ -1,8 +1,5 @@
 
 from ..inventory.temp import Temp
-from ..core.log import getLogger
-
-logging = getLogger(__name__)
 
 class TempImpl(Temp):
    def __init__(self, sensor, driver=None, **kwargs):
@@ -27,15 +24,27 @@ class TempImpl(Temp):
       return self.driver.setLowThreshold(self.sensor, value)
 
    def getHighThreshold(self):
-      try:
-         return float(self.sensor.critical)
-      except AttributeError:
-         logging.debug("%s sensor missing 'critical' attribute" % self.name)
-         return self.driver.getHighThreshold(self.sensor)
+      return float(self.sensor.critical)
 
    def setHighThreshold(self, value):
-      try:
-         self.sensor.critical = value
-      except AttributeError:
-         logging.debug("%s sensor missing 'critical' attribute" % self.name)
+      self.sensor.critical = value
       return self.driver.setHighThreshold(self.sensor, value)
+
+   def getTargetTemp(self):
+      return self.sensor.target
+
+   def getOverheatTemp(self):
+      return self.sensor.overheat
+
+   def getCriticalTemp(self):
+      return self.sensor.critical
+
+   def isSensorOverheat(self):
+      if self.getPresence():
+         return self.getTemperature() >= self.sensor.overheat
+      return False
+
+   def isSensorCritical(self):
+      if self.getPresence():
+         return self.getTemperature() >= self.sensor.critical
+      return False

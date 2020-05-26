@@ -54,3 +54,18 @@ class Thermal(ThermalBase):
          return True
       except (IOError, OSError, ValueError):
          return False
+
+   def get_target_temp(self):
+      return self._temp.getTargetTemp()
+
+   def get_overheat_temp(self):
+      return self._temp.getOverheatTemp()
+
+   def get_critical_temp(self):
+      return self._temp.getCriticalTemp()
+
+   def sensor_overheat(self):
+      return self._temp.isSensorOverheat()
+
+   def sensor_critical(self):
+      return self._temp.isSensorCritical()

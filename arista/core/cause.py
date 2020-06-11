@@ -7,16 +7,24 @@ from .utils import JsonStoredData
 RELOAD_CAUSE_HISTORY_SIZE=128
 
 class ReloadCauseEntry(ReloadCause):
-   def __init__(self, cause, rcTime='unknown'):
+   def __init__(self, cause, rcTime='unknown', rcDesc=''):
       self.cause = cause
       self.time = rcTime
+      self.description = rcDesc
 
    def __str__(self):
-      return '%s%s' % (self.cause, ', time: %s' % self.time
-                       if self.time != "unknown" else '')
+      items = [self.cause]
+      if self.description:
+         items.append('description: %s' % self.description)
+      if self.time != "unknown":
+         items.append('time: %s' % self.time)
+      return ', '.join(items)
 
    def getCause(self):
       return self.cause
+
+   def getDescription(self):
+      return self.description
 
    def getTime(self):
       return self.time

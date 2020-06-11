@@ -24,6 +24,8 @@ class Chassis(ChassisBase):
       'overtemp': ChassisBase.REBOOT_CAUSE_THERMAL_OVERLOAD_OTHER,
       'reboot': ChassisBase.REBOOT_CAUSE_NON_HARDWARE,
       'watchdog': ChassisBase.REBOOT_CAUSE_WATCHDOG,
+      'under-voltage': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
+      'over-voltage': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
    }
 
    # Intervals in milliseconds

@@ -135,12 +135,20 @@ class Ucd(I2cComponent):
             if isinstance(typ, UcdGpi) and typ.bit == page:
                logging.debug('found: %s', name)
                causes.append(UcdReloadCauseEntry(name, rcTime=datetimeToStr(time)))
-      elif paged and ftype in [ 0, 1 ]:
+      elif paged and ftype in [ 0, 1, 2 ]:
          # this is a Mon
+         found = False
          for name, typ in self.causes.items():
             if isinstance(typ, UcdMon) and typ.val == page:
                logging.debug('found: %s', name)
                causes.append(UcdReloadCauseEntry(name, rcTime=datetimeToStr(time)))
+               found = True
+         if not found:
+            name = ['over-voltage', 'under-voltage', 'timeout-power-good'][ftype]
+            cause = UcdReloadCauseEntry(name, rcTime=datetimeToStr(time),
+                                        rcDesc='%s on rail %d' % (name, page + 1))
+            logging.debug('found: %s', cause.description)
+            causes.append(cause)
       else:
          logging.debug('unknown cause')
          causes.append(UcdReloadCauseEntry('unknown', rcTime=datetimeToStr(time)))

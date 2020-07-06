@@ -7,7 +7,7 @@ from .utils import JsonStoredData
 RELOAD_CAUSE_HISTORY_SIZE=128
 
 class ReloadCauseEntry(ReloadCause):
-   def __init__(self, cause, rcTime='unknown', rcDesc=''):
+   def __init__(self, cause='unknown', rcTime='unknown', rcDesc=''):
       self.cause = cause
       self.time = rcTime
       self.description = rcDesc
@@ -29,11 +29,35 @@ class ReloadCauseEntry(ReloadCause):
    def getTime(self):
       return self.time
 
+class ReloadCauseDataStore(JsonStoredData):
+   def __init__(self, name=Config().reboot_cause_file, **kwargs):
+      super(ReloadCauseDataStore, self).__init__(name,**kwargs)
+      self.dataType = ReloadCauseEntry
+
+   def convertFormatV1(self, data):
+      for item in data:
+         item['cause'] = item['reloadReason']
+         del item['reloadReason']
+      return data
+
+   def maybeConvertReloadCauseFormat(self, data):
+      assert isinstance(data, list) # TODO: use a dict to store data in the future
+      if data and data[0].get('reloadReason'):
+         data = self.convertFormatV1(data)
+      return data
+
+   def readCauses(self):
+      data = self.maybeConvertReloadCauseFormat(self.read())
+      return [self._createObj(item, self.dataType) for item in data]
+
+   def writeCauses(self, causes):
+      return self.writeList(causes)
+
 def updateReloadCausesHistory(newCauses):
-   rebootCauses = JsonStoredData(Config().reboot_cause_file, lifespan='persistent')
+   rebootCauses = ReloadCauseDataStore(lifespan='persistent')
    causes = []
    if rebootCauses.exist():
-      causes = rebootCauses.readList(ReloadCauseEntry)
+      causes = rebootCauses.readCauses()
       for newCause in newCauses:
          addCause = True
          for cause in causes:
@@ -53,15 +77,15 @@ def updateReloadCausesHistory(newCauses):
    rebootCauses.writeList(causes)
 
 def getReloadCause():
-   rebootCauses = JsonStoredData(Config().reboot_cause_file)
+   rebootCauses = ReloadCauseDataStore()
    if rebootCauses.exist():
-      return rebootCauses.readList(ReloadCauseEntry)
+      return rebootCauses.readCauses()
    return None
 
 def getReloadCauseHistory():
-   rebootCauses = JsonStoredData(Config().reboot_cause_file, lifespan='persistent')
+   rebootCauses = ReloadCauseDataStore(lifespan='persistent')
    if rebootCauses.exist():
-      return rebootCauses.readList(ReloadCauseEntry)
+      return rebootCauses.readCauses()
    return None
 
 def datetimeToStr(datetime):

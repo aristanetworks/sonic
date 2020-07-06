@@ -1,9 +1,8 @@
-from .cause import ReloadCauseEntry
+from .cause import ReloadCauseDataStore
 from .component import Component, Priority
-from .config import Config
-from .inventory import Inventory
 from .driver import KernelDriver
-from .utils import inSimulation, JsonStoredData
+from .inventory import Inventory
+from .utils import inSimulation
 
 class FixedSystem(Component):
    def __init__(self, drivers=None, **kwargs):
@@ -25,8 +24,8 @@ class FixedSystem(Component):
    def getReloadCauses(self, clear=False):
       if inSimulation():
          return []
-      rebootCauses = JsonStoredData('%s' % Config().reboot_cause_file)
+      rebootCauses = ReloadCauseDataStore()
       if not rebootCauses.exist():
          causes = super(FixedSystem, self).getReloadCauses(clear=clear)
          rebootCauses.writeList(causes)
-      return rebootCauses.readList(ReloadCauseEntry)
+      return rebootCauses.readCauses()

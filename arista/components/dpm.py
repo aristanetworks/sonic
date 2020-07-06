@@ -4,10 +4,10 @@ import datetime
 import logging
 from collections import namedtuple
 
-from ..core.cause import datetimeToStr, ReloadCauseEntry
+from ..core.cause import datetimeToStr, ReloadCauseEntry, ReloadCauseDataStore
 from ..core.component import Priority
 from ..core.config import Config
-from ..core.utils import JsonStoredData, inSimulation
+from ..core.utils import inSimulation
 
 from ..drivers.dpm import UcdI2cDevDriver
 
@@ -181,8 +181,8 @@ class Ucd(I2cComponent):
       if not self.causes or inSimulation():
          return []
 
-      rebootCauses = JsonStoredData('%s_%s' % (Config().reboot_cause_file,
-                                               self.addr))
+      rebootCauses = ReloadCauseDataStore('%s_%s' % (Config().reboot_cause_file,
+                                                     self.addr))
       if not rebootCauses.exist():
          with self.drivers['UcdI2cDevDriver'] as drv:
             causes = self._getReloadCauses(drv)
@@ -194,7 +194,7 @@ class Ucd(I2cComponent):
                causes = [UcdReloadCauseEntry('unknown', rcTime=datetimeToStr(time))]
          rebootCauses.writeList(causes)
 
-      return rebootCauses.readList(UcdReloadCauseEntry)
+      return rebootCauses.readCauses()
 
 class Ucd90160(Ucd):
    class Registers(Ucd.Registers):

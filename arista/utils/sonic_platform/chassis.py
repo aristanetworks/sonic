@@ -33,17 +33,18 @@ class Chassis(ChassisBase):
    # Intervals in milliseconds
    POLL_INTERVAL = 1000.
 
-   def __init__(self, inventory):
+   def __init__(self, platform):
       ChassisBase.__init__(self)
+      self._platform = platform
       self._prefdl = readPrefdl()
-      self._inventory = inventory
+      self._inventory = platform.getInventory()
       for fan in self._inventory.getFans():
          self._fan_list.append(Fan(fan))
       for psu in self._inventory.getPsus():
          self._psu_list.append(Psu(psu))
       self._sfp_list = []
-      if inventory and inventory.portEnd:
-         self._sfp_list = [None] * (inventory.portEnd + 1)
+      if self._inventory and self._inventory.portEnd:
+         self._sfp_list = [None] * (self._inventory.portEnd + 1)
          for index, sfp in self._inventory.getXcvrs().items():
             self._sfp_list[index] = Sfp(index, sfp)
       for thermal in self._inventory.getTemps():
@@ -52,6 +53,9 @@ class Chassis(ChassisBase):
 
       self._interrupt_dict, self._presence_dict = \
          self._get_interrupts_for_components()
+
+   def get_name(self):
+      return self._prefdl.getField("SKU")
 
    def get_presence(self):
       return True

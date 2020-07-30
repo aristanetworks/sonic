@@ -13,6 +13,9 @@ class Xcvr(InventoryInterface):
    def typeStr(cls, typeIndex):
       return ['sfp', 'qsfp', 'osfp'][typeIndex]
 
+   def getType(self):
+      raise NotImplementedError()
+
    def getName(self):
       raise NotImplementedError()
 

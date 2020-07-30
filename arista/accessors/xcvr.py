@@ -11,6 +11,9 @@ class XcvrImpl(Xcvr):
       self.name = '%s%s' % (typeStr, kwargs['xcvrId'])
       self.__dict__.update(kwargs)
 
+   def getType(self):
+      return Xcvr.typeStr(self.xcvrType)
+
    def getName(self):
       return self.name
 

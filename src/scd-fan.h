@@ -99,7 +99,7 @@ const static struct fan_info p3_fan_infos[] = {
    {
       .id = NOT_PRESENT_40,
       .hz = 100000,
-      .fans = 1,
+      .fans = 2,
       .rotors = 1,
       .pulses = 2,
       .forward = true,
@@ -108,7 +108,7 @@ const static struct fan_info p3_fan_infos[] = {
    {
       .id = NOT_PRESENT_80,
       .hz = 100000,
-      .fans = 1,
+      .fans = 2,
       .rotors = 1,
       .pulses = 2,
       .forward = true,
@@ -120,6 +120,7 @@ const static struct fan_info p3_fan_infos[] = {
 struct fan_platform {
    u32 id;
    size_t max_fan_count;
+   size_t max_attr_count;
    const struct fan_info *fan_infos;
    size_t fan_info_count;
 
@@ -151,6 +152,7 @@ static const struct fan_platform fan_platforms[] = {
    {
       .id = 3,
       .max_fan_count = 4,
+      .max_attr_count = 7,
       .fan_infos = p3_fan_infos,
       .fan_info_count = ARRAY_SIZE(p3_fan_infos),
 

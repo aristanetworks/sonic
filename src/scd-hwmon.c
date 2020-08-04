@@ -2377,6 +2377,9 @@ static int scd_fan_add(struct scd_fan_group *fan_group, u32 index) {
 
    for (i = 0; i < fan->info->fans; ++i) {
       scd_fan_add_attrs(fan, fan_group->attr_index_count++);
+      if (fan_group->attr_index_count >= fan_group->platform->max_attr_count) {
+         break;
+      }
    }
    fan_group->attr_count += fan->attr_count;
 

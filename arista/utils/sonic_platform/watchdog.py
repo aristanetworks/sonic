@@ -24,7 +24,7 @@ class Watchdog(WatchdogBase):
       self._watchdog = watchdog
 
    def arm(self, seconds):
-      if not self._watchdog.arm(seconds):
+      if not self._watchdog.arm(seconds * 100):
          return -1
       return seconds
 

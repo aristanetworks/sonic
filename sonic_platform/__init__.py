@@ -13,6 +13,6 @@ from . import (
    psu,
    sfp,
    thermal,
-   thermalmanager,
+   thermal_manager,
    watchdog,
 )

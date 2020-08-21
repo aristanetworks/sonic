@@ -1906,9 +1906,9 @@ static u32 scd_fan_led_read(struct scd_fan *fan) {
    u32 reg_r = scd_read_register(group->ctx->pdev, addr_r);
    u32 val = 0;
 
-   if (reg_g & (1 << fan->index))
+   if ((reg_g & (1 << fan->index)) == 0)
       val += group->platform->mask_green_led;
-   if (reg_r & (1 << fan->index))
+   if ((reg_r & (1 << fan->index)) == 0)
       val += group->platform->mask_red_led;
 
    return val;
@@ -1922,12 +1922,12 @@ void scd_fan_led_write(struct scd_fan *fan, u32 val)
    u32 reg_g = scd_read_register(group->ctx->pdev, addr_g);
    u32 reg_r = scd_read_register(group->ctx->pdev, addr_r);
 
-   if (val & group->platform->mask_green_led)
+   if ((val & group->platform->mask_green_led) == 0)
       reg_g |= (1 << fan->index);
    else
       reg_g &= ~(1 << fan->index);
 
-   if (val & group->platform->mask_red_led)
+   if ((val & group->platform->mask_red_led) == 0)
       reg_r |= (1 << fan->index);
    else
       reg_r &= ~(1 << fan->index);

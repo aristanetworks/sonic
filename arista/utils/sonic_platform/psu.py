@@ -36,13 +36,12 @@ class Psu(PsuBase):
          return False
       return True
 
-   def get_status_led(self, color):
+   def get_status_led(self, color=None):
       try:
-         if color != self._psu.getLed().getColor():
-            return False
+         c = self._psu.getLed().getColor();
       except (IOError, OSError, ValueError):
          return False
-      return True
+      return c == color if color else c != 'off'
 
    def get_status(self):
       return self._psu.getStatus()

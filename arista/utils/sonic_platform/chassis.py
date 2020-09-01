@@ -8,7 +8,7 @@ import time
 
 try:
    from sonic_platform_base.chassis_base import ChassisBase
-   from arista.core import cause
+   from arista.core import cause, thermal_control
    from arista.core.config import Config
    from arista.core.platform import readPrefdl
    from arista.utils.sonic_platform.fan import Fan
@@ -216,3 +216,6 @@ class Chassis(ChassisBase):
    def get_thermal_manager(self):
       import arista.utils.sonic_platform.thermal_manager
       return arista.utils.sonic_platform.thermal_manager.ThermalManager
+
+   def getThermalControl(self):
+      return thermal_control

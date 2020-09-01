@@ -36,32 +36,9 @@ class SetFanSpeedAllAction(SetFanSpeedAction):
 
 @thermal_json_object("thermal_control.control")
 class ThermalControlAction(ThermalPolicyAction):
-   MIN_FAN_SPEED = 30
-   MAX_FAN_SPEED = 100
-
-   def sensorsToFanSpeed(self, sensors):
-      targetFanSpeed = self.MIN_FAN_SPEED
-      for sensor in sensors:
-         if not sensor.get_presence():
-            continue
-         targetTemp = sensor.get_target_temp()
-         maxTemp = min(sensor.get_overheat_temp(), sensor.get_critical_temp())
-         if int(targetTemp) or int(maxTemp):
-            continue
-         halfwayTemp = (targetTemp + maxTemp) / 2
-         temp = self.get_temperature()
-         if temp < halfwayTemp:
-            continue
-         elif temp >= maxTemp:
-            targetFanSpeed = self.MAX_FAN_SPEED
-         newFanSpeed = (temp - halfwayTemp) / (maxTemp - halfwayTemp) * \
-                       (self.MAX_FAN_SPEED - self.MIN_FAN_SPEED) + \
-                       self.MIN_FAN_SPEED
-         targetFanSpeed = max(targetFanSpeed, newFanSpeed)
-      return targetFanSpeed
-
    def execute(self, thermal_info_dict):
-      fanSpeed = self.sensorsToFanSpeed(
+      sensorsToFanSpeed = thermal_info_dict['control_info'].sensorsToFanSpeed
+      fanSpeed = sensorsToFanSpeed(
             thermal_info_dict['thermal_info'].thermals.values())
       for fan in thermal_info_dict['fan_info'].fans.values():
          fan.set_speed(fanSpeed)

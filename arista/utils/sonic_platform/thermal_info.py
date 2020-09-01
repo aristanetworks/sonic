@@ -44,3 +44,11 @@ class ThermalInfo(ThermalPolicyInfo):
          self.thermals[name] = thermal
          self.thermals_overheat[name] = thermal.sensor_overheat()
          self.thermals_critical[name] = thermal.sensor_critical()
+
+@thermal_json_object("control_info")
+class ControlInfo(ThermalPolicyInfo):
+   def __init__(self):
+      self.sensorsToFanSpeed = None
+
+   def collect(self, chassis):
+      self.sensorsToFanSpeed = chassis.getThermalControl().sensorsToFanSpeed

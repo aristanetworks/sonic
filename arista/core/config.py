@@ -1,5 +1,4 @@
 import os
-import yaml
 
 from .utils import getCmdlineDict
 from .log import getLogger
@@ -60,6 +59,10 @@ class Config(object):
    def _parseConfig(self):
       if not os.path.exists(CONFIG_PATH):
          return
+
+      # NOTE: yaml is a huge resource hogger on python2 for some reasons
+      #       only import it if necessary
+      import yaml
 
       try:
          with open(CONFIG_PATH, 'r') as f:

@@ -992,6 +992,7 @@ scd_ptp_timestamp(void)
 
    return ts;
 }
+EXPORT_SYMBOL(scd_ptp_timestamp);
 
 static ssize_t show_init_trigger(struct device *dev, struct device_attribute *attr,
                                  char *buf)

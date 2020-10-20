@@ -39,6 +39,12 @@ override_dh_auto_install:
 	$(MAKE) install-fs \
 	   DESTDIR=$(CURDIR)/debian/$(DEB_SOURCE)
 
+	dh_installdirs -pdrivers-$(DEB_SOURCE)-dev /lib/modules/$(KVERSION)/$(INSTALL_MOD_DIR)
+	cp $(CURDIR)/src/Module.symvers debian/drivers-$(DEB_SOURCE)-dev/lib/modules/$(KVERSION)/$(INSTALL_MOD_DIR)/scd-Module.symvers
+
+	dh_installdirs -pdrivers-$(DEB_SOURCE)-dev /lib/modules/$(KVERSION)/build/include/scd
+	cp $(CURDIR)/src/scd.h debian/drivers-$(DEB_SOURCE)-dev/lib/modules/$(KVERSION)/build/include/scd/
+
 override_dh_clean:
 	$(MAKE) clean
 	dh_clean

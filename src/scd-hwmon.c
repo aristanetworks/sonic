@@ -435,16 +435,25 @@ static union smbus_response_reg smbus_master_read_resp(struct scd_smbus_master *
 {
    union smbus_ctrl_status_reg cs;
    union smbus_response_reg resp;
-   u32 retries = 20;
+   int delay = 110;
+   unsigned long start = jiffies;
+   unsigned long timeout = jiffies + msecs_to_jiffies(100);
 
    cs = smbus_master_read_cs(master);
-   while (!cs.fs && --retries) {
-      msleep(10);
+   while (!cs.fs) {
+      if (jiffies > timeout) {
+         break;
+      }
+      usleep_range(delay, 2 * delay);
       cs = smbus_master_read_cs(master);
    }
-   if (!cs.fs)
+   if (!cs.fs) {
       scd_dbg("smbus response: fifo still empty after retries");
+   } else {
+      scd_dbg("smbus response delay delay=%dms", jiffies_to_msecs(jiffies - start));
+   }
 
+   smbus_master_write_cs(master, cs);
    resp.reg = scd_read_register(master->ctx->pdev, master->resp);
    return resp;
 }
@@ -698,11 +707,6 @@ static s32 scd_smbus_do_impl(struct scd_smbus *bus, u16 addr, unsigned short fla
       if (i == ss - 1) {
          req.sp = 1;
          req.ed = params->ed;
-         if (read_write == I2C_SMBUS_WRITE) {
-            req.dat = params->datw;
-         } else {
-            req.dat = params->datr;
-         }
       }
       if (i == 1) {
          req.st = 0;

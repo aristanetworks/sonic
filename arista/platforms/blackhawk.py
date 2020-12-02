@@ -168,5 +168,5 @@ class BlackhawkO(FixedSystem):
 
 @registerPlatform()
 class BlackhawkDD(BlackhawkO):
-   SID = ['BlackhawkDD']
-   SKU = ['DCS-7060DX4-32']
+   SID = ['BlackhawkDD', 'BlackhawkDDM']
+   SKU = ['DCS-7060DX4-32', 'DCS-7060DX4-32-D']

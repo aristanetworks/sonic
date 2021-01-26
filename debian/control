@@ -21,7 +21,7 @@ Package: drivers-sonic-platform-arista
 Architecture: amd64
 Depends:
    ${misc:Depends},
-   linux-image-4.9.0-11-2-amd64
+   linux-image-4.9.0-14-2-amd64
 Description: Arista kernel modules for arista platform devices such as fan, led, sfp, psu
 
 Package: python-sonic-platform-arista

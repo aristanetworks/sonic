@@ -32,6 +32,11 @@ class CrowCpldRegisters(SysCpldCommonRegisters):
    SCD_RESET_REG = Register(0x0B,
       RegBitField(0, 'scdReset', ro=True),
    )
+   SEU_CONTROL = Register(0x10,
+      RegBitField(0, 'enableCpldSeuCheck', ro=False),
+      RegBitField(1, 'powerCycleOnCpldSeu', ro=False),
+      RegBitField(7, 'cpldSeuDetected'),
+   )
 
 class CrowSysCpld(SysCpld):
    def __init__(self, addr, drivers=None, registerCls=CrowCpldRegisters, **kwargs):
@@ -41,6 +46,16 @@ class CrowSysCpld(SysCpld):
                     SysCpldI2cDriver(addr=addr, registerCls=registerCls)]
       super(CrowSysCpld, self).__init__(addr=addr, drivers=drivers,
                                         registerCls=registerCls, **kwargs)
+
+class KoiSysCpld(CrowSysCpld):
+   def powerCycleOnSeu(self, value=None):
+      res1 = self.drivers['SysCpldI2cDriver'].regs.powerCycleOnCrc(value)
+      res2 = self.drivers['SysCpldI2cDriver'].regs.powerCycleOnCpldSeu(value)
+      return res1 or res2
+
+   def hasSeuError(self):
+      return self.drivers['SysCpldI2cDriver'].regs.scdCrcError() or \
+             self.drivers['SysCpldI2cDriver'].regs.cpldSeuDetected()
 
 class CrowFanCpldComponent(I2cComponent):
    def __init__(self, addr=None, drivers=None, waitFile=None, fans=[], **kwargs):

@@ -5,7 +5,7 @@ from ..core.utils import incrange
 
 from ..components.asic.xgs.tomahawk import Tomahawk
 from ..components.cpu.amd.k10temp import K10Temp
-from ..components.cpu.crow import CrowSysCpld, CrowFanCpldComponent
+from ..components.cpu.crow import KoiSysCpld, CrowFanCpldComponent
 from ..components.dpm import Ucd90120A, UcdGpi
 from ..components.max6658 import Max6658
 from ..components.max6697 import Max6697
@@ -94,7 +94,7 @@ class Upperlake(FixedSystem):
          GpioDesc("psu2_present", 0x5000, 1, ro=True),
       ])
 
-      self.syscpld = self.newComponent(CrowSysCpld, I2cAddr(1, 0x23))
+      self.syscpld = self.newComponent(KoiSysCpld, I2cAddr(1, 0x23))
       cpld = self.syscpld
       cpld.createPowerCycle()
 

@@ -45,7 +45,10 @@ class Watchdog(WatchdogBase):
       return self._watchdog.stop()
 
    def get_remaining_time(self):
-      return int(self._watchdog.status()['remainingTime'] / 100)
+      remainingTime = self._watchdog.status()['remainingTime']
+      if remainingTime != -1:
+         remainingTime //= 100
+      return remainingTime
 
    def is_armed(self):
       return self._watchdog.status()['enabled']

@@ -10,7 +10,7 @@ class FanPosition(object):
    OUTLET = 'outlet'
 
 class FanDesc(HwDesc):
-   def __init__(self, fanId, name='Fan%(fanId)s', position=FanPosition.UNKNOWN,
+   def __init__(self, fanId, name='fan%(fanId)s', position=FanPosition.UNKNOWN,
                 airflow=Airflow.UNKNOWN, ledId=None, **kwargs):
       super(FanDesc, self).__init__(**kwargs)
       self.fmt = name

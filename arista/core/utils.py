@@ -422,13 +422,19 @@ def getCmdlineDict():
       return cmdlineDict
 
    data = {}
-   with open(CMDLINE_PATH) as f:
-      for entry in f.read().split():
-         idx = entry.find('=')
-         if idx == -1:
-            data[entry] = None
-         else:
-            data[entry[:idx]] = entry[idx+1:]
+
+   # The machine running the pytest may not have this path, or permission
+   try:
+      with open(CMDLINE_PATH) as f:
+         for entry in f.read().split():
+            idx = entry.find('=')
+            if idx == -1:
+               data[entry] = None
+            else:
+               data[entry[:idx]] = entry[idx+1:]
+   except IOError:
+      logging.error("%s is not available, the Arista library may not work properly.",
+                    CMDLINE_PATH)
 
    cmdlineDict = data
    return data

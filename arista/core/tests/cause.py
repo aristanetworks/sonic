@@ -166,13 +166,13 @@ class ReloadCauseManagerTest(unittest.TestCase):
                                time=None):
       self.assertIsInstance(rc, ReloadCauseEntry)
       if cause is not None:
-         self.assertEquals(rc.getCause(), cause)
+         self.assertEqual(rc.getCause(), cause)
       if description is not None:
-         self.assertEquals(rc.getDescription(), description)
+         self.assertEqual(rc.getDescription(), description)
       if time is not None:
-         self.assertEquals(rc.getTime(), time)
+         self.assertEqual(rc.getTime(), time)
       if score is not None:
-         self.assertEquals(rc.getScore(), score)
+         self.assertEqual(rc.getScore(), score)
 
    def testReloadCauseAlgorithm(self):
       self._loadReloadCauses({
@@ -195,7 +195,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
       })
       self.assertReloadCauseEquals(self.rcm.lastReport().cause,
                                    cause='under-voltage')
-      self.assertEquals(len(self.rcm.reports), 2)
+      self.assertEqual(len(self.rcm.reports), 2)
 
    @contextlib.contextmanager
    def _processLegacyReloadCauses(self, causes):
@@ -222,13 +222,13 @@ class ReloadCauseManagerTest(unittest.TestCase):
       }]
       with self._processLegacyReloadCauses(causes):
          self.rcm.loadCauses()
-         self.assertEquals(len(self.rcm.allReports()), 1)
+         self.assertEqual(len(self.rcm.allReports()), 1)
          report = self.rcm.lastReport()
          reportCauses = report.providers[0].getCauses()
-         self.assertEquals(len(reportCauses), len(causes))
+         self.assertEqual(len(reportCauses), len(causes))
          for cause, reportCause in zip(causes, reportCauses):
-            self.assertEquals(cause['reloadReason'], reportCause.getCause())
-            self.assertEquals(cause['time'], reportCause.getTime())
+            self.assertEqual(cause['reloadReason'], reportCause.getCause())
+            self.assertEqual(cause['time'], reportCause.getTime())
 
 class ReloadCauseTest(unittest.TestCase):
    EXPECTED = [

@@ -73,9 +73,16 @@ class ScdKernelDriver(PciKernelDriver):
       path = os.path.join(self.addr.getSysfsPath(), 'smbus_tweaks')
       utils.FileWaiter(path, SCD_WAIT_TIMEOUT).waitFileReady()
 
+   def getMasterNameForBus(self, bus):
+      bpm = next(iter(self.scd.smbusMasters.values()))['bus']
+      return self.getMasterName(bus // bpm, bus % bpm)
+
+   def getMasterName(self, master, bus):
+      return "SCD %s SMBus master %d bus %d" % (self.addr, master, bus)
+
    def refresh(self):
       # reload i2c bus cache
-      masterName = "SCD %s SMBus master %d bus %d" % (self.addr, 0, 0)
+      masterName = self.getMasterName(0, 0)
       if not utils.inSimulation():
          self.scd.i2cOffset = i2cBusFromName(masterName, force=True)
       else:

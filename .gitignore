@@ -11,6 +11,9 @@
 Module.symvers
 modules.order
 
+# libs
+/lib/sfp-eeprom.inc
+
 # debian packaging
 *.debhelper
 *.log

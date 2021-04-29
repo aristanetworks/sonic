@@ -34,7 +34,7 @@ override_dh_auto_install:
 	$(MAKE) install-py3 \
 	   DESTDIR=$(CURDIR)/debian/python3-$(DEB_SOURCE) \
 	   PY_INSTALL_ARGS=--install-layout=deb
-	$(MAKE) install-drivers \
+	$(MAKE) install-drivers install-libs \
 	   DESTDIR=$(CURDIR)/debian/drivers-$(DEB_SOURCE)
 	$(MAKE) install-fs \
 	   DESTDIR=$(CURDIR)/debian/$(DEB_SOURCE)
@@ -44,6 +44,9 @@ override_dh_auto_install:
 
 	dh_installdirs -pdrivers-$(DEB_SOURCE)-dev /lib/modules/$(KVERSION)/build/include/scd
 	cp $(CURDIR)/src/scd.h debian/drivers-$(DEB_SOURCE)-dev/lib/modules/$(KVERSION)/build/include/scd/
+
+	dh_installdirs -pdrivers-$(DEB_SOURCE)-dev /usr/lib
+	cp $(CURDIR)/lib/libsfp-eeprom.so debian/drivers-$(DEB_SOURCE)-dev/usr/lib/
 
 override_dh_clean:
 	$(MAKE) clean

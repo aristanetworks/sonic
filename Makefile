@@ -30,6 +30,7 @@ PY2_DESTDIR     ?= $(DESTDIR)
 PY3_DESTDIR     ?= $(DESTDIR)
 RULE_DESTDIR    ?= $(DESTDIR)/etc/udev/rules.d
 SYSTEMD_DESTDIR ?= $(DESTDIR)/lib/systemd/system
+LIB_DESTDIR     ?= $(DESTDIR)/usr/lib
 
 # build
 PY_BUILD_ARGS ?=
@@ -58,13 +59,16 @@ all:
 build-drivers:
 	EXTRA_SYMBOLS=$(EXTRA_SYMBOLS) $(MAKE) -C $(KERNEL_SRC) M=$(MODULE_SRC)
 
+build-libs:
+	$(MAKE) -C lib
+
 build-py2:
 	$(PYTHON2) setup.py build $(PY2_BUILD_ARGS)
 
 build-py3:
 	$(PYTHON3) setup.py build $(PY3_BUILD_ARGS)
 
-build: build-drivers build-py2 build-py3
+build: build-drivers build-py2 build-py3 build-libs
 
 #
 # clean targets
@@ -83,7 +87,10 @@ clean-py3:
 	$(PYTHON3) setup.py clean $(PY3_BUILD_ARGS)
 	find $(BASE_DIR)/arista -name '__pycache__' -exec rm -rf {} +
 
-clean: clean-py2 clean-py3 clean-drivers
+clean-libs:
+	$(MAKE) -C lib clean
+
+clean: clean-py2 clean-py3 clean-drivers clean-libs
 
 distclean: clean
 	$(RM) -r $(BASE_DIR)/*.egg-info $(BASE_DIR)/build $(BASE_DIR)/install
@@ -116,9 +123,12 @@ install-udev:
 	$(MKDIR) -p $(RULE_DESTDIR)
 	$(CP) $(RULE_SRC) $(RULE_DESTDIR)
 
+install-libs:
+	$(MAKE) -C lib install DESTDIR=$(LIB_DESTDIR)
+
 install-fs: install-bin install-systemd install-udev
 
-install: install-py2 install-py3 install-drivers install-fs
+install: install-py2 install-py3 install-drivers install-libs install-fs
 
 #
 # test targets

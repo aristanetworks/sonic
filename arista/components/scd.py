@@ -58,6 +58,10 @@ class ScdI2cAddr(I2cAddr):
       self.scd_ = scd
 
    @property
+   def busName(self):
+      return self.scd_.driver.getMasterNameForBus(self.bus_)
+
+   @property
    def bus(self):
       return self.scd_.i2cOffset + self.bus_
 

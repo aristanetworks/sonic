@@ -166,6 +166,8 @@ class FanSysfsImpl(Fan):
       return self.fault.read()
 
    def getStatus(self):
+      if not self.getPresence():
+         return False
       return not self.getFault()
 
    def setSpeed(self, speed):

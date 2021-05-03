@@ -53,6 +53,9 @@ def rmmod(name):
       subprocess.check_call(args)
 
 def isModuleLoaded(name):
+   if inSimulation():
+      return False
+
    with open('/proc/modules') as f:
       start = '%s ' % name.replace('-', '_')
       for line in f.readlines():

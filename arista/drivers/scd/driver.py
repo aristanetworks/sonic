@@ -138,7 +138,7 @@ class ScdKernelDriver(PciKernelDriver):
       self.refresh() # sync with kernel runtime state
 
       tweaks = []
-      for tweak in scd.tweaks:
+      for tweak in scd.tweaks.values():
          tweaks += ["%#x %#x %#x %#x %#x %#x" % (
             tweak.addr.bus, tweak.addr.address, tweak.t, tweak.datr, tweak.datw,
             tweak.ed)]

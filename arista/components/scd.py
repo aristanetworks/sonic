@@ -303,7 +303,7 @@ class Scd(PciComponent):
       self.osfps = []
       self.qsfps = []
       self.sfps = []
-      self.tweaks = []
+      self.tweaks = {}
       self.xcvrs = []
       self.uioMap = {}
       self.resets = []
@@ -353,9 +353,9 @@ class Scd(PciComponent):
       return MmapResource(path)
 
    def i2cAddr(self, bus, addr, t=1, datr=3, datw=3, ed=0, block=True):
-      addr = ScdI2cAddr(self, bus, addr, block=block)
-      self.tweaks.append(Scd.BusTweak(addr, t, datr, datw, ed))
-      return addr
+      i2cAddr = ScdI2cAddr(self, bus, addr, block=block)
+      self.tweaks[(bus, addr)] = Scd.BusTweak(i2cAddr, t, datr, datw, ed)
+      return i2cAddr
 
    def getSmbus(self, bus):
       return ScdSmbus(self, bus)

@@ -12,8 +12,9 @@ class Thermal(ThermalBase):
    Platform-specific class for interfacing with a thermal module
    """
 
-   def __init__(self, temp):
+   def __init__(self, index, temp):
       ThermalBase.__init__(self)
+      self._index = index
       self._temp = temp
       self._minimum = None
       self._maximum = None
@@ -34,8 +35,7 @@ class Thermal(ThermalBase):
       return True
 
    def get_position_in_parent(self):
-      # TODO: give a unique identifier for every sensor
-      return -1
+      return self._index
 
    def is_replaceable(self):
       return False

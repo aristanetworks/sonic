@@ -79,8 +79,10 @@ class Chassis(ChassisBase):
          self._sfp_list = [None] * (self._inventory.portEnd)
          for index, sfp in self._inventory.getXcvrs().items():
             self._sfp_list[index - 1] = Sfp(index, sfp)
-      for thermal in self._inventory.getTemps():
-         self._thermal_list.append(Thermal(thermal))
+      # TODO: index used here to allow thermal.get_position_in_parent() to return
+      # unique values but we want a proper way of uniquely identifying sensors
+      for index, thermal in enumerate(self._inventory.getTemps()):
+         self._thermal_list.append(Thermal(index + 1, thermal))
       self._watchdog = Watchdog(self._inventory.getWatchdog())
 
       self._interrupt_dict, self._presence_dict = \

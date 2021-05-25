@@ -24,8 +24,10 @@ class Module(ModuleBase):
       for fan in self._inventory.getFans():
          self._fan_list.append(Fan(None, fan))
 
-      for thermal in self._inventory.getTemps():
-         self._thermal_list.append(Thermal(thermal))
+      # TODO: index used here to allow thermal.get_position_in_parent() to return
+      # unique values but we want a proper way of uniquely identifying sensors
+      for index, thermal in enumerate(self._inventory.getTemps()):
+         self._thermal_list.append(Thermal(index + 1, thermal))
       # TODO: Add Xcvrs? Only linecards have access to them
 
    def get_presence(self):

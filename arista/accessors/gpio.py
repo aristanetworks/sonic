@@ -1,7 +1,10 @@
 import os.path
 
+from ..core.log import getLogger
 from ..core.utils import inSimulation
 from ..inventory.gpio import Gpio
+
+logging = getLogger(__name__)
 
 class GpioImpl(Gpio):
    def __init__(self, name, addr=0, bit=0, ro=False, activeLow=False,
@@ -58,8 +61,12 @@ class FileGpioImpl(GpioImpl):
       return self.path
 
    def getRawValue(self):
-      with open(self.path, 'r') as f:
-         return int(f.read())
+      try:
+         with open(self.path, 'r') as f:
+            return int(f.read())
+      except IOError:
+         logging.error('file gpio read failed on %s', self.path)
+         return None
 
    def setRawValue(self, value):
       with open(self.path, 'w') as f:

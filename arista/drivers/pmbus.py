@@ -22,8 +22,12 @@ class PmbusDriver(Driver):
          logging.debug('hwmon sensor %s does not exist', path)
          return 0, False
       logging.debug('hwmon-read %s', path)
-      with open(path, 'r') as f:
-         return int(f.read()), True
+      try:
+         with open(path, 'r') as f:
+            return int(f.read()), True
+      except IOError:
+         logging.error('failed to read pmbus %s', path)
+         return 0, True
 
    def getStatusSim_(self):
       logging.info('reading psu status from hwmon: %s', self.hwmonDir)

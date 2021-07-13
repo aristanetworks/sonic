@@ -74,7 +74,7 @@ do_supervisor_mode() {
 }
 
 do_linecard_mode() {
-   local vlan_intf="eth0.$VLAN_ID"
+   local vlan_intf="eth1-midplane"
 
    echo "Setting up $vlan_intf"
 

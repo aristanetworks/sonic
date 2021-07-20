@@ -15,12 +15,13 @@ class OnieEeprom(object):
          0x26: "01",
          0x27: self._convertHwApi(prefdl.get('HwApi')),
          0x28: self._getOniePlatform() or prefdl.get('SID'),
-         0x2A: None, # num macs (could be added using per platform metadata)
-         0x2B: None, # manufacturer
-         0x2C: None, # manufacturer country code
+         0x2A: 0xffff, # num macs (could be added using per platform metadata)
+         0x2B: 'Arista Networks', # manufacturer
+         0x2C: 'US', # manufacturer country code
          0x2D: 'Arista Networks',
          0x2E: self._getAbootVersion(), # XXX: won't work for modules
          0x2F: prefdl.get('SerialNumber'), # service tag
+         0xFE: 0xdeadbeef, # CRC
       }
 
    def _convertHwApi(self, hwApi):
@@ -53,5 +54,5 @@ class OnieEeprom(object):
 
    def data(self, filterOut=None):
       filterOut = filterOut or []
-      return {'0x%02x' % k : v for k, v in self.fields.items()
+      return {'0x%02X' % k : v for k, v in self.fields.items()
               if v and k not in filterOut}

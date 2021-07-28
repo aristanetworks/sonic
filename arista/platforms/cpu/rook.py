@@ -23,7 +23,7 @@ class RookCpu(Cpu):
 
    PLATFORM = 'rook'
 
-   def __init__(self, mgmtBus=15, fanCpldCls=LaFanCpld,
+   def __init__(self, mgmtBus=15, fanCpldCls=LaFanCpld, hasLmSensor=True,
                 cpldRegisterCls=RookCpldRegisters, **kwargs):
       super(RookCpu, self).__init__(**kwargs)
 
@@ -66,10 +66,11 @@ class RookCpu(Cpu):
             ]
          )
 
-      cpld.newComponent(Lm73, cpld.i2cAddr(mgmtBus, 0x48), sensors=[
-         SensorDesc(diode=0, name='Front-panel temp sensor',
-                    position=Position.OTHER, target=55, overheat=75, critical=85),
-      ])
+      if hasLmSensor:
+         cpld.newComponent(Lm73, cpld.i2cAddr(mgmtBus, 0x48), sensors=[
+            SensorDesc(diode=0, name='Front-panel temp sensor',
+                       position=Position.OTHER, target=55, overheat=75, critical=85),
+         ])
 
       self.leds = cpld.newComponent(RookStatusLeds, cpld.i2cAddr(mgmtBus, 0x20),
                                     leds=[

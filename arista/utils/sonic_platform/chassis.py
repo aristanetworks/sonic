@@ -8,13 +8,14 @@ import time
 
 try:
    from sonic_platform_base.chassis_base import ChassisBase
-   from arista.core import cause, thermal_control
+   from arista.core import thermal_control
    from arista.core.card import Card
    from arista.core.cause import getReloadCauseManager
    from arista.core.config import Config
    from arista.core.onie import OnieEeprom
    from arista.core.platform import readPrefdl
    from arista.core.supervisor import Supervisor
+   from arista.utils.sonic_platform.eeprom import Eeprom
    from arista.utils.sonic_platform.fan import Fan
    from arista.utils.sonic_platform.fan_drawer import FanDrawer, FanDrawerLegacy
    from arista.utils.sonic_platform.module import (
@@ -46,10 +47,7 @@ class Chassis(ChassisBase):
    def __init__(self, platform):
       ChassisBase.__init__(self)
       self._platform = platform
-      self._prefdl = readPrefdl()
-      # Because of syseepromd, self._eeprom has to be populated correctly or
-      # not at all
-      #self._eeprom = Eeprom(self._prefdl)
+      self._eeprom = Eeprom(readPrefdl())
       self._inventory = platform.getInventory()
       if isinstance(platform, Supervisor):
          chassis = platform.getChassis()
@@ -89,25 +87,25 @@ class Chassis(ChassisBase):
          self._get_interrupts_for_components()
 
    def get_name(self):
-      return self._prefdl.getField("SKU")
+      return self._eeprom.prefdl().getField("SKU")
 
    def get_presence(self):
       return True
 
    def get_model(self):
-      return self._prefdl.getField("SKU")
+      return self._eeprom.prefdl().getField("SKU")
 
    def get_base_mac(self):
-      return self._prefdl.getField("MAC")
+      return self._eeprom.prefdl().getField("MAC")
 
    def get_serial(self):
-      return self._prefdl.getField("SerialNumber")
+      return self._eeprom.prefdl().getField("SerialNumber")
 
    def get_serial_number(self):
       return self.get_serial()
 
    def get_system_eeprom_info(self):
-      return OnieEeprom(self._prefdl.data()).data()
+      return OnieEeprom(self._eeprom.read_eeprom()).data()
 
    def get_status(self):
       return True

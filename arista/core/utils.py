@@ -10,6 +10,7 @@ from functools import wraps
 from struct import pack, unpack
 
 from .log import getLogger
+from ..libs.config import parseKeyValueConfig
 from ..libs.python import isinteger
 
 logging = getLogger(__name__)
@@ -446,15 +447,7 @@ def getMachineConfigDict(path='/host/machine.conf'):
    if machineConfigDict:
       return machineConfigDict
 
-   data = {}
-   with open(path) as f:
-      for line in f.readlines():
-         line = line.rstrip()
-         if not line or line.startswith('#'):
-            continue
-         fk, v = line.split('=', 1)
-         _, k = fk.split('_', 1)
-         data[k] = v
+   data = {k.split('_', 1)[1] : v for k, v in parseKeyValueConfig(path).items()}
    machineConfigDict = data
    return data
 

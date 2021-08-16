@@ -1,6 +1,7 @@
 
 import datetime
 
+from ..libs.config import parseKeyValueConfig
 from .utils import getCmdlineDict, getMachineConfigDict
 
 class OnieEeprom(object):
@@ -13,7 +14,7 @@ class OnieEeprom(object):
          0x25: self._convertMfgTime(prefdl.get('MfgTime2', prefdl.get('MfgTime'))),
          0x26: "01",
          0x27: self._convertHwApi(prefdl.get('HwApi')),
-         0x28: self._getOniePlatform(), # XXX: won't work for modules
+         0x28: self._getOniePlatform() or prefdl.get('SID'),
          0x2A: None, # num macs (could be added using per platform metadata)
          0x2B: None, # manufacturer
          0x2C: None, # manufacturer country code
@@ -34,7 +35,12 @@ class OnieEeprom(object):
       name = getCmdlineDict().get('onie_platform')
       if name is not None:
          return name
-      return getMachineConfigDict().get('platform')
+      try:
+         return getMachineConfigDict().get('platform')
+      except FileNotFoundError:
+         # NOTE: this statement is reached when /host is not available
+         #       (e.g when running inside pmon)
+         return parseKeyValueConfig('/etc/sonic/sonic-environment').get('PLATFORM')
 
    def _convertMfgTime(self, mfgtime):
       if mfgtime is None:

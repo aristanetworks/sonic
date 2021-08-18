@@ -30,6 +30,16 @@ try:
 except ImportError as e:
    raise ImportError("%s - required module not found" % e)
 
+def sanitizeProductName(name):
+   # NOTE: sonic-mgmt tests expect exact match with platform.json
+   #       however since we use the same platform folder for variants it leads
+   #       to tests failing.
+   suffixes = ['-ES', '-M', '-SSD']
+   for suffix in suffixes:
+      if name.endswith(suffix):
+         return name[:-len(suffix)]
+   return name
+
 class Chassis(ChassisBase):
    REBOOT_CAUSE_DICT = {
       'unknown':ChassisBase.REBOOT_CAUSE_NON_HARDWARE,
@@ -87,7 +97,7 @@ class Chassis(ChassisBase):
          self._get_interrupts_for_components()
 
    def get_name(self):
-      return self._eeprom.prefdl().getField("SKU")
+      return sanitizeProductName(self._eeprom.prefdl().getField("SKU"))
 
    def get_presence(self):
       return True

@@ -55,6 +55,23 @@ class ThermalInfo(ThermalPolicyInfo):
          self.thermals_overheat[name] = value > desc.overheat if status else False
          self.thermals_critical[name] = value > desc.critical if status else False
 
+@thermal_json_object("psu_info")
+class PsuInfo(ThermalPolicyInfo):
+   def __init__(self):
+      self.psus = {}
+      self.psus_presence = {}
+      self.psus_status = {}
+
+   def _collect_psus(self, psus):
+      for psu in psus:
+         name = psu.get_name()
+         self.psus[name] = psu
+         self.psus_presence[name] = psu.get_presence()
+         self.fans_status[name] = psu.get_status()
+
+   def collect(self, chassis):
+      self._collect_psus(chassis.get_all_psus())
+
 @thermal_json_object("control_info")
 class ControlInfo(ThermalPolicyInfo):
    def __init__(self):
@@ -62,3 +79,7 @@ class ControlInfo(ThermalPolicyInfo):
 
    def collect(self, chassis):
       self.sensorsToFanSpeed = chassis.getThermalControl().sensorsToFanSpeed
+
+@thermal_json_object("chassis_info")
+class ChassisInfo(ControlInfo):
+   pass

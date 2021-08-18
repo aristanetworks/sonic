@@ -26,15 +26,35 @@ class ThermalAnyOverheatCondition(ThermalPolicyCondition):
    def is_match(self, thermal_info_dict):
       return any(thermal_info_dict['thermal_info'].thermals_overheat.values())
 
-@thermal_json_object("fan.any.absent")
+@thermal_json_object("fan.any.absence")
 class FanAnyAbsentCondition(ThermalPolicyCondition):
    def is_match(self, thermal_info_dict):
       return not all(thermal_info_dict['fan_info'].fans_presence.values())
+
+@thermal_json_object("fan.all.presence")
+class FanAllPresentCondition(ThermalPolicyCondition):
+   def is_match(self, thermal_info_dict):
+      return all(thermal_info_dict['fan_info'].fans_presence.values())
 
 @thermal_json_object("fan.any.fault")
 class FanAnyFaultCondition(ThermalPolicyCondition):
    def is_match(self, thermal_info_dict):
       return not all(thermal_info_dict['fan_info'].fans_status.values())
+
+@thermal_json_object("psu.any.absence")
+class PsuAnyAbsentCondition(ThermalPolicyCondition):
+   def is_match(self, thermal_info_dict):
+      return not all(thermal_info_dict['psu_info'].psus_presence.values())
+
+@thermal_json_object("psu.all.presence")
+class PsuAllPresenceCondition(ThermalPolicyCondition):
+   def is_match(self, thermal_info_dict):
+      return all(thermal_info_dict['psu_info'].psus_presence.values())
+
+@thermal_json_object("psu.any.fault")
+class PsuAnyFaultCondition(ThermalPolicyCondition):
+   def is_match(self, thermal_info_dict):
+      return not all(thermal_info_dict['psu_info'].psus_status.values())
 
 @thermal_json_object("normal")
 class NormalCondition(ThermalPolicyCondition):

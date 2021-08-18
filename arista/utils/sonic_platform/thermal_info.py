@@ -67,7 +67,7 @@ class PsuInfo(ThermalPolicyInfo):
          name = psu.get_name()
          self.psus[name] = psu
          self.psus_presence[name] = psu.get_presence()
-         self.fans_status[name] = psu.get_status()
+         self.psus_status[name] = psu.get_status()
 
    def collect(self, chassis):
       self._collect_psus(chassis.get_all_psus())

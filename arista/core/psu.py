@@ -188,7 +188,13 @@ class PsuSlot(SlotComponent):
 
       desc = copy.deepcopy(self.model.DESCRIPTION)
       desc.setPsuId(self.slotId)
-      self.psuSlot.insertPsu(self.addPsu(desc))
+      psu = self.addPsu(desc)
+      self.psuSlot.insertPsu(psu)
+
+      if self.inputOkGpio is None:
+         self.inputOkGpio = psu.getInputOkGpio()
+      if self.outputOkGpio is None:
+         self.outputOkGpio = psu.getOutputOkGpio()
 
    def getPresence(self):
       return self.presentGpio.isActive()

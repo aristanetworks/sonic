@@ -74,7 +74,7 @@ class PsuIdent(object):
 class PsuSlot(SlotComponent):
    def __init__(self, slotId=None, desc=None, addrFunc=None, psus=None,
                 presentGpio=None, inputOkGpio=None, outputOkGpio=None, led=None,
-                **kwargs):
+                forcePsuLoad=False, **kwargs):
       super(PsuSlot, self).__init__(priority=Priority.POWER, **kwargs)
       self.slotId = slotId
       self.model = None
@@ -86,11 +86,17 @@ class PsuSlot(SlotComponent):
       self.outputOkGpio = outputOkGpio
       self.led = led
       self.psus = psus
+      self.forcePsuLoad = forcePsuLoad
 
       self.addrFunc(0x00) # workaround to configure a bus wide parameter
       self.psuSlot = self.inventory.addPsuSlot(PsuSlotImpl(self))
       self.psuInv = None
       self.load(cacheOnly=True) # no IO in the constructor
+
+   def _forcePsuModel(self, model):
+      ident = copy.deepcopy(model.IDENTIFIERS[0])
+      ident.metadata = PsuPmbusDetect.UNKNOWN_METADATA
+      return model(ident)
 
    def autodetectPsuModel(self):
       psus = []
@@ -100,7 +106,11 @@ class PsuSlot(SlotComponent):
             psus.append(psu)
 
       if not psus:
+         if self.forcePsuLoad:
+            assert len(self.psus) == 1, "Forcing only works with one model"
+            return self._forcePsuModel(self.psus[0])
          return None
+
       assert len(psus) == 1, 'Multiple PSUs matched the description'
       return psus[0]
 

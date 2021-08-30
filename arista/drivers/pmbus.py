@@ -11,6 +11,11 @@ class PsuPmbusDetect(I2cDevDriver):
    MFR_DATE = 0x9d
    MFR_SERIAL = 0x9e
 
+   UNKNOWN_METADATA = {
+      key : 'N/A'
+      for key in ['id', 'model', 'revision', 'location', 'date', 'serial']
+   }
+
    def __init__(self, addr):
       super(PsuPmbusDetect, self).__init__(name='pmbus-detect', addr=addr)
       self.addr = addr

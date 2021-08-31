@@ -1,3 +1,4 @@
+from ..core.asic import SwitchChip
 from ..core.fixed import FixedSystem
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
@@ -5,7 +6,6 @@ from ..core.psu import PsuSlot
 from ..core.types import PciAddr
 from ..core.utils import incrange
 
-from ..components.common import SwitchChip
 from ..components.dpm.ucd import Ucd90320, UcdGpi
 from ..components.phy.babbage import Babbage
 from ..components.phy.b52 import B52

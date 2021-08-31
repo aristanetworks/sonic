@@ -1,6 +1,5 @@
 
-from ..core.component import Component
+from ..core.component.unmanaged import UnmanagedComponent
 
-class PowerDomain(Component):
+class PowerDomain(UnmanagedComponent):
    pass
-

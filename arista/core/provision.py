@@ -2,6 +2,8 @@
 import enum
 import os
 
+from .config import flashPath
+
 class ProvisionMode(enum.IntEnum):
    NONE = 0
    STATIC = 1
@@ -10,7 +12,9 @@ class ProvisionMode(enum.IntEnum):
       return self.name.lower()
 
 class ProvisionConfig(object):
-   CONFIG_PATH = '/host/provision/%d/.provision'
+
+   CONFIG_PATH = flashPath('provision/%d/.provision')
+
    def __init__(self, slotId):
       self.configPath_ = self.CONFIG_PATH % slotId
 

@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import os
 
+from .config import etcPath, flashPath
 from .driver import modprobe
 from .exception import UnknownPlatformError
 from .log import getLogger
@@ -18,9 +19,9 @@ platformSkuIndex = {}
 syseeprom = None
 syseepromData = None
 
-host_prefdl_path = '/host/.system-prefdl'
-host_prefdl_path_bin = '/host/.system-prefdl-bin'
-fmted_prefdl_path = '/etc/sonic/.syseeprom'
+host_prefdl_path = flashPath('.system-prefdl')
+host_prefdl_path_bin = flashPath('.system-prefdl-bin')
+fmted_prefdl_path = etcPath('.syseeprom')
 
 def readPrefdlEeprom(*addrs):
    modprobe('eeprom')

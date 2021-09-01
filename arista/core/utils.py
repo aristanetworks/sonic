@@ -9,14 +9,12 @@ from datetime import datetime
 from functools import wraps
 from struct import pack, unpack
 
+from .config import flashPath, tmpfsPath
 from .log import getLogger
-from ..libs.config import parseKeyValueConfig
+from ..libs.procfs import getCmdlineDict
 from ..libs.python import isinteger
 
 logging = getLogger(__name__)
-
-FLASH_MOUNT = '/host'
-TMPFS_MOUNT = '/var/run/platform_cache/arista'
 
 class HwApi(object):
    def __init__(self, *values):
@@ -333,14 +331,12 @@ class NoopObj(object):
    def __getattr__(self, attr):
       return self.noop(attr)
 
-CMDLINE_PATH = '/proc/cmdline'
-
 class StoredData(object):
    def __init__(self, name, lifespan='temporary', path=None):
       self.name = name
       self.lifespan = lifespan
       if path is None:
-         dirPath = TMPFS_MOUNT if lifespan == 'temporary' else FLASH_MOUNT
+         dirPath = tmpfsPath() if lifespan == 'temporary' else flashPath()
          self.maybeCreatePath(dirPath)
          self.path = os.path.join(dirPath, name)
       else:
@@ -414,42 +410,6 @@ class JsonStoredData(StoredData):
 
    def writeList(self, data):
       self.write([item.__dict__ for item in data])
-
-cmdlineDict = {}
-def getCmdlineDict():
-   global cmdlineDict
-
-   if cmdlineDict:
-      return cmdlineDict
-
-   data = {}
-
-   # The machine running the pytest may not have this path, or permission
-   try:
-      with open(CMDLINE_PATH) as f:
-         for entry in f.read().split():
-            idx = entry.find('=')
-            if idx == -1:
-               data[entry] = None
-            else:
-               data[entry[:idx]] = entry[idx+1:]
-   except IOError:
-      logging.error("%s is not available, the Arista library may not work properly.",
-                    CMDLINE_PATH)
-
-   cmdlineDict = data
-   return data
-
-machineConfigDict = {}
-def getMachineConfigDict(path='/host/machine.conf'):
-   global machineConfigDict
-
-   if machineConfigDict:
-      return machineConfigDict
-
-   data = {k.split('_', 1)[1] : v for k, v in parseKeyValueConfig(path).items()}
-   machineConfigDict = data
-   return data
 
 # debug flag, if enabled should use the most tracing possible
 debug = False

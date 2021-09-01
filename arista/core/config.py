@@ -1,8 +1,8 @@
 import os
 import yaml
 
-from .utils import getCmdlineDict
 from .log import getLogger
+from ..libs.procfs import getCmdlineDict
 
 logging = getLogger(__name__)
 
@@ -28,6 +28,9 @@ class Config(object):
          cls.instance_.write_hw_thresholds = True
          cls.instance_.report_hw_thresholds = False
          cls.instance_.api_use_sfpoptoe = False
+         cls.instance_.flash_path = '/host'
+         cls.instance_.tmpfs_path = '/var/run/platform_cache/arista'
+         cls.instance_.etc_path = '/etc/sonic'
          cls.instance_._parseConfig()
          cls.instance_._parseCmdline()
       return cls.instance_
@@ -83,3 +86,12 @@ class Config(object):
 
    def get(self, confName):
       return getattr(self, confName, None)
+
+def flashPath(*args):
+   return os.path.join(Config().flash_path, *args)
+
+def tmpfsPath(*args):
+   return os.path.join(Config().tmpfs_path, *args)
+
+def etcPath(*args):
+   return os.path.join(Config().etc_path, *args)

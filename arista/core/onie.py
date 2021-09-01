@@ -1,8 +1,11 @@
 
 import datetime
 
+from ..core.config import etcPath
+
 from ..libs.config import parseKeyValueConfig
-from .utils import getCmdlineDict, getMachineConfigDict
+from ..libs.procfs import getCmdlineDict
+from ..libs.onie import getMachineConfigDict
 
 class OnieEeprom(object):
    def __init__(self, prefdl):
@@ -41,7 +44,8 @@ class OnieEeprom(object):
       except FileNotFoundError:
          # NOTE: this statement is reached when /host is not available
          #       (e.g when running inside pmon)
-         return parseKeyValueConfig('/etc/sonic/sonic-environment').get('PLATFORM')
+         path = etcPath('sonic-environment')
+         return parseKeyValueConfig(path).get('PLATFORM')
 
    def _convertMfgTime(self, mfgtime):
       if mfgtime is None:

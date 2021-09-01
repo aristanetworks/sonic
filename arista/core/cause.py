@@ -3,7 +3,7 @@ from collections import defaultdict
 import json
 import os
 
-from .config import Config
+from .config import Config, flashPath
 from .inventory import ReloadCause, ReloadCauseProvider
 from .log import getLogger
 from .utils import JsonStoredData
@@ -193,9 +193,9 @@ class ReloadCauseManager(object):
 
    VERSION = 3
 
-   def __init__(self, name=None, path='/host/reboot-cause/platform/causes.json'):
+   def __init__(self, name=None, path=None):
       self.name = name
-      self.path = path
+      self.path = path or flashPath('reboot-cause/platform/causes.json')
       self.loaded = False
       self.reports = []
 

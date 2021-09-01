@@ -29,6 +29,9 @@ class I2cDevDriver(UserDriver):
    def __str__(self):
       return '%s(addr=%s)' % (self.__class__.__name__, self.addr)
 
+   def __repr__(self):
+      return str(self)
+
    @property
    def bus(self):
       if self.bus_ is None:

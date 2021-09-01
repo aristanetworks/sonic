@@ -1,8 +1,9 @@
 from contextlib import closing
 
 from ..core.i2c_utils import I2cMsg
-from ..core.driver import Driver
 from ..core.log import getLogger
+
+from .i2c import I2cDevDriver
 
 logging = getLogger(__name__)
 
@@ -230,50 +231,31 @@ class PlxPexI2cBrPortAddrMap(PlxPexI2cAddrMap):
    def offset(self, addr):
       return addr & 0xfff
 
-class PlxPexI2cDev(object):
+class PlxPexI2cDevDriver(I2cDevDriver):
 
-   def __init__(self, bus, addrmap):
-      self.bus = bus
-      self.addrmap = addrmap
+   PLX_ADDR_MAP = None
 
-   @classmethod
-   def open(cls, addr):
-      bus = I2cMsg(addr)
-      bus.open()
-      return cls(bus, PlxPexI2cPciAddrMap())
-
-   def close(self):
-      self.bus.close()
-
-   @property
-   def addr(self):
-      return self.bus.addr
-
-   @property
-   def devId(self):
-      return self.addr.address
+   def __init__(self, **kwargs):
+      super(PlxPexI2cDevDriver, self).__init__(**kwargs)
+      self.addrmap = self.PLX_ADDR_MAP()
 
    def _read(self, order, addr):
       cmd = self.addrmap.command(PEX_I2C_RD, order, addr)
-      logging.debug("%s._read(%d, %#x): %s",
-                    self, order, addr, cmd)
-      data = self.bus.read_bytes(self.devId, cmd, 4)
-      logging.debug("%s.read_bytes(%#x, [%s], 4) = [%s]",
-                    self.bus, self.devId,
+      logging.debug("%s._read(%d, %#x): %s", self, order, addr, cmd)
+      data = self.read_bytes(cmd, 4)
+      logging.debug("%s.read_bytes([%s], 4) = [%s]", self,
                     ', '.join(["%#x" % c for c in cmd]),
                     ', '.join(["%#x" % d for d in data]))
       return cmd.rdval(data)
 
    def _write(self, order, addr, val):
       cmd = self.addrmap.command(PEX_I2C_WR, order, addr)
-      logging.debug("%s._write(%d, %#x, %#x): %s",
-                    self, order, addr, val, cmd)
+      logging.debug("%s._write(%d, %#x, %#x): %s", self, order, addr, val, cmd)
       data = cmd.wrdata(val)
-      logging.debug("%s.write_bytes(%#x, [%s] + [%s])",
-                    self.bus, self.devId,
+      logging.debug("%s.write_bytes([%s] + [%s])", self,
                     ', '.join(["%#x" % c for c in cmd]),
                     ', '.join(["%#x" % d for d in data]))
-      self.bus.write_bytes(self.devId, list(cmd) + data)
+      self.write_bytes(list(cmd) + data)
 
    def read(self, addr):
       return self._read(2, addr)
@@ -293,38 +275,14 @@ class PlxPexI2cDev(object):
    def write8(self, addr, val):
       return self._write(0, addr, val)
 
-class PlxPex8700I2cDevDriver(Driver):
+class PlxPex8700I2cDevDriver(PlxPexI2cDevDriver):
 
-   def __init__(self, addr, name=None, registerCls=None):
-      Driver.__init__(self)
-      self.addr = addr
-      self.name = name
-      self._regCls = registerCls
-      self._regs = None
-      self._dev = None
-
-   @property
-   def dev(self):
-      if self._dev is None:
-         self._dev = PlxPexI2cDev.open(self.addr)
-      return self._dev
-
-   @property
-   def regs(self):
-      if self._regs is None and self._regCls is not None:
-         self._regs = self._regCls(self.dev)
-      return self._regs
-
-   def close(self):
-      if self.dev_ is not None:
-         self.dev_.close()
-         self.dev_ = None
-         self.regs_ = None
+   PLX_ADDR_MAP = PlxPexI2cPciAddrMap
 
    def smbusPing(self):
       try:
-         with closing(PlxPexI2cDev.open(self.addr)) as dev:
-            v = dev.read16(0x0)
+         with self:
+            v = self.read16(0x0)
             assert v == 0x10b5, \
                "%s: vendor id %#x is not PLX" % (self, v)
       except IOError as e:
@@ -360,19 +318,3 @@ class PlxPex8700I2cDevDriver(Driver):
          self.regs.vs0PortVec,
          self.regs.vs1PortVec,
       ][vsId](value)
-
-   def __diag__(self, ctx):
-      return {
-         "name": self.name,
-         "addr": repr(self.addr),
-         "regs": self.regs.__diag__(ctx) if self.regs else None,
-      }
-
-   def __str__(self):
-      return "%s(%s, addr=%r)" % (
-         self.__class__.__name__,
-         ('%s' % self.name) if self.name else None,
-         self.addr)
-
-   def __repr__(self):
-      return str(self)

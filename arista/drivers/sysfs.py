@@ -457,25 +457,3 @@ class SysfsDriver(Driver):
       path = path or os.path.join(self.sysfsPath, name)
       with open(path, 'w') as f:
          return f.write(value)
-
-class LedSysfsDriver(SysfsDriver):
-   def __init__(self, colorDict=None, **kwargs):
-      self.colorDict = colorDict or {
-         '0': LedColor.OFF,
-         '1': LedColor.GREEN,
-         '2': LedColor.RED,
-         '3': LedColor.AMBER,
-      }
-      self.inverseColorDict = {v: k for k, v in self.colorDict.items()}
-      super(LedSysfsDriver, self).__init__(**kwargs)
-
-   def getLedColor(self, led):
-      path = os.path.join(self.sysfsPath, led.name, 'brightness')
-      return self.colorDict[self.read(led.name, path=path)]
-
-   def setLedColor(self, led, value):
-      path = os.path.join(self.sysfsPath, led.name, 'brightness')
-      if value in self.inverseColorDict:
-         value = self.inverseColorDict[value]
-      self.write(led.name, str(value), path=path)
-      return True

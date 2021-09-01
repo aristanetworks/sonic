@@ -179,6 +179,8 @@ class ScdKernelDriver(PciKernelDriver):
    def resetOut(self):
       self.reset(False)
 
+   # FIXME: remove below methods once this driver has been reparented
+
    def getFan(self, desc):
       return FanSysfsImpl(self, desc)
 
@@ -190,6 +192,9 @@ class ScdKernelDriver(PciKernelDriver):
 
    def getGpio(self, desc, **kwargs):
       return GpioSysfsImpl(self, desc, hwActiveLow=True, **kwargs)
+
+   def getLed(self, desc, **kwargs):
+      return LedSysfsImpl(self, desc, **kwargs)
 
 class ScdI2cDevDriver(I2cDevDriver):
    def __init__(self, **kwargs):

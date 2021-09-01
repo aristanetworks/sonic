@@ -4,9 +4,8 @@ import os
 
 from collections import OrderedDict, namedtuple
 
-from ..accessors.led import LedImpl
-
-from ..core.component import Priority
+# TODO: use core.component.pci.I2cComponent
+from ..core.component import Priority, PciComponent
 from ..core.component.i2c import I2cComponent
 from ..core.config import Config
 from ..core.driver import KernelDriver
@@ -24,21 +23,18 @@ from ..core.xcvr import (
    QsfpSlot,
    SfpSlot
 )
+
+from ..descs.led import LedDesc
 from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
 
 from ..drivers.scd.driver import ScdI2cDevDriver, ScdKernelDriver
-from ..drivers.sysfs import (
-   LedSysfsDriver,
-)
 
 from ..inventory.interrupt import Interrupt
 from ..inventory.powercycle import PowerCycle
 from ..inventory.watchdog import Watchdog
 
 from ..libs.python import monotonicRaw
-
-from .common import PciComponent
 
 logging = getLogger(__name__)
 
@@ -256,7 +252,6 @@ class Scd(PciComponent):
       drivers = [
          KernelDriver(module='scd'),
          ScdKernelDriver(scd=self, addr=addr, registerCls=registerCls),
-         LedSysfsDriver(sysfsPath=os.path.join(self.pciSysfs, 'leds')),
       ]
       self.driver = drivers[1]
       self.smbusMasters = OrderedDict()
@@ -348,18 +343,16 @@ class Scd(PciComponent):
    def addFanGroup(self, addr, platform, num):
       self.fanGroups += [(addr, platform, num)]
 
-   def _addLed(self, addr, name):
+   def _addLed(self, addr, name, **kwargs):
+      desc = LedDesc(name=name)
       self.leds += [(addr, name)]
-      led = LedImpl(name=name, driver=self.drivers['LedSysfsDriver'])
-      return led
+      return self.driver.getLed(desc, **kwargs)
 
-   def addLed(self, addr, name):
-      led = self._addLed(addr, name)
-      self.inventory.addLed(led)
-      return led
+   def addLed(self, addr, name, **kwargs):
+      return self.inventory.addLed(self._addLed(addr, name, **kwargs))
 
-   def addLeds(self, leds):
-      return [self.addLed(*led) for led in leds]
+   def addLeds(self, leds, **kwargs):
+      return [self.addLed(*led, **kwargs) for led in leds]
 
    def addLedGroup(self, groupName, leds):
       leds = [self._addLed(*led) for led in leds]

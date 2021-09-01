@@ -55,10 +55,6 @@ class LedControlSysfs(LedControlCommon):
             ledName = led.getName()
             port = int(re.search(r'\d+', ledName).group(0))
             self.portSysfsMapping[port].append(self.LED_SYSFS_PATH.format(ledName))
-      # Set status leds to green initially (Rook led driver does this automatically)
-      for led in self.inventory.getLeds().values():
-         if led.isStatusLed():
-            led.setColor(self.LED_COLOR_GREEN)
 
    def _setIntfColor(self, port, idx, color):
       portList = self.portSysfsMapping[port.portNum]

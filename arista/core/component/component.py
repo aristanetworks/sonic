@@ -20,8 +20,10 @@ class Component(LegacyComponent):
          kwargs['addr'] = args[0]
          args = args[1:]
       kwargs.setdefault('registerCls', self.REGISTER_CLS)
+      # FIXME: workaround until DriverSelector
+      driverCls = kwargs.get('driverCls', self.DRIVER)
       drivers = [
-         self.DRIVER(**kwargs), # pylint: disable=not-callable
+         driverCls(**kwargs), # pylint: disable=not-callable
       ]
       # TODO: cleanup the parent dependency when possible
       super(Component, self).__init__(

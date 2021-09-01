@@ -4,10 +4,10 @@ import time
 
 from contextlib import closing
 
-from ..core.driver import Driver
-from ..core.utils import SMBus, inSimulation
+from ..core.utils import inSimulation
 
 from .kernel import I2cKernelDriver
+from .i2c import I2cDevDriver
 
 CTRL_REG = 0x01
 
@@ -22,36 +22,34 @@ NTESTON = (1 << 7)
 CTRL_CMDS = [0x4, 0x4, 0x5, 0x5, None, 0x4, 0x5, None, None, 0x0, 0x1, None, 0x0,
              0x0, 0x1, 0x1]
 
-class Pca9541I2cDevDriver(Driver):
-   def __init__(self, addr=None, **kwargs):
-      super(Pca9541I2cDevDriver, self).__init__(**kwargs)
-      self.addr = addr
-      self.delay = 0.001 # 1ms
+ARBITRATE_RETRY_DELAY = 0.001 # 1 ms
+
+class Pca9541I2cDevDriver(I2cDevDriver):
 
    def takeOwnership(self):
       try:
-         with closing(SMBus(self.addr.bus)) as bus:
+         with self:
             count = 10
-            while not self.arbitrate(bus) and count:
-               time.sleep(self.delay)
+            while not self.arbitrate() and count:
+               time.sleep(ARBITRATE_RETRY_DELAY)
                count -= 1
       except IOError:
          return False
       return count != 0
 
-   def getCtrlReg(self, bus):
-      return bus.read_byte_data(self.addr.address, CTRL_REG)
+   def getCtrlReg(self):
+      return self.read_byte_data(CTRL_REG)
 
-   def setCtrlReg(self, bus, value):
-      bus.write_byte_data(self.addr.address, CTRL_REG, value)
+   def setCtrlReg(self, value):
+      self.write_byte_data(CTRL_REG, value)
 
-   def arbitrate(self, bus):
-      ctrl = self.getCtrlReg(bus)
+   def arbitrate(self):
+      ctrl = self.getCtrlReg()
       newCtrl = CTRL_CMDS[ctrl & 0xf]
       if newCtrl:
-         self.setCtrlReg(bus, newCtrl)
+         self.setCtrlReg(newCtrl)
 
-      ctrl = self.getCtrlReg(bus)
+      ctrl = self.getCtrlReg()
 
       busOn = bool(ctrl & BUSON) ^ bool(ctrl & NBUSON)
       myBus = not bool(ctrl & MYBUS) ^ bool(ctrl & NMYBUS)
@@ -62,12 +60,7 @@ class Pca9541I2cDevDriver(Driver):
       return self.addr.bus
 
    def ping(self):
-      bus = SMBus(self.addr.bus)
-      try:
-         bus.read_byte(self.addr.address)
-      except IOError:
-         return False
-      return True
+      return self.smbusPing()
 
 class Pca9541KernelDriver(I2cKernelDriver):
 

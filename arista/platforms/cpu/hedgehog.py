@@ -4,6 +4,7 @@ from ...core.types import PciAddr
 
 from ...components.cpu.amd.k10temp import K10Temp
 from ...components.scd import Scd
+from ...components.watchdog import FakeWatchdog
 
 from ...descs.sensor import SensorDesc, Position
 
@@ -26,3 +27,5 @@ class HedgehogCpu(Cpu):
          SensorDesc(diode=0, name='Cpu temp sensor',
                     position=Position.OTHER, target=60, overheat=90, critical=95),
       ])
+
+      self.inventory.addWatchdog(FakeWatchdog())

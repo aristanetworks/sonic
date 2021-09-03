@@ -10,7 +10,7 @@ class OnieEeprom(object):
          0x21: prefdl.get('SKU'),
          0x22: prefdl.get('ASY'),
          0x23: prefdl.get('SerialNumber'),
-         0x24: prefdl.get('MAC', '').replace(':', ''),
+         0x24: prefdl.get('MAC', ''),
          0x25: self._convertMfgTime(prefdl.get('MfgTime2', prefdl.get('MfgTime'))),
          0x26: "01",
          0x27: self._convertHwApi(prefdl.get('HwApi')),

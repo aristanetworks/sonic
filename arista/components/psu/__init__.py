@@ -11,12 +11,18 @@ class PmbusPsu(I2cComponent):
 
    def getInputOkGpio(self):
       def _isGood(value=None):
-         with open(self.driver.getHwmonEntry('power1_input')) as f:
-            return 1 if int(f.read()) else 0
+         try:
+            with open(self.driver.getHwmonEntry('power1_input')) as f:
+               return 1 if int(f.read()) else 0
+         except Exception:
+            return 0
       return FuncGpioImpl(_isGood, 'input_ok')
 
    def getOutputOkGpio(self, name=''):
       def _isGood(value=None):
-         with open(self.driver.getHwmonEntry('power2_input')) as f:
-            return 1 if int(f.read()) else 0
+         try:
+            with open(self.driver.getHwmonEntry('power2_input')) as f:
+               return 1 if int(f.read()) else 0
+         except Exception:
+            return 0
       return FuncGpioImpl(_isGood, 'output_ok')

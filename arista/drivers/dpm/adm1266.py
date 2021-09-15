@@ -7,6 +7,7 @@ from ...core.log import getLogger
 from ...core.utils import incrange
 
 from ...libs.date import epochToDatetime
+from ...libs.retry import retryGet
 
 from .pmbus import PmbusUserDriver
 
@@ -166,7 +167,11 @@ class Adm1266UserDriver(PmbusUserDriver):
          data[i + 2] = (secs >> (i * 8)) & 0xff
       for i in range(2):
          data[i] = (usecs >> (i * 8)) & 0xff
-      self.write_block_data(self.registers.RUN_TIME_CLOCK, data)
+
+      def writeRunTimeClock():
+         # Use retry for this function
+         self.write_block_data(self.registers.RUN_TIME_CLOCK, data)
+      retryGet(writeRunTimeClock, retries=5)
 
    def clearBlackboxFaults(self):
       self.write_block_data(self.registers.READ_BLACKBOX, [0xfe, 0])

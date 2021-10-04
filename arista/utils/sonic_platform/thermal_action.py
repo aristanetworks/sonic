@@ -24,7 +24,10 @@ class SetFanSpeedAction(ThermalPolicyAction):
 
    def load_from_json(self, json_obj):
       if self.JSON_FIELD_SPEED in json_obj:
-         self.speed = float(json_obj[self.JSON_FIELD_SPEED])
+         speed = float(json_obj[self.JSON_FIELD_SPEED])
+         if speed < 0 or speed > 100:
+            raise ValueError('SetFanSpeedAction invalid speed value {} in JSON policy file, valid value should be [0, 100]'.format(speed))
+         self.speed = speed
       else:
          raise ValueError("SetFanSpeedAction missing field in json file")
 

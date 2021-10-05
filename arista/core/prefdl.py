@@ -108,6 +108,9 @@ class PrefdlBase(object):
    def toDict(self):
       return {field.name: field.toStr() for field in self._fields}
 
+   def toList(self):
+      return [(field.code, field.name, field.toStr()) for field in self._fields]
+
    def getField(self, name):
       return self._data.get(name)
 

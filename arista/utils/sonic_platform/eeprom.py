@@ -3,18 +3,18 @@
 from __future__ import print_function
 
 try:
-   from sonic_platform_base.sonic_eeprom.eeprom_base import EepromDecoder
+   from sonic_platform_base.sonic_eeprom.eeprom_tlvinfo import TlvInfoDecoder
 except ImportError as e:
    raise ImportError("%s - required module not found" % e)
 
-class Eeprom(EepromDecoder):
+class Eeprom(TlvInfoDecoder):
    """
    Platform-specific Eeprom class
    """
 
    def __init__(self, prefdl, **kwargs):
-      EepromDecoder.__init__(self, path=None, format=None, start=0, status='',
-                             readonly=True, **kwargs)
+      TlvInfoDecoder.__init__(self, path=None, start=0, status='',
+                              ro=True, **kwargs)
       self._prefdl = prefdl
 
    def read_eeprom(self):
@@ -43,4 +43,10 @@ class Eeprom(EepromDecoder):
 
    def modelstr(self, e):
       return e.getField('SKU')
+
+   def visit_eeprom(self, e, visitor):
+      visitor.visit_header(None, None, None)
+      for (code, name, value) in e.toList():
+         visitor.visit_tlv(name, code, len(value), value)
+      visitor.visit_end(e)
 

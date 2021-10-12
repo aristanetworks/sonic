@@ -18,9 +18,6 @@ class Eeprom(TlvInfoDecoder):
       self._prefdl = prefdl
 
    def read_eeprom(self):
-      return self._prefdl.data()
-
-   def prefdl(self):
       return self._prefdl
 
    def set_eeprom(self, e, cmd_args):

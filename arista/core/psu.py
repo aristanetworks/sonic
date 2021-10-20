@@ -26,6 +26,9 @@ class PsuImpl(PsuInv):
    def getModel(self):
       return self.model.identifier.aristaName
 
+   def getRevision(self):
+      return self.model.identifier.metadata['revision']
+
    def getSerial(self):
       return self.model.identifier.metadata['serial']
 

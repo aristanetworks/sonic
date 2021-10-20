@@ -37,6 +37,10 @@ class Psu(InventoryInterface):
    def getModel(self):
       raise NotImplementedError
 
+   @diagmethod('revision')
+   def getRevision(self):
+      raise NotImplementedError
+
    @diagmethod('serial')
    def getSerial(self):
       raise NotImplementedError

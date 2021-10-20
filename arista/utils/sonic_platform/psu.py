@@ -29,6 +29,10 @@ class Psu(PsuBase):
       psu = self._slot.getPsu()
       return psu.getModel() if psu else "N/A"
 
+   def get_revision(self):
+      psu = self._slot.getPsu()
+      return psu.getRevision() if psu else "N/A"
+
    def get_serial(self):
       psu = self._slot.getPsu()
       return psu.getSerial() if psu else "N/A"

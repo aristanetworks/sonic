@@ -97,25 +97,25 @@ class Chassis(ChassisBase):
          self._get_interrupts_for_components()
 
    def get_name(self):
-      return sanitizeProductName(self._eeprom.prefdl().getField("SKU"))
+      return sanitizeProductName(self._eeprom.read_eeprom().getField("SKU"))
 
    def get_presence(self):
       return True
 
    def get_model(self):
-      return self._eeprom.prefdl().getField("SKU")
+      return self._eeprom.read_eeprom().getField("SKU")
 
    def get_base_mac(self):
-      return self._eeprom.prefdl().getField("MAC")
+      return self._eeprom.read_eeprom().getField("MAC")
 
    def get_serial(self):
-      return self._eeprom.prefdl().getField("SerialNumber")
+      return self._eeprom.read_eeprom().getField("SerialNumber")
 
    def get_serial_number(self):
       return self.get_serial()
 
    def get_system_eeprom_info(self):
-      return OnieEeprom(self._eeprom.read_eeprom()).data()
+      return OnieEeprom(self._eeprom.read_eeprom().data()).data()
 
    def get_status(self):
       return True

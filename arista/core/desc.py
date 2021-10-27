@@ -10,4 +10,5 @@ class HwDesc(object):
          setattr(self, key, value)
 
    def __diag__(self, ctx):
-      return { k : v for k, v in self.__dict__.items() }
+      return { k : v.__diag__(ctx) if isinstance(v, HwDesc) else v
+               for k, v in self.__dict__.items() }

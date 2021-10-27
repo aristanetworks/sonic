@@ -160,10 +160,12 @@ class I2cKernelDriver(KernelDriver):
       return int(name[4:])
 
    def __diag__(self, ctx):
-      return super(I2cKernelDriver, self).__diag__(ctx).update({
-         'addr': self.addr,
+      data = super(I2cKernelDriver, self).__diag__(ctx)
+      data.update({
+         'addr': str(self.addr),
          'name': self.name,
       })
+      return data
 
 class PciKernelDriver(KernelDriver):
    def __init__(self, addr=None, **kwargs):

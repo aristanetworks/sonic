@@ -173,7 +173,7 @@ class Component(object):
 
       if ctx.recursive:
          output["components"] = [c.genDiag(ctx) for c in
-                                 self.iterComponents(recursive=False)]
+                         self.iterComponents(filters=None, recursive=False)]
       return output
 
 class PciComponent(Component):

@@ -315,4 +315,8 @@ class Chassis(ChassisBase):
    #       API. But eh, that's how `show system-health` works
    #       Not doing anything in this call for now, we already have some logic
    def initizalize_system_led(self):
-       pass
+      pass
+
+   def init_midplane_switch(self):
+      return True
+

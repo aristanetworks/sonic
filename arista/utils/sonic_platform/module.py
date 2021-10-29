@@ -4,6 +4,7 @@ from __future__ import print_function
 
 try:
    from arista.core.onie import OnieEeprom
+   from arista.libs.ping import ping
    from arista.utils.sonic_platform.fan import Fan
    from arista.utils.sonic_platform.thermal import Thermal
    from sonic_platform_base.module_base import ModuleBase
@@ -134,6 +135,11 @@ class LinecardModule(Module):
 
    def get_type(self):
       return self.MODULE_TYPE_LINE
+
+   def is_midplane_reachable(self):
+      if not self.get_presence() or not self._sku.poweredOn():
+         return False
+      return ping(self.get_midplane_ip())
 
    def get_all_asics(self):
       self._asic_list = []

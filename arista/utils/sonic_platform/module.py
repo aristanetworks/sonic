@@ -99,6 +99,9 @@ class Module(ModuleBase):
       # TODO: will this work from the linecard side? comment is not that clear
       return "127.100.%d.1" % self.get_slot()
 
+   def get_all_asics(self):
+      return []
+
 class SupervisorModule(Module):
    def get_name(self):
       mid = self._sku.getSlotId() - 1

@@ -9,7 +9,7 @@ from ...descs.led import LedColor
 from ...descs.sensor import SensorDesc
 
 from ...drivers.scd.driver import ScdKernelDriver
-from ...drivers.sysfs import SysfsDriver, SysfsEntry, GpioSysfsImpl
+from ...drivers.sysfs import SysfsEntry, GpioSysfsImpl
 
 from ...inventory.fan import Fan, FanSlot
 from ...inventory.led import Led
@@ -105,8 +105,6 @@ def mock_setRawValue(self, value):
 @patch.object(ScdKernelDriver, 'writeComponents', mock_writeComponents)
 @patch.object(SysfsEntry, '_read', mock_sysfsRead)
 @patch.object(SysfsEntry, '_write', mock_sysfsWrite)
-@patch.object(SysfsDriver, 'read', mock_read)
-@patch.object(SysfsDriver, 'write', mock_write)
 @patch.object(utils.FileWaiter, 'waitFileReady', mock_return)
 @patch.object(utils.StoredData, 'maybeCreatePath', mock_maybeCreatePath)
 @patch.object(GpioSysfsImpl, 'setRawValue', mock_setRawValue)

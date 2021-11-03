@@ -127,6 +127,10 @@ class Chassis(ChassisBase):
    def get_serial(self):
       return self._eeprom.read_eeprom().getField("SerialNumber")
 
+   def get_revision(self):
+      rev = self._eeprom.read_eeprom().getField('HwApi')
+      return '.'.join('%02x' % x for x in rev) if rev is not None else rev
+
    def get_serial_number(self):
       return self.get_serial()
 

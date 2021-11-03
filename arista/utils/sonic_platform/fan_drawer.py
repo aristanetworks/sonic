@@ -25,6 +25,9 @@ class FanDrawer(FanDrawerBase):
    def get_serial(self):
       return 'N/A'
 
+   def get_revision(self):
+      return 'N/A'
+
    def get_status(self):
       return self._slot.getPresence() and not self._slot.getFault()
 

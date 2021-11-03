@@ -40,6 +40,10 @@ class Module(ModuleBase):
    def get_serial(self):
       return self._sku.getEeprom().get('SerialNumber')
 
+   def get_revision(self):
+      rev = self._sku.getEeprom().get('HwApi')
+      return '.'.join('%02x' % x for x in rev) if rev is not None else rev
+
    def get_status(self):
       # TODO: implement logic for this
       return True

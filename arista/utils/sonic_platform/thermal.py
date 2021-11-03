@@ -32,6 +32,9 @@ class Thermal(ThermalBase):
    def get_serial(self):
       return "N/A"
 
+   def get_revision(self):
+      return "N/A"
+
    def get_status(self):
       return True
 

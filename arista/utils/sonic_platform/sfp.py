@@ -92,6 +92,19 @@ class Sfp(SfpBase):
    def get_name(self):
       return self._slot.getName()
 
+   def get_model(self):
+      if not self.get_presence():
+         return None
+      return self.get_transceiver_info().get('model')
+
+   def get_serial(self):
+      if not self.get_presence():
+         return None
+      return self.get_transceiver_info().get('serial')
+
+   def get_revision(self):
+      return None
+
    def get_position_in_parent(self):
       return self._index
 

@@ -37,6 +37,9 @@ class Fan(FanBase):
    def get_model(self):
       return "N/A"
 
+   def get_revision(self):
+      return "N/A"
+
    def get_direction(self):
       return self.fanDirectionConversion[self._fan.getDirection()]
 

@@ -82,5 +82,5 @@ class Pca9555I2cDevDriver(I2cDevDriver):
       return {
          'name': self.name,
          'regs': self.regs.__diag__(ctx),
-         'status': { reg : self.read(reg) for reg in range(8) },
+         'status': { reg : self.read(reg) if ctx.performIo else None for reg in range(8) },
       }

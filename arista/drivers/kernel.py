@@ -12,6 +12,8 @@ from ..core.log import getLogger
 from ..core.utils import inSimulation
 from ..core import utils
 
+from ..libs.retry import tryGet
+
 from .sysfs import (
    FanSysfsImpl,
    GpioSysfsImpl,
@@ -83,7 +85,7 @@ class KernelDriver(Driver):
       return {
          "module": self.module,
          "args": self.margs,
-         "sysfs": self.getSysfsPath(),
+         "sysfs": tryGet(self.getSysfsPath(), default=None),
       }
 
    # Helpers for most drivers

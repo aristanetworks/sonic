@@ -24,7 +24,7 @@ class Component(LegacyComponent):
       driverCls = kwargs.get('driverCls', self.DRIVER)
       drivers = [
          driverCls(**kwargs), # pylint: disable=not-callable
-      ]
+      ] if driverCls else []
       # TODO: cleanup the parent dependency when possible
       super(Component, self).__init__(
          *args,
@@ -32,8 +32,8 @@ class Component(LegacyComponent):
          priority=self.PRIORITY,
          **kwargs
       )
-      assert len(self.drivers) == 1, "New style components can only have one driver"
-      self.driver = next(iter(self.drivers.values()))
+      assert len(self.drivers) <= 1, "New style components can only have one driver"
+      self.driver = next(iter(self.drivers.values())) if self.drivers else None
       # FIXME: This is required until metainventory is in place
       #        we need to refresh the hardware thresholds of the temp sensors once
       #        the component is initialized, however this can only work on the temp

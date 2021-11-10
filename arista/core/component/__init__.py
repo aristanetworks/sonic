@@ -38,7 +38,7 @@ class Component(object):
       self.__dict__.update(kwargs)
 
    def __str__(self):
-      attrs = ['addr', 'priority']
+      attrs = ['addr']
       kwargs = ['%s=%s' % (k, v) for k, v in self.__dict__.items()
                 if k in attrs and v is not None]
       return '%s(%s)' % (self.__class__.__name__, ', '.join(kwargs))

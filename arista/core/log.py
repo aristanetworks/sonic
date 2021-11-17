@@ -5,7 +5,10 @@ import os
 import re
 import sys
 
+IO = 5
+
 logLevelDict = {
+   'IO': IO,
    'DEBUG': DEBUG,
    'INFO': INFO,
    'WARNING': WARNING,
@@ -23,6 +26,7 @@ class LoggerError(Exception):
    def __str__(self):
       return 'LoggerError: %s (code %d)' % (self.msg, self.code)
 
+CYAN = "0;36"
 PURPLE = "0;35"
 BOLD_BLUE = "1;34"
 BOLD_YELLOW = "1;32"
@@ -31,6 +35,7 @@ BOLD_WHITE_ON_RED = "1;37;41"
 
 class ColorFormatter(logging.Formatter):
    COLORS = {
+       IO: CYAN,
        DEBUG: PURPLE,
        INFO: BOLD_BLUE,
        WARNING: BOLD_YELLOW,
@@ -59,7 +64,7 @@ class LoggerManager(object):
       # write a custom Filter object per logger instead.
       logger.propagate = False
 
-      logger.setLevel(DEBUG)
+      logger.setLevel(IO)
       if cliLevel:
          color = os.isatty(sys.stdout.fileno()) and self.color
          fmtCls = ColorFormatter if color else logging.Formatter
@@ -76,7 +81,7 @@ class LoggerManager(object):
          logFile.setFormatter(logging.Formatter(
                '%(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
                datefmt=dateFmt))
-         logFile.setLevel(DEBUG)
+         logFile.setLevel(IO)
          logger.addHandler(logFile)
 
       if self.syslog:
@@ -133,6 +138,9 @@ class Logger(object):
       self._maybeCreateLogger()
       self.logger.log(level, msg, *args, **kwargs)
 
+   def io(self, msg, *args, **kwargs):
+      self.log(IO, msg, *args, **kwargs)
+
    def debug(self, msg, *args, **kwargs):
       self.log(DEBUG, msg, *args, **kwargs)
 
@@ -156,6 +164,7 @@ def getLogger(name, cliLevel=INFO, syslogLevel=WARNING):
    return Logger(name, cliLevel=cliLevel, syslogLevel=syslogLevel)
 
 def setupLogging(verbosity=None, logfile=None, syslog=False, color=False):
+   logging.addLevelName(IO, 'IO')
    loggerManager.cliVerbosityDict = parseVerbosity(verbosity)
    loggerManager.logfile = logfile
    loggerManager.syslog = syslog

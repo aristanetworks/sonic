@@ -241,18 +241,18 @@ class PlxPexI2cDevDriver(I2cDevDriver):
 
    def _read(self, order, addr):
       cmd = self.addrmap.command(PEX_I2C_RD, order, addr)
-      logging.debug("%s._read(%d, %#x): %s", self, order, addr, cmd)
+      logging.io("%s._read(%d, %#x): %s", self, order, addr, cmd)
       data = self.read_bytes(cmd, 4)
-      logging.debug("%s.read_bytes([%s], 4) = [%s]", self,
+      logging.io("%s.read_bytes([%s], 4) = [%s]", self,
                     ', '.join(["%#x" % c for c in cmd]),
                     ', '.join(["%#x" % d for d in data]))
       return cmd.rdval(data)
 
    def _write(self, order, addr, val):
       cmd = self.addrmap.command(PEX_I2C_WR, order, addr)
-      logging.debug("%s._write(%d, %#x, %#x): %s", self, order, addr, val, cmd)
+      logging.io("%s._write(%d, %#x, %#x): %s", self, order, addr, val, cmd)
       data = cmd.wrdata(val)
-      logging.debug("%s.write_bytes([%s] + [%s])", self,
+      logging.io("%s.write_bytes([%s] + [%s])", self,
                     ', '.join(["%#x" % c for c in cmd]),
                     ', '.join(["%#x" % d for d in data]))
       self.write_bytes(list(cmd) + data)

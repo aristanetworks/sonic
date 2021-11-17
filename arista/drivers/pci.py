@@ -30,6 +30,9 @@ class PciConfig(object):
       self.hdrRegs = PciHeader(self)
       self.config_ = None
 
+   def __str__(self):
+      return '%s(addr=%s)' % (self.__class__.__name__, self.addr)
+
    @property
    def config(self):
       if self.config_ is None:

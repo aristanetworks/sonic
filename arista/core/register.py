@@ -1,10 +1,9 @@
 
-from __future__ import absolute_import, division, print_function
-
 import copy
-import logging
 
-from ..libs.integer import iterBits
+from .log import getLogger
+
+logging = getLogger(__name__)
 
 class HardwareHandle(object):
 
@@ -17,6 +16,15 @@ class HardwareHandle(object):
    def write(self, value):
       raise NotImplementedError
 
+   def shortName(self):
+      raise NotImplementedError
+
+   def fullName(self):
+      raise NotImplementedError
+
+   def log(self, fmt, *args):
+      logging.io('%s ' + fmt, self.fullName(), *args)
+
 class RegBitField(HardwareHandle):
    def __init__(self, bitpos, name, ro=True, flip=False, parent=None):
       '''Parent of this class is Register'''
@@ -27,16 +35,24 @@ class RegBitField(HardwareHandle):
       self.flip = flip
 
    def __str__(self):
-      return '%s Bit(%d, %s, ro=%s)' % (self.parent, self.bitpos, self.name, self.ro)
+      return '%s %s' % (self.parent.shortName(), self.shortName())
+
+   def shortName(self):
+      return 'Bit(%d, %s, ro=%s)' % (self.bitpos, self.name, self.ro)
+
+   def fullName(self):
+      return '%s %s' % (self.parent.fullName(), self.shortName())
 
    def read(self):
       value = self.parent.readBit(self.bitpos)
       if self.flip:
          value = not value
+      self.log('read(): %#x', value)
       return value
 
    def write(self, value):
       assert not self.ro
+      self.log('write(%#x)', value)
       if self.flip:
          value = not value
       return self.parent.writeBit(self.bitpos, value)
@@ -62,11 +78,18 @@ class RegBitRange(HardwareHandle):
       self.flip = flip
 
    def __str__(self):
-      return '%s BitRange(%d, %d, %s, ro=%s)' % (self.parent,
-             self.bitstart, self.bitend, self.name, self.ro)
+      return '%s %s' % (self.parent.shortName(), self.shortName())
+
+   def shortName(self):
+      return 'BitRange(%d, %d, %s, ro=%s)' % (self.bitstart, self.bitend,
+                                              self.name, self.ro)
+
+   def fullName(self):
+      return '%s %s' % (self.parent.fullName(), self.shortName())
 
    def read(self):
       value = self.parent.readBits(self.bitstart, self.bitend)
+      self.log('read(): %#x', value)
       if self.flip:
          mask = (1 << (self.bitend - self.bitstart + 1)) - 1
          value = ~value & mask
@@ -74,6 +97,7 @@ class RegBitRange(HardwareHandle):
 
    def write(self, value):
       assert not self.ro
+      self.log('write(%#x)', value)
       if self.flip:
          mask = (1 << (self.bitend - self.bitstart + 1)) - 1
          value = ~value & mask
@@ -98,15 +122,26 @@ class Register(HardwareHandle):
       self.default = kwargs.get('default')
 
    def __str__(self):
+      return self.shortName()
+
+   def shortName(self):
       return 'Register(%s, %s)' % (self.addr, self.name)
+
+   def fullName(self):
+      return '%s %s' % (self.parent, self)
 
    def split(self):
       pass
 
    def read(self):
-      return self.parent.read(self.addr)
+      value = self.parent.read(self.addr)
+      if self.name:
+          self.log('read(): %#x', value)
+      return value
 
    def write(self, value):
+      if self.name:
+          self.log('write(%#x)', value)
       return self.parent.write(self.addr, value)
 
    def readWrite(self, value=None):
@@ -161,9 +196,7 @@ class ClearOnReadRegister(Register):
       return bit
 
    def read(self):
-      value = super(ClearOnReadRegister, self).read()
-      for bitpos, val in enumerate(iterBits(value)):
-         self.cache |= val << bitpos
+      self.cache |= super(ClearOnReadRegister, self).read()
       # NOTE: clear on read behavior for users only happens via a readBit
       return self.cache
 
@@ -191,7 +224,6 @@ class RegisterMap(object):
       reg.addr += self.offset
       attrs = reg.generateAttributes(self.parent_)
       for key, value in attrs.items():
-         logging.debug('registering reg: %s', key)
          self.attributes_.append(key)
          setattr(self, key, value)
 

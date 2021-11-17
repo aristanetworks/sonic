@@ -114,7 +114,7 @@ class I2cMsg(object):
       self.close()
 
    def i2c_rdwr(self, data):
-      logging.debug('%s.i2c_rdwr(%s) ..', self, data) # user msgs
+      logging.io('%s.i2c_rdwr(%s) ..', self, data) # user msgs
       try:
          ret = ioctl(self.device.fileno(), I2C_RDWR, data)
       except IOError as e:
@@ -124,7 +124,7 @@ class I2cMsg(object):
          ret = None
          raise
       finally:
-         logging.debug('%s.i2c_rdwr(%s): ret=%s',
+         logging.io('%s.i2c_rdwr(%s): ret=%s',
                        self, data, ret) # kernel msgs
 
    def write_bytes(self, addr, cmd):

@@ -25,6 +25,9 @@ class SysfsEntry(object):
       self.pathCallback = pathCallback or self.driver.getHwmonEntry
       self.entryPath_ = None
 
+   def __str__(self):
+      return '%s(path=%s)' % (self.__class__.__name__, self.entryPath)
+
    @property
    def entryPath(self):
       if self.entryPath_ is None:
@@ -61,10 +64,15 @@ class SysfsEntry(object):
       return True
 
    def read(self):
-      return self._readConversion(self._read().rstrip())
+      raw = self._read().rstrip()
+      value = self._readConversion(raw)
+      logging.io('%s.read(): %s -> %s', self, raw, value)
+      return value
 
    def write(self, value):
-      return self._write(self._writeConversion(value))
+      raw = self._writeConversion(value)
+      logging.io('%s.write(%s) -> %s', self, value, raw)
+      return self._write(raw)
 
 class SysfsEntryInt(SysfsEntry):
    def _readConversion(self, value):

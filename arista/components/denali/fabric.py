@@ -41,7 +41,8 @@ class DenaliFabric(DenaliFabricBase):
       assert self.gpio1, "gpio1 is not created yet."
       if on:
          self.gpio1.ecbOn(True)
-         waitFor(lambda: self.gpio1.powerGood(), "card to turn on")
+         waitFor(self.gpio1.powerGood, "card to turn on",
+                 interval=50)
       else:
          self.gpio1.ecbOn(False)
          # NOTE: Disabling power good check for Dragonfly

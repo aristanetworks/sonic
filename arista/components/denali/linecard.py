@@ -85,7 +85,8 @@ class DenaliLinecard(DenaliLinecardBase):
       time.sleep(0.1)
       self.gpio1.scdReset(False)
       self.gpio1.pcieUpstream(False)
-      waitFor(self.poweredOn, "card to turn on")
+      waitFor(self.poweredOn, "card to turn on",
+              wait=2000, interval=100)
 
    def powerStandbyDomainOff(self):
       self.gpio1.dpEcbOn(False)
@@ -150,7 +151,8 @@ class DenaliLinecard(DenaliLinecardBase):
          self.syscpld.lcpuGmacReset(False)
          self.syscpld.lcpuDisableSet(False)
          self.syscpld.lcpuResetSet(False)
-         waitFor(self.syscpld.lcpuPowerGood, "LCPU power to be good")
+         waitFor(self.syscpld.lcpuPowerGood, "LCPU power to be good",
+                 interval=50)
          # This is rather ugly, but seems to be necessary to avoid any issues with
          # the tg3 driver for the SUP GMAC. With a shorter sleep, or no sleep at all
          # we sometimes experience TX transmit timeouts during the lifetime of the
@@ -172,7 +174,7 @@ class DenaliLinecard(DenaliLinecardBase):
          self.syscpld.slotId(0)
          self.gpio1.lcpuMode(False)
          waitFor(lambda: (not self.syscpld.lcpuPowerGood()),
-                 "LCPU power to be turned off")
+                 "LCPU power to be turned off", interval=50)
 
    def setupPlxLcpuMode(self):
       if self.PLX_LCPU_MODE:

@@ -27,7 +27,7 @@ class Supervisor(FixedSystem):
             eeprom.setup()
             return eeprom.prefdl()
          except ValueError:
-            logging.warn('failed to read chassis eeprom %s', eeprom)
+            logging.warning('failed to read chassis eeprom %s', eeprom)
       return None
 
    def getPresence(self):

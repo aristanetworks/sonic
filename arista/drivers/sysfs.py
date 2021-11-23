@@ -191,7 +191,7 @@ class FanSysfsImpl(Fan):
       if self.lastSpeed == self.MAX_FAN_SPEED and speed != self.MAX_FAN_SPEED:
          logging.debug("%s fan speed reduced from max", self.getName())
       elif self.lastSpeed != self.MAX_FAN_SPEED and speed == self.MAX_FAN_SPEED:
-         logging.warn("%s fan speed set to max", self.getName())
+         logging.warning("%s fan speed set to max", self.getName())
       self.lastSpeed = speed
       return self.pwm.write(speed)
 

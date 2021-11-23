@@ -21,7 +21,7 @@ def forkForLateInitialization(platform):
    try:
       pid = os.fork()
    except OSError:
-      logging.warn('fork failed, setting up background drivers normally')
+      logging.warning('fork failed, setting up background drivers normally')
    else:
       if pid > 0:
          logging.debug('initializing slow drivers in child %d', pid)

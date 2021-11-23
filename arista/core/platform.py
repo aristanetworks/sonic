@@ -35,8 +35,8 @@ def readPrefdlEeprom(*addrs):
          pfdl.writeToFile(fmted_prefdl_path)
          return pfdl
       except Exception as e: # pylint: disable=broad-except
-         logging.warn('could not obtain prefdl from %s', eeprompath)
-         logging.warn('error seen: %s', e)
+         logging.warning('could not obtain prefdl from %s', eeprompath)
+         logging.warning('error seen: %s', e)
 
    raise RuntimeError("Could not find valid system eeprom")
 

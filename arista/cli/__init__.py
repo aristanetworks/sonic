@@ -8,6 +8,9 @@ import time
 import sys
 import os
 
+# NOTE: This import comes first as it initializes the logging infrastructure
+from ..core.log import setupLogging, getLogger, LoggerError
+
 from .parser import CliContext, ActionError
 from .args import getRootParser, registerParser
 from .actions import registerAction
@@ -17,7 +20,6 @@ from .. import platforms
 from ..core import utils
 from ..core.config import Config
 from ..core.backtrace import loadBacktraceHook
-from ..core.log import setupLogging, getLogger, LoggerError
 from ..core.version import getVersionInfo
 
 logging = getLogger(__name__)
@@ -60,10 +62,14 @@ def rootParser(parser):
                        help='name of the platform to load')
    parser.add_argument('-l', '--logfile', type=str,
                        help='log file to log to')
+   parser.add_argument('--logfile-verbosity',
+                       help='verbosity level for logfile output')
    parser.add_argument('-s', '--simulation', action='store_true',
                        help='force simulation mode')
    parser.add_argument('--syslog', action='store_true',
                        help='also send logs to syslog')
+   parser.add_argument('--syslog-verbosity',
+                       help='verbosity level for syslog messages')
    parser.add_argument('--color', action='store_true',
                        help='color logs during an interactive session')
    parser.add_argument('--help-all', action=HelpAllAction,
@@ -92,7 +98,14 @@ def main(args):
    root, args = parseArgs(args)
 
    try:
-      setupLogging(args.verbosity, args.logfile, args.syslog, color=args.color)
+      setupLogging(
+         verbosity=args.verbosity,
+         logfile=args.logfile,
+         logfileVerbosity=args.logfile_verbosity,
+         syslog=args.syslog,
+         syslogVerbosity=args.syslog_verbosity,
+         color=args.color,
+      )
    except LoggerError as e:
       print(e.msg)
       return e.code

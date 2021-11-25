@@ -1,0 +1,10 @@
+/var/log/arista*.log
+{
+    size 2M
+    rotate 5
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+}

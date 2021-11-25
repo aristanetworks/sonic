@@ -8,6 +8,7 @@ export INSTALL_MOD_DIR:=extra
 
 BIN_FILES      := arista boot-eos
 RULE_FILES     := 98-scd-uio.rules
+LOGROTATE_FILES := arista
 SERVICE_FILES  := \
    sonic-platform-arista.service \
    watchdog-stop.service \
@@ -23,6 +24,7 @@ MODULE_SRC     := $(BASE_DIR)/src
 TEST_DIR       := $(BASE_DIR)/tests
 BIN_SRC        := $(addprefix $(BASE_DIR)/utils/,$(BIN_FILES))
 RULE_SRC       := $(addprefix $(BASE_DIR)/utils/,$(RULE_FILES))
+LOGROTATE_SRC  := $(addprefix $(BASE_DIR)/logrotate/,$(LOGROTATE_FILES))
 SERVICE_SRC    := $(addprefix $(BASE_DIR)/confs/,$(SERVICE_FILES))
 
 %:
@@ -37,6 +39,8 @@ override_dh_auto_install:
 	cp $(BIN_SRC) debian/$(DEB_SOURCE)/usr/bin
 	dh_installdirs -p$(DEB_SOURCE) etc/udev/rules.d
 	cp $(RULE_SRC) debian/$(DEB_SOURCE)/etc/udev/rules.d
+	dh_installdirs -p$(DEB_SOURCE) etc/logrotate.d
+	cp $(LOGROTATE_SRC) debian/$(DEB_SOURCE)/etc/logrotate.d
 	dh_installdirs -p$(DEB_SOURCE) lib/systemd/system
 	cp $(SERVICE_SRC) debian/$(DEB_SOURCE)/lib/systemd/system
 	dh_installdirs -pdrivers-$(DEB_SOURCE) $(KERNEL_DST)/$(INSTALL_MOD_DIR)

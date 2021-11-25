@@ -50,6 +50,9 @@ class FanDrawer(FanDrawerBase):
    def is_replaceable(self):
       return self._hotswappable
 
+   def get_interrupt_file(self):
+      return None
+
 class FanDrawerLegacy(FanDrawerBase):
    def __init__(self, fan):
       FanDrawerBase.__init__(self)
@@ -64,3 +67,6 @@ class FanDrawerLegacy(FanDrawerBase):
 
    def set_status_led(self, color):
       return self._fan_list[0].set_status_led(color)
+
+   def get_interrupt_file(self):
+      return None

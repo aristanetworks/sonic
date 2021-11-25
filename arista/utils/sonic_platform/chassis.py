@@ -28,6 +28,7 @@ try:
    from arista.utils.sonic_platform.sfp import SfpOptoe
    from arista.utils.sonic_platform.thermal import Thermal
    from arista.utils.sonic_platform.watchdog import Watchdog
+   from arista.utils.sonic_platform.event import EventWatcher
 except ImportError as e:
    raise ImportError("%s - required module not found" % e)
 
@@ -63,6 +64,7 @@ class Chassis(ChassisBase):
       self._platform = platform
       self._eeprom = Eeprom(readPrefdl())
       self._inventory = platform.getInventory()
+      self._event_watcher = None
       self._chassis = None
       if isinstance(self._platform, Supervisor):
          chassis = self._platform.getChassis()
@@ -108,9 +110,6 @@ class Chassis(ChassisBase):
       watchdogs = self._inventory.getWatchdogs()
       if watchdogs:
          self._watchdog = Watchdog(watchdogs[0])
-
-      self._interrupt_dict, self._presence_dict = \
-         self._get_interrupts_for_components()
 
    def get_name(self):
       return sanitizeProductName(self._eeprom.read_eeprom().getField("SKU"))
@@ -179,128 +178,23 @@ class Chassis(ChassisBase):
    def is_modular_chassis(self):
       return isinstance(self._platform, (Supervisor, Card))
 
-   def _get_interrupts_for_components(self):
-      interrupt_dict = {
-         'component': {},
-         'fan': {},
-         'module': {},
-         'psu': {},
-         'sfp': {},
-         'thermal': {},
-      }
-      presence_dict = copy.deepcopy(interrupt_dict)
-
-      def process_component(component_type, component):
-         if not component:
-            return
-         interrupt_file = component.get_interrupt_file()
-         if interrupt_file:
-            interrupt_dict[component_type][component.get_name()] = \
-               (component, interrupt_file)
-         else:
-            presence_dict[component_type][component.get_name()] = \
-               (component, component.get_presence())
-
-      #for component in self._component_list:
-      #   process_component('component', component)
-      for fan in self._fan_list:
-         process_component('fan', fan)
-      #for module in self._module_list:
-      #   process_component('module', module)
-      for psu in self._psu_list:
-         process_component('psu', psu)
-      for sfp in self._sfp_list:
-         process_component('sfp', sfp)
-      #for thermal in self._thermal_list:
-      #   process_component('thermal', thermal)
-      return interrupt_dict, presence_dict
-
-   def _process_epoll_result(self, epoll, poll_ret, open_files, res_dict):
-      detected = False
-      poll_ret = dict(poll_ret)
-      for fd in poll_ret:
-         if fd in open_files:
-            detected = True
-            component_type, component, open_file = open_files[fd]
-            res_dict[component_type][component.get_id()] = '1' \
-               if component.get_presence() else '0'
-            epoll.unregister(fd)
-            open_file.close()
-            component.clear_interrupt()
-            del open_files[fd]
-            newFile = open(component.get_interrupt_file())
-            open_files[newFile.fileno()] = (component_type, component, newFile)
-            epoll.register(newFile.fileno(), select.EPOLLIN)
-      return detected
-
-   def _process_poll_result(self, res_dict):
-      detected = False
-      for component_type, component_names in self._presence_dict.items():
-         for component_name, (component, old_presence) in component_names.items():
-            presence = component.get_presence()
-            if presence != old_presence:
-               detected = True
-               res_dict[component_type][component_name] = '1' if \
-                     presence else '0'
-               self._presence_dict[component_type][component_name] = \
-                     (component, presence)
-      return detected
+   def _get_event_watcher(self):
+      if self._event_watcher is None:
+         self._event_watcher = EventWatcher(preserve=Config().persistent_presence_check)
+      return self._event_watcher
 
    def get_change_event(self, timeout=0):
-      if not Config().persistent_presence_check:
-         self._interrupt_dict, self._presence_dict = \
-            self._get_interrupts_for_components()
-
-      open_files = {}
-      res_dict = {
-         'component': {},
-         'fan': {},
-         'module': {},
-         'psu': {},
-         'sfp': {},
-         'thermal': {},
-      }
-      block = (timeout == 0)
-
-      epoll = select.epoll()
-
-      for component_type in self._interrupt_dict:
-         component_dict = self._interrupt_dict[component_type]
-         for component_name in component_dict:
-            component, interrupt_file = component_dict[component_name]
-            component.clear_interrupt()
-            open_file = open(interrupt_file)
-            open_files[open_file.fileno()] = (component_type, component, open_file)
-            epoll.register(open_file.fileno(), select.EPOLLIN)
-
-      while True:
-         timer_value = min(timeout, self.POLL_INTERVAL) if not block \
-                       else self.POLL_INTERVAL
-         pre_time = time.time()
-
-         epoll_detected = False
-         try:
-            poll_ret = epoll.poll(timer_value / 1000.)
-            if poll_ret:
-               epoll_detected = self._process_epoll_result(epoll, poll_ret,
-                                                           open_files, res_dict)
-         except select.error:
-            pass
-
-         poll_detected = self._process_poll_result(res_dict)
-
-         detected = epoll_detected or poll_detected
-         if detected and block or timeout == 0 and not block:
-            break
-
-         real_elapsed_time = min(int((time.time() - pre_time) * 1000), timeout)
-         timeout = timeout - real_elapsed_time
-
-      for _, _, open_file in open_files.values():
-         open_file.close()
-      epoll.close()
-
-      return True, res_dict
+      ew = self._get_event_watcher()
+      ew.load({
+         'component': None, #self._component_list,
+         'fan': self._fan_drawer_list,
+         'module': None, #self._module_list,
+         'psu': self._psu_list,
+         'sfp': self._sfp_list,
+         'thermal': None, #self._thermal_list,
+      })
+      status = ew.wait(timeout=timeout)
+      return True, status
 
    def get_thermal_manager(self):
       import arista.utils.sonic_platform.thermal_manager

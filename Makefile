@@ -19,6 +19,7 @@ BUILD_DIR      := $(BASE_DIR)/build
 BIN_SRC        := $(wildcard $(BASE_DIR)/utils/*)
 RULE_SRC       := $(wildcard $(BASE_DIR)/udev/*)
 SERVICE_SRC    := $(wildcard $(BASE_DIR)/systemd/*)
+LOGROTATE_SRC  := $(wildcard $(BASE_DIR)/logrotate/*)
 
 # packaging
 PACKAGE_NAME     ?= arista
@@ -35,6 +36,7 @@ PY3_DESTDIR     ?= $(DESTDIR)
 RULE_DESTDIR    ?= $(DESTDIR)/etc/udev/rules.d
 SYSTEMD_DESTDIR ?= $(DESTDIR)/lib/systemd/system
 LIB_DESTDIR     ?= $(DESTDIR)/usr/lib
+LOGROTATE_DESTDIR ?= $(DESTDIR)/etc/logrotate.d/
 
 # build
 PY_BUILD_ARGS ?=
@@ -137,6 +139,10 @@ install-systemd:
 	$(MKDIR) -p $(SYSTEMD_DESTDIR)
 	$(CP) $(SERVICE_SRC) $(SYSTEMD_DESTDIR)
 
+install-logrotate:
+	$(MKDIR) -p $(LOGROTATE_DESTDIR)
+	$(CP) $(LOGROTATE_SRC) $(LOGROTATE_DESTDIR)
+
 install-udev:
 	$(MKDIR) -p $(RULE_DESTDIR)
 	$(CP) $(RULE_SRC) $(RULE_DESTDIR)
@@ -144,7 +150,7 @@ install-udev:
 install-libs:
 	$(MAKE) -C lib install DESTDIR=$(LIB_DESTDIR)
 
-install-fs: install-bin install-systemd install-udev
+install-fs: install-bin install-systemd install-udev install-logrotate
 
 install: install-py2 install-py3 install-drivers install-libs install-fs
 

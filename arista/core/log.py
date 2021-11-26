@@ -219,7 +219,7 @@ class LoggerManager(object):
       sink = FileLogSink(self, verbosity, default, fmt, logfile)
       self.addSink(sink)
 
-   def newLogger(self, name, cliLevel=None, syslogLevel=None):
+   def newLogger(self, name):
       if name.startswith('arista.'):
          name = name[len('arista.'):]
 

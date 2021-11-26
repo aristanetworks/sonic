@@ -12,9 +12,9 @@ ConditionKernelCommandLine=sonic.mode=supervisor
 Type=oneshot
 RemainAfterExit=true
 
-ExecStart=/usr/bin/arista --syslog -l /var/log/arista-fabric.log fabric setup --on --powerCycleIfOn
+ExecStart=/usr/bin/arista -l /var/log/arista-fabric.log fabric setup --on --powerCycleIfOn
 
-ExecStop=/usr/bin/arista --syslog -l /var/log/arista-fabric.log fabric clean
+ExecStop=/usr/bin/arista -l /var/log/arista-fabric.log fabric clean
 
 [Install]
 RequiredBy=platform-arista.target

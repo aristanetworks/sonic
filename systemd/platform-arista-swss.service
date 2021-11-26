@@ -9,8 +9,8 @@ ConditionKernelCommandLine=Aboot
 Type=oneshot
 RemainAfterExit=yes
 
-ExecStart=/usr/bin/arista --syslog -l /var/log/arista.log setup --early --reset
-ExecStop=/usr/bin/arista --syslog -l /var/log/arista.log clean
+ExecStart=/usr/bin/arista -l /var/log/arista.log setup --early --reset
+ExecStop=/usr/bin/arista -l /var/log/arista.log clean
 
 [Install]
 RequiredBy=platform-arista.target

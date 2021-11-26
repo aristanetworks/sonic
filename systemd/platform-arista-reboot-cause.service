@@ -10,7 +10,7 @@ ConditionKernelCommandLine=Aboot
 Type=oneshot
 RemainAfterExit=true
 
-ExecStart=/usr/bin/arista --syslog -l /var/log/arista.log reboot-cause --process
+ExecStart=/usr/bin/arista -l /var/log/arista.log reboot-cause --process
 
 [Install]
 RequiredBy=platform-arista.target

@@ -200,22 +200,25 @@ class LoggerManager(object):
       for sink in self.sinks:
          sink.log(record)
 
+   def setPrefix(self, prefix):
+      self.prefix = prefix
+
    def addSink(self, sink):
       sink.applyLoggerLevels(self.loggers)
       self.sinks.append(sink)
 
    def initCliLogging(self, verbosity, default=INFO, color=False):
-      fmt = '%(levelname)s: %(message)s'
+      fmt = '%(prefix)s%(levelname)s: %(message)s'
       sink = CliLogSink(self, verbosity, default, fmt, color)
       self.addSink(sink)
 
    def initSyslogLogging(self, verbosity, default=NOTICE):
-      fmt = '%(message)s'
+      fmt = '%(prefix)s%(message)s'
       sink = SyslogLogSink(self, verbosity, default, fmt)
       self.addSink(sink)
 
    def initFileLogging(self, logfile, verbosity, default=IO):
-      fmt = '%(time)s %(levelname)s: %(message)s'
+      fmt = '%(time)s %(prefix)s%(levelname)s: %(message)s'
       sink = FileLogSink(self, verbosity, default, fmt, logfile)
       self.addSink(sink)
 

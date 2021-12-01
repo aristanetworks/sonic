@@ -11,16 +11,17 @@ import os
 # NOTE: This import comes first as it initializes the logging infrastructure
 from ..core.log import setupLogging, getLogger, LoggerError
 
-from .parser import CliContext, ActionError
-from .args import getRootParser, registerParser
-from .actions import registerAction
-
 from .. import platforms
 
 from ..core import utils
 from ..core.config import Config
 from ..core.backtrace import loadBacktraceHook
 from ..core.version import getVersionInfo
+
+from .actions import registerAction
+from .args import getRootParser, registerParser
+from .exception import ActionComplete
+from .parser import CliContext, ActionError
 
 logging = getLogger(__name__)
 
@@ -122,6 +123,8 @@ def main(args):
 
    try:
       root.runAction(CliContext(), args)
+   except ActionComplete as e:
+      return e.code
    except ActionError as e:
       logging.error('%s', e)
       return e.code

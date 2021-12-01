@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 from .. import registerAction
 from ...exception import ActionError
+from ...fork import processIterParentWait
 from ...args.linecard import linecardParser
 from ....core.supervisor import Supervisor
 
@@ -22,4 +23,8 @@ def doLinecard(ctx, args):
           (args.id is None or linecard.slot.slotId in args.id)):
          linecards.append(linecard)
 
-   setattr(ctx, 'linecards', linecards)
+   if args.parallel:
+      for linecard in processIterParentWait(linecards):
+         setattr(ctx, 'linecards', [linecard])
+   else:
+      setattr(ctx, 'linecards', linecards)

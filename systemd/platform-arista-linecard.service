@@ -10,8 +10,8 @@ ConditionKernelCommandLine=sonic.mode=supervisor
 Type=oneshot
 RemainAfterExit=true
 
-ExecStart=/usr/bin/arista -l /var/log/arista-linecard.log linecard setup --lcpu --on --powerCycleIfOn
-ExecStop=/usr/bin/arista -l /var/log/arista-linecard.log linecard clean --lcpu --off
+ExecStart=/usr/bin/arista -l /var/log/arista-linecard.log linecard --parallel setup --lcpu --on --powerCycleIfOn
+ExecStop=/usr/bin/arista -l /var/log/arista-linecard.log linecard --parallel clean --lcpu --off
 
 [Install]
 RequiredBy=platform-arista.target

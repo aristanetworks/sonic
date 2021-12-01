@@ -9,3 +9,5 @@ from ..default import defaultPlatformParser
 def fabricParser(parser):
    parser.add_argument('-i', '--id', type=int, default=None, action='append',
       help='id of the card to operate on')
+   parser.add_argument('--parallel', action='store_true',
+      help='run card operations in parallel')

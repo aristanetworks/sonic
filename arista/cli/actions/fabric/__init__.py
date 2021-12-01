@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 from .. import registerAction
 from ...exception import ActionError
+from ...fork import processIterParentWait
 from ...args.fabric import fabricParser
 from ....core.supervisor import Supervisor
 
@@ -22,4 +23,8 @@ def doFabric(ctx, args):
           (args.id is None or fabric.slot.slotId in args.id)):
          fabrics.append(fabric)
 
-   setattr(ctx, 'fabrics', fabrics)
+   if args.parallel:
+      for fabric in processIterParentWait(fabrics):
+         setattr(ctx, 'fabrics', [fabric])
+   else:
+      setattr(ctx, 'fabrics', fabrics)

@@ -49,9 +49,9 @@ def getSfpUtil():
 
     class SfpUtilNative(SfpUtilCommon):
         """Native Sonic SfpUtil class"""
-	XCVR_PRESENCE_POLL_PERIOD_SECS = 1
+        XCVR_PRESENCE_POLL_PERIOD_SECS = 1
 
-	def __init__(self):
+        def __init__(self):
             self.xcvr_presence_map = {}
             xcvrSlots = inventory.getXcvrSlots()
             for xcvrSlot in xcvrSlots.values():
@@ -128,7 +128,8 @@ def getSfpUtil():
                         return True, {}
 
                 # Poll for Xcvr presence change every 1 second
-                time.sleep(XCVR_PRESENCE_POLL_PERIOD_SECS)
+                time.sleep(SfpUtilNative.XCVR_PRESENCE_POLL_PERIOD_SECS)
+
             return False, {}
 
     return SfpUtilNative

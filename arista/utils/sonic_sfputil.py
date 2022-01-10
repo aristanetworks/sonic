@@ -1,4 +1,3 @@
-import select
 import time
 
 from .sonic_utils import getInventory
@@ -49,6 +48,14 @@ def getSfpUtil():
 
     class SfpUtilNative(SfpUtilCommon):
         """Native Sonic SfpUtil class"""
+        XCVR_PRESENCE_POLL_PERIOD_SECS = 1
+
+        def __init__(self):
+            self.xcvr_presence_map = {}
+            xcvrs = inventory.getXcvrs()
+            for xcvr in xcvrs:
+                self.xcvr_presence_map[xcvr.xcvrId] = xcvr.getPresence()
+
         def get_presence(self, port_num):
             if not self._is_valid_port(port_num):
                 return False
@@ -98,32 +105,26 @@ def getSfpUtil():
 
         def get_transceiver_change_event(self, timeout=0):
             xcvrs = inventory.getXcvrs()
-            epoll = select.epoll()
-            openFiles = []
             ret = {}
-            try:
-               # Clear the interrupt masks
-               for xcvr in xcvrs.values():
-                  intr = xcvr.getInterruptLine()
-                  if not intr:
-                     continue
-                  xcvr.getPresence()
-                  intr.clear()
-                  openFile = open(intr.getFile())
-                  openFiles.append((xcvr, openFile))
-                  epoll.register(openFile.fileno(), select.EPOLLIN)
-               pollRet = epoll.poll(timeout=timeout if timeout != 0 else -1)
-               if pollRet:
-                  pollRet = dict(pollRet)
-                  for xcvr, openFile in openFiles:
-                     if openFile.fileno() in pollRet:
-                        ret[str(xcvr.xcvrId)] = '1' if xcvr.getPresence() else '0'
-                  return True, ret
-            finally:
-               for _, openFile in openFiles:
-                  openFile.close()
-               epoll.close()
+            start_time = time.time()
+            timeout = timeout / float(1000) # convert msec to sec
+            while True:
+                for xcvr in xcvrs:
+                    presence = xcvr.getPresence()
+                    if self.xcvr_presence_map[xcvr.xcvrId] != presence:
+                        ret[str(xcvr.xcvrId)] = '1' if presence else '0'
+                        self.xcvr_presence_map[xcvr.xcvrId] = presence
 
+                if len(ret) != 0:
+                    return True, ret
+
+                if timeout != 0:
+                    elapsed_time = time.time() - start_time
+                    if elapsed_time >= timeout:
+                        return True, {}
+
+                # Poll for presence change every 1 second
+                time.sleep(SfpUtilNative.XCVR_PRESENCE_POLL_PERIOD_SECS)
             return False, {}
 
     return SfpUtilNative

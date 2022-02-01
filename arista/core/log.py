@@ -169,9 +169,13 @@ class FileLogSink(LogSink):
       self.file = open(logfile, 'a', buffering=1)
 
    def write(self, line, record):
-      self.file.write(line + '\n')
-      if record.exc:
-         traceback.format_exception(*sys.exc_info())
+      try:
+         self.file.write(line + '\n')
+         if record.exc:
+            lines = traceback.format_exception(*sys.exc_info())
+            self.file.write(''.join(lines))
+      except Exception: # pylint: disable=broad-except
+         pass # ignore errors like disk full
 
 class SyslogLogSink(LogSink):
    NAME = 'syslog'

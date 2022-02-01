@@ -10,6 +10,11 @@ flock -x 9
 
 VLAN_ID="42"
 
+log() {
+   logger --id=$$ -t lc-interface-config -p INFO "$@"
+   echo "$@"
+}
+
 get_interface_slot_id() {
    local intf="$1"
 
@@ -37,7 +42,7 @@ config_lc_interface() {
    local slot_id="$2"
    local new_intf="lc$slot_id"
 
-   echo "Interface to be configured: $new_intf from $old_intf"
+   log "interface to be configured: $new_intf from $old_intf"
 
    ip link set dev "$old_intf" down
    ip link set dev "$old_intf" name "$new_intf"
@@ -52,20 +57,23 @@ config_lc_interface() {
 
    ebtables -I FORWARD 1 -p ARP -j ACCEPT -i ma1 -o "$new_intf"
    ebtables -I FORWARD 1 -p ARP -j ACCEPT -i "$new_intf" -o ma1
+
+   log "interface $new_intf ready"
 }
 
 do_supervisor_mode() {
    local intf="$1"
    local action="$2"
+   slot_id=$(get_interface_slot_id "$intf")
+   log "$action interface $intf slot_id=$slot_id"
    case "$action" in
       add)
-         slot_id=$(get_interface_slot_id "$intf")
-         echo "Interface $intf slot_id=$slot_id"
          if [ -n "$slot_id" ]; then
             config_lc_interface "$intf" "$slot_id"
          fi
          ;;
-      remove)
+      move|remove)
+         echo "nothing to do"
          ;;
       *)
          exit 1
@@ -76,7 +84,7 @@ do_supervisor_mode() {
 do_linecard_mode() {
    local vlan_intf="eth1-midplane"
 
-   echo "Setting up $vlan_intf"
+   log "setting up $vlan_intf"
 
    ip link set dev eth0 up
    ip link add link eth0 name "$vlan_intf" type vlan id "$VLAN_ID"
@@ -89,12 +97,12 @@ do_linecard_mode() {
       return
    fi
 
-   echo "Slot ID = $lc_slot_id"
+   log "slot id = $lc_slot_id"
    ip addr add 127.100.$lc_slot_id.1/16 dev "$vlan_intf"
 
    # XXX: The linecard needs to be the first one to establish the connection with
    # the sup for the inter link to work. This is a temporary discovery method.
-   echo "Ping sup attempt"
+   log "attempting supervisor ping"
 
    # The underlying management port might not be ready, wait for it to be. If we
    # don't, the following ping command may not succeed, resulting in linecards not
@@ -107,7 +115,11 @@ do_linecard_mode() {
       sleep 1
    done
 
-   ping -c 3 127.100.1.1
+   if ping -c 3 127.100.1.1; then
+      log "internal management network configured on $vlan_intf"
+   else
+      log "failed to reach the suppervisor on $vlan_intf"
+   fi
 }
 
 sonic_mode=$(sed -n -E 's/.*sonic.mode=([^ ]+).*/\1/p' /proc/cmdline)

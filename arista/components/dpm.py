@@ -212,9 +212,8 @@ class Ucd(I2cComponent):
 
       with self.drivers['UcdI2cDevDriver'] as drv:
          causes = self._getReloadCauses(drv)
-         if causes:
-            logging.debug('clearing faults')
-            drv.clearFaults()
+         logging.debug('clearing faults')
+         drv.clearFaults()
 
       return causes
 

@@ -121,7 +121,10 @@ class EventWatcher(object):
    def poll_events(self, res):
       detected = False
       for event in self.pollItems.values():
-         changed, status = event.get_status_changed()
+         try:
+            changed, status = event.get_status_changed()
+         except Exception: # pylint: disable=broad-except
+            continue
          if changed:
             res[event.typ][str(event.uid)] = str(status)
             detected = True

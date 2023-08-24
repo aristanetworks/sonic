@@ -200,10 +200,13 @@ class Chassis(ChassisBase):
       poll_ret = dict(poll_ret)
       for fd in poll_ret:
          if fd in open_files:
-            detected = True
             component_type, component, open_file = open_files[fd]
-            res_dict[component_type][component.get_id()] = '1' \
-               if component.get_presence() else '0'
+            try:
+               presence = '1' if component.get_presence() else '0'
+               res_dict[component_type][component.get_id()] = presence
+               detected = True
+            except Exception: # pylint: disable=broad-except
+               pass
             epoll.unregister(fd)
             open_file.close()
             component.clear_interrupt()
@@ -217,7 +220,10 @@ class Chassis(ChassisBase):
       detected = False
       for component_type, component_names in self._presence_dict.items():
          for component_name, (component, old_presence) in component_names.items():
-            presence = component.get_presence()
+            try:
+               presence = component.get_presence()
+            except Exception: # pylint: disable=broad-except
+               continue
             if presence != old_presence:
                detected = True
                res_dict[component_type][component_name] = '1' if \

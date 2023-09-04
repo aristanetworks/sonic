@@ -75,7 +75,7 @@ static ssize_t attribute_xcvr_set(struct device *dev,
       if (value)
          reg &= ~(1 << gpio->bit);
       else
-         reg |= ~(1 << gpio->bit);
+         reg |= 1 << gpio->bit;
    } else {
       if (value)
          reg |= 1 << gpio->bit;

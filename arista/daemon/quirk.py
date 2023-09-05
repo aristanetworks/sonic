@@ -1,5 +1,4 @@
 
-from ..core.asic import SwitchChip
 from ..core.daemon import registerDaemonFeature, OneShotFeature
 from ..core.log import getLogger
 
@@ -12,6 +11,6 @@ class QuirkOneShotFeature(OneShotFeature):
 
    def run(self):
       for component in self.daemon.platform.iterComponents(filters=None):
-         if isinstance(component, SwitchChip):
+         if getattr(component, 'quirks', []):
             logging.info('%s: applying quirks on %s', self, component)
             component.applyQuirks(delayed=True)

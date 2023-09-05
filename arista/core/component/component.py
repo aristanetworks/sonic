@@ -119,5 +119,5 @@ class Component(LegacyComponent):
    def applyQuirks(self, delayed=False):
       for quirk in self.quirks:
          if quirk.DELAYED == delayed:
-            logging.debug('%s: quirk: %s', self, quirk)
+            logging.info('%s: quirk: %s', self, quirk)
             quirk.run(self)

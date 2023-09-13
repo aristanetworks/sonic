@@ -1,0 +1,8 @@
+#!/bin/bash
+
+source $(dirname "$0")/arista-debug-helpers.sh
+
+runcmd arista show platform environment
+runcmd arista show platform power
+runcmd arista show linecard environment
+runcmd arista show fabric environment

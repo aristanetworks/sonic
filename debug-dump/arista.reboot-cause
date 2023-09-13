@@ -1,0 +1,10 @@
+#!/bin/bash
+
+source $(dirname "$0")/arista-debug-helpers.sh
+
+runcmd arista show platform reboot-cause -a -H
+runcmd arista show linecard reboot-cause -a -H
+
+for f in $(find /host/reboot-cause/platform -type f); do
+   dumpfile "$f"
+done

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+source $(dirname "$0")/arista-debug-helpers.sh
+
+runcmd arista show platform eeprom
+runcmd arista show chassis summary
+runcmd arista show chassis eeprom
+runcmd arista show linecard eeprom
+runcmd arista show fabric eeprom
+
+runcmd arista show linecard status
+runcmd arista show fabric status
+
+runcmd arista show platform xcvr
+
+dumpfile /proc/scd
+

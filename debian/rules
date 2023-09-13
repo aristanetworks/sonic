@@ -43,6 +43,12 @@ override_dh_auto_install:
 	dh_installdirs -pdrivers-$(DEB_SOURCE)-dev /usr/include
 	cp $(CURDIR)/lib/sfp-eeprom.h debian/drivers-$(DEB_SOURCE)-dev/usr/include/
 
+override_dh_usrlocal:
+	# NOTE: This is needed since this package has to install some files
+	# under /usr/local even though it is frown upon.
+	# Packages are only allowed to create directories where admin could put
+	# their custom hooks.
+
 override_dh_clean:
 	$(MAKE) clean
 	dh_clean

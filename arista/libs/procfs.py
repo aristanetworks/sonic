@@ -24,7 +24,7 @@ def bootDatetime():
 
 cmdlineDict = {}
 def getCmdlineDict(path='/proc/cmdline'):
-   global cmdlineDict # pylint: disable=global-statement
+   global cmdlineDict
 
    if cmdlineDict:
       return cmdlineDict
@@ -33,7 +33,7 @@ def getCmdlineDict(path='/proc/cmdline'):
 
    # The machine running the pytest may not have this path, or permission
    try:
-      with open(path, encoding='utf8') as f:
+      with open(path) as f:
          for entry in f.read().split():
             idx = entry.find('=')
             if idx == -1:
@@ -42,7 +42,7 @@ def getCmdlineDict(path='/proc/cmdline'):
                data[entry[:idx]] = entry[idx+1:]
    except IOError:
       logging.error("%s is not available, the Arista library may not work properly.",
-                    path)
+                    CMDLINE_PATH)
 
    cmdlineDict = data
    return data

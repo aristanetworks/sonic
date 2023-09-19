@@ -21,9 +21,6 @@ class Priority(object):
    backgroundFilter = priorityFilter(BACKGROUND)
 
 class Component(object):
-
-   QUIRKS = None
-
    def __init__(self, addr=None, priority=Priority.DEFAULT, drivers=None,
                 inventoryCls=None, inventory=None, parent=None, quirks=None,
                 **kwargs):
@@ -34,7 +31,7 @@ class Component(object):
       self.drivers = OrderedDict()
       self.inventory = inventory
       self.parent = parent
-      self.quirks = quirks or self.QUIRKS or []
+      self.quirks = quirks or []
       self.label = None
       if not inventory and inventoryCls:
          self.inventory = inventoryCls()

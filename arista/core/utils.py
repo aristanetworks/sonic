@@ -464,19 +464,6 @@ def locateHwmonPath(searchPath, prefix):
    logging.error('could not locate hwmon path for %s', searchPath)
    return None
 
-class LastRebootType:
-   COLD = 'cold'
-   WARM = 'warm'
-   FAST = 'fast'
-
-   _last = None
-
-   @classmethod
-   def get(cls):
-      if cls._last is None:
-         cls._last = getCmdlineDict().get('SONIC_BOOT_TYPE', cls.COLD)
-      return cls._last
-
 def libraryInit():
    global simulation, debug, SMBus
 

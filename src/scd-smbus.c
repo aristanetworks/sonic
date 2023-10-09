@@ -371,7 +371,7 @@ static int scd_smbus_master_xfer(struct i2c_adapter *adap,
       }
    }
 
-   err = scd_smbus_master_wait(bus, msg->addr);
+   err = scd_smbus_master_wait(bus, (--msg)->addr);
    if (err)
       goto out;
 

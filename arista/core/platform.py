@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import os
+import re
 
 from .config import etcPath, flashPath
 from .driver.kernel import KernelDriver
@@ -71,6 +72,19 @@ def readPrefdl():
       return pfdl
 
    return readI2cPrefdlEeprom()
+
+def getFanDirectionSku(prefdlData):
+   sku = prefdlData.get("SKU")
+   sid = prefdlData.get("SID")
+
+   newSku = sku
+
+   fandirRe = "-.*(?P<fandir>(R|F))$"
+   sid_mo = re.search(fandirRe, sid)
+   sku_mo = re.search(fandirRe, sku)
+   if sid_mo and not sku_mo:
+      newSku += sid_mo.group('fandir')
+   return newSku
 
 class SysEeprom(object):
    def prefdlSim(self):

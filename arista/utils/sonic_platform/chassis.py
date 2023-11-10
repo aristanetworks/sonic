@@ -10,7 +10,7 @@ try:
    from arista.core.cause import getReloadCauseManager
    from arista.core.config import Config
    from arista.core.onie import OnieEeprom
-   from arista.core.platform import getPlatform, readPrefdl
+   from arista.core.platform import getPlatform, readPrefdl, getFanDirectionSku
    from arista.core.supervisor import Supervisor
    from arista.core.linecard import Linecard
    from arista.utils.sonic_platform.component import Component
@@ -130,13 +130,14 @@ class Chassis(ChassisBase):
          self._watchdog = Watchdog(watchdogs[0])
 
    def get_name(self):
-      return sanitizeProductName(self._eeprom.read_eeprom().getField("SKU"))
+      sku = getFanDirectionSku(self._eeprom.read_eeprom().data())
+      return sanitizeProductName(sku)
 
    def get_presence(self):
       return True
 
    def get_model(self):
-      return self._eeprom.read_eeprom().getField("SKU")
+      return getFanDirectionSku(self._eeprom.read_eeprom().data())
 
    def get_base_mac(self):
       return self._eeprom.read_eeprom().getField("MAC")

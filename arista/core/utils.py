@@ -13,7 +13,6 @@ from struct import pack, unpack
 from .config import flashPath, tmpfsPath
 from .log import getLogger
 from ..libs.procfs import getCmdlineDict
-from ..libs.python import isinteger
 
 logging = getLogger(__name__)
 
@@ -21,6 +20,9 @@ class ResourceAccessor():
    ''' Base abstraction for accessing resource like files '''
    def __init__(self, path):
       self.path_ = path
+
+   def __str__(self):
+      return '%s(%s)' % (self.__class__.__name__, self.path_)
 
    def openResource(self):
       raise NotImplementedError
@@ -45,10 +47,13 @@ class ResourceAccessor():
 
    def _doRead(self, addr, size, unpackFormat):
       val = self.readResource(addr, size)
-      return unpack('<%s' % unpackFormat, val)[0]
+      value = unpack('<%s' % unpackFormat, val)[0]
+      logging.io('%s.read%s(%#x) -> %#x', self, size * 8, addr, value)
+      return value
 
    def _doWrite(self, addr, size, value, packFormat):
       packedVal = pack('<%s' % packFormat, value)
+      logging.io('%s.write%s(%#x, %#x)', self, size * 8, addr, value)
       self.writeResource(addr, size, packedVal)
 
    def read32(self, addr):

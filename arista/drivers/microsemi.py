@@ -1,8 +1,10 @@
 
+import contextlib
 import os
 
+from ..core.config import tmpfsPath
 from ..core.driver import Driver
-from ..core.utils import MmapResource
+from ..core.utils import FileLock, MmapResource
 
 from ..libs.wait import waitFor
 
@@ -42,6 +44,16 @@ class MicrosemiDriver(MicrosemiConsts, MicrosemiMRPC, MicrosemiGAS, Driver):
       self.resource_ = None
 
    @property
+   def lockName(self):
+      return '%s_%s.lock' % (self.__class__.__name__, str(self.addr))
+
+   @contextlib.contextmanager
+   def lock(self):
+      path = tmpfsPath(self.lockName)
+      with FileLock(path):
+         yield
+
+   @property
    def resource(self):
       if self.resource_ is None:
          self.mapResource()
@@ -64,17 +76,23 @@ class MicrosemiDriver(MicrosemiConsts, MicrosemiMRPC, MicrosemiGAS, Driver):
       waitFor(lambda: (status() == self.GAS_DONE))
       return self.read32(self.GAS_RETURNVALUE)
 
-   def doGas(self, argument, cmd):
-      self.write32(self.GAS_INPUT_DATA, argument)
+   def doGas(self, cmd, dataIn):
+      dataIn = [dataIn] if not isinstance(dataIn, list) else dataIn
+      for i, data in enumerate(dataIn):
+         self.write32(self.GAS_INPUT_DATA + i * 0x4, data)
       self.write32(self.GAS_COMMAND, cmd)
       return self.gasWait()
 
+   def doGasLocked(self, cmd, dataIn):
+      with self.lock():
+         return self.doGas(cmd, dataIn)
+
    def bind(self, port, dsp=1, partition=0):
-      return self.doGas(self.MRPC_P2P_BIND | int(partition) << 8 |
-                        int(dsp) << 16 | int(port) << 24,
-                        self.MRPC_PORTPARTP2P)
+      data = self.MRPC_P2P_BIND | int(partition) << 8 | \
+             int(dsp) << 16 | int(port) << 24
+      return self.doGasLocked(self.MRPC_PORTPARTP2P, data)
 
    def unbind(self, dsp, partition=0, flags=0x2):
-      return self.doGas(self.MRPC_P2P_UNBIND | int(partition) << 8 |
-                        int(dsp) << 16 | int(flags) << 24,
-                        self.MRPC_PORTPARTP2P)
+      data = self.MRPC_P2P_UNBIND | int(partition) << 8 | \
+             int(dsp) << 16 | int(flags) << 24
+      return self.doGasLocked(self.MRPC_PORTPARTP2P, data)

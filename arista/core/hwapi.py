@@ -45,6 +45,9 @@ class HwApi():
    def __str__(self):
       return 'HwApi(%s)' % '.'.join(str(v) for v in self.values)
 
+   def majorOnly(self):
+      return HwApi(self.values[0])
+
    @classmethod
    def parse(cls, value):
       if isinteger(value):

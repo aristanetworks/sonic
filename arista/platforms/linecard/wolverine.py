@@ -18,6 +18,7 @@ from ...components.pca9555 import Pca9555
 from ...components.plx import PlxPortDesc
 from ...components.scd import I2cScd
 from ...components.tmp464 import Tmp464
+from ...components.vrm.mp8796b import Mp8796B
 
 from ...descs.cause import ReloadCauseDesc
 from ...descs.sensor import Position, SensorDesc
@@ -68,6 +69,15 @@ class Wolverine(DenaliLinecard):
          bus = 64 + riserId - 1
          self.scd.newComponent(At24C512, addr=self.scd.i2cAddr(bus, 0x50),
                                label='card%d_riser%s' % (self.slot.slotId, riserId))
+         if self.getHwApi().majorOnly() == HwApi(43):
+            # Increase UVP Tolerance
+            self.scd.newComponent(
+               Mp8796B,
+               addr=self.scd.i2cAddr(bus, 0x32),
+               quirks=[
+                  I2cByteQuirk(0xd9, 0x00, description="lower xcvr uv threshold")
+               ]
+            )
 
    def mainDomain(self):
       self.scd.addSmbusMasterRange(0x8000, 10, spacing=0x80)

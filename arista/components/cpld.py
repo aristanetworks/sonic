@@ -158,9 +158,9 @@ class SysCpldReloadCauseProvider(ReloadCauseProviderHelper):
       self.regs.cause(0)
 
    def getReloadCauseTime(self):
-      time = self.regs.faultTime()
-      secs = time[5] << 24 | time[4] << 16 | time[3] << 8 | time[2]
-      msecs = (time[1] << 8 | time[0]) / 2**16
+      ftime = self.regs.faultTime()
+      secs = ftime[5] << 24 | ftime[4] << 16 | ftime[3] << 8 | ftime[2]
+      msecs = (ftime[1] << 8 | ftime[0]) / 2**16
       date = self.FAULT_TIME_BASE + datetime.timedelta(seconds=secs + msecs)
       return datetimeToStr(date)
 
@@ -190,6 +190,7 @@ class SysCpldReloadCauseProvider(ReloadCauseProviderHelper):
 
       logging.debug('reading reboot causes for %s', self)
       code = self.regs.cause()
+      rcTime = self.getReloadCauseTime()
       logging.debug('last cause code %#04x', code)
       self.clearFaults()
 
@@ -199,7 +200,7 @@ class SysCpldReloadCauseProvider(ReloadCauseProviderHelper):
          logging.debug('found cause %s %s', cause.typ, cause.description)
          return SysCpldReloadCauseEntry(
             cause=cause.typ,
-            rcTime=self.getReloadCauseTime(),
+            rcTime=rcTime,
             rcDesc=cause.description,
             score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
                   ReloadCauseScore.getPriority(cause.priority),
@@ -208,7 +209,7 @@ class SysCpldReloadCauseProvider(ReloadCauseProviderHelper):
       logging.debug('unhandled cause %02x', code)
       return SysCpldReloadCauseEntry(
          cause='unknown',
-         rcTime=self.getReloadCauseTime(),
+         rcTime=rcTime,
          rcDesc=f'unknown logged fault {code:#04x}',
          score=ReloadCauseScore.LOGGED,
       )

@@ -3,6 +3,7 @@ import json
 from json.decoder import JSONDecodeError
 from select import epoll, EPOLLERR, EPOLLHUP, EPOLLIN
 import socket
+import time
 
 from ...core.log import getLogger
 
@@ -42,14 +43,18 @@ class RpcClient():
       return uid
 
    def _connectSocket(self):
-      self.sock = socket.create_connection((self.host, self.port))
-      self.sock.settimeout(0)
+      for delay in [1, 2, 4, 8]:
+         try:
+            self.sock = socket.create_connection((self.host, self.port))
+            self.sock.settimeout(0)
 
-      # Ideally we would use Edge Triggered here, but I don't think that can
-      # actually work because of the timeout on receiving socket data, which
-      # could trigger an event later that we wouldn't be able to block waiting
-      # for.
-      self.poller.register(self.sock.fileno(), EPOLLIN|EPOLLERR|EPOLLHUP)
+            # Ideally we would use Edge Triggered here, but I don't think that can
+            # actually work because of the timeout on receiving socket data, which
+            # could trigger an event later that we wouldn't be able to block waiting
+            # for.
+            self.poller.register(self.sock.fileno(), EPOLLIN|EPOLLERR|EPOLLHUP)
+         except OSError:
+            time.sleep(delay)
 
 
    def _clearSocket(self):

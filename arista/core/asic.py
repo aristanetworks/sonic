@@ -83,9 +83,9 @@ class SwitchChip(PciComponent):
 
    def isInReset(self):
       for reset in self.coreResets + self.pcieResets:
-         if not reset.read():
-            return False
-      return True
+         if reset.read():
+            return True
+      return False
 
    def isOutOfReset(self):
       for reset in self.coreResets + self.pcieResets:

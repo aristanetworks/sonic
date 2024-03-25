@@ -2,6 +2,7 @@ from ..core.fixed import FixedSystem
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
 from ..core.psu import PsuSlot
+from ..core.register import Register, RegBitField
 from ..core.utils import incrange
 
 from ..components.asic.xgs.trident3 import Trident3
@@ -16,7 +17,15 @@ from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
 from ..descs.xcvr import Qsfp28, Sfp
 
-from .cpu.crow import CrowCpu
+from .cpu.crow import CrowCpu, CrowCpldRegisters
+
+class LodogaCpldRegisters(CrowCpldRegisters):
+   FAULT_CTRL = Register(0x17,
+       RegBitField(2, 'powerCycleOnCrc', ro=False),
+   )
+   FAULT_STATUS = Register(0x19,
+       RegBitField(6, 'scdSeuError'),
+   )
 
 @registerPlatform()
 class Lodoga(FixedSystem):
@@ -32,7 +41,7 @@ class Lodoga(FixedSystem):
    def __init__(self):
       super(Lodoga, self).__init__()
 
-      cpu = self.newComponent(CrowCpu)
+      cpu = self.newComponent(CrowCpu, registerCls=LodogaCpldRegisters)
       self.cpu = cpu
       self.syscpld = cpu.syscpld
 

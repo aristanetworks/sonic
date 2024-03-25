@@ -135,10 +135,13 @@ class RegisterMap(object):
       self.parent_ = parent
       self.attributes_ = []
       self.offset = offset
-      for key in dir(self):
-         attr = getattr(self, key)
-         if isinstance(attr, Register):
-            self._updateAttributes(copy.deepcopy(attr))
+      # initialize attributes from parent to child definition to allow for
+      # proper overriding from child classes
+      for cls in reversed(self.__class__.mro()):
+         for key in cls.__dict__:
+            attr = getattr(self, key)
+            if isinstance(attr, Register):
+               self._updateAttributes(copy.deepcopy(attr))
 
    def _updateAttributes(self, reg):
       reg.addr += self.offset

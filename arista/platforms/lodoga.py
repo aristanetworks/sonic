@@ -1,6 +1,7 @@
 from ..core.fixed import FixedSystem
 from ..core.platform import registerPlatform
 from ..core.psu import PsuSlot
+from ..core.register import Register, RegBitField
 from ..core.types import PciAddr, ResetGpio
 from ..core.utils import incrange
 
@@ -14,7 +15,15 @@ from ..components.scd import Scd
 from ..descs.gpio import GpioDesc
 from ..descs.sensor import Position, SensorDesc
 
-from .cpu.crow import CrowCpu
+from .cpu.crow import CrowCpu, CrowCpldRegisters
+
+class LodogaCpldRegisters(CrowCpldRegisters):
+   FAULT_CTRL = Register(0x17,
+       RegBitField(2, 'powerCycleOnCrc', ro=False),
+   )
+   FAULT_STATUS = Register(0x19,
+       RegBitField(6, 'scdSeuError'),
+   )
 
 @registerPlatform()
 class Lodoga(FixedSystem):
@@ -34,7 +43,7 @@ class Lodoga(FixedSystem):
 
       scd = self.newComponent(Scd, PciAddr(bus=0x02))
 
-      cpu = self.newComponent(CrowCpu, scd)
+      cpu = self.newComponent(CrowCpu, scd, registerCls=LodogaCpldRegisters)
       self.cpu = cpu
       self.syscpld = cpu.syscpld
 

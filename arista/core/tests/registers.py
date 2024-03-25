@@ -40,6 +40,20 @@ class FakeRegisterMap(RegisterMap):
    )
    # 0x08 is implicitely reserverd by SetClearRegister
 
+class FakeOverrideRegisterMap(FakeRegisterMap):
+   REVISION = Register(0x51, name='revision')
+   CONTROL = Register(0x52,
+      RegBitField(0, 'bit0'),
+      RegBitField(1, 'bit1'),
+   )
+
+class FakeShadowRegisterMap(FakeRegisterMap):
+   REVISION_OTHER = Register(0x51, name='revision')
+   CONTROL_OTHER = Register(0x52,
+      RegBitField(0, 'bit0'),
+      RegBitField(1, 'bit1'),
+   )
+
 class FakeDriver(object):
    def __init__(self):
       self.regmap = {
@@ -51,12 +65,14 @@ class FakeDriver(object):
          0x06: 0, # clear on read
          0x07: 0, # set
          0x08: 0, # clear returns value of 0x07
+         0x51: 44,
+         0x52: 0b01,
       }
 
    def read(self, reg):
       if reg == 0x04:
          raise IOError(self, reg)
-      elif reg == 0x08:
+      if reg == 0x08:
          reg = 0x07
       value = self.regmap[reg]
       if reg == 0x06:
@@ -66,7 +82,7 @@ class FakeDriver(object):
    def write(self, reg, value):
       if reg == 0x04:
          raise IOError(self, reg)
-      elif reg == 0x07:
+      if reg == 0x07:
          value |= self.regmap[reg]
       elif reg == 0x08:
          reg = 0x07
@@ -133,7 +149,6 @@ class CoreRegisterTest(unittest.TestCase):
             self.regmap[0x01] = 43
             self.regmap[0x02] = 0xf
 
-      driver = self.driver
       regs = self.regs
 
       driver2 = FakeDriver2()
@@ -199,6 +214,21 @@ class CoreRegisterTest(unittest.TestCase):
       self.assertEqual(driver.regmap[addr], 0x00)
       self.assertEqual(regs.interrupt0(), 0)
       self.assertEqual(regs.interrupt1(), 0)
+
+class OverrideRegisterTest(unittest.TestCase):
+   def testShadowRegister(self):
+      driver = FakeDriver()
+      regs = FakeShadowRegisterMap(driver)
+      self.assertEqual(regs.revision(), 44)
+      self.assertEqual(regs.bit0(), 1)
+      self.assertEqual(regs.bit1(), 0)
+
+   def testOverrideRegister(self):
+      driver = FakeDriver()
+      regs = FakeOverrideRegisterMap(driver)
+      self.assertEqual(regs.revision(), 44)
+      self.assertEqual(regs.bit0(), 1)
+      self.assertEqual(regs.bit1(), 0)
 
 if __name__ == '__main__':
    unittest.main()

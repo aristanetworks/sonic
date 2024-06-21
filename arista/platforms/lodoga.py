@@ -55,7 +55,7 @@ class LodogaBase(FixedSystem):
       self.cpu = cpu
       self.syscpld = cpu.syscpld
 
-      port = cpu.getPciPort(1)
+      port = cpu.getPciPort(self.SCD_PCI_PORT_IDX)
       scd = port.newComponent(Scd, addr=port.addr)
       self.scd = scd
 
@@ -132,7 +132,7 @@ class LodogaBase(FixedSystem):
          isHwLpModeAvail=False
       )
 
-      port = cpu.getPciPort(0)
+      port = cpu.getPciPort(self.SWITCH_CHIPSET_PCI_PORT_IDX)
       port.newComponent(Trident3, addr=port.addr,
          coreResets=[
             scd.inventory.getReset('switch_chip_reset'),
@@ -151,6 +151,8 @@ class Lodoga(LodogaBase):
    SID = ['Lodoga', 'LodogaSsd']
    SKU = ['DCS-7050CX3-32S', 'DCS-7050CX3-32S-SSD']
    PSU_CLS = [DPS495CB, DS495SPE]
+   SCD_PCI_PORT_IDX = 1
+   SWITCH_CHIPSET_PCI_PORT_IDX = 0
 
    class SmBusAddresses(object):
       TS  = 9
@@ -192,6 +194,8 @@ class LodogaPrime(LodogaBase):
 
    CHASSIS = LodogaPrimeChassis
    PSU_CLS = [DPS500AB]
+   SCD_PCI_PORT_IDX = 0
+   SWITCH_CHIPSET_PCI_PORT_IDX = 1
 
    class SmBusAddresses(object):
       TS  = 0

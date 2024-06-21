@@ -85,8 +85,9 @@ class PuffinPrimeCpu(Cpu):
 
    def getPciPort(self, num):
       device, func = {
-         0: (0x01, 1),
-         1: (0x01, 2),
+         0: (0x01, 2),
+         1: (0x01, 3),
+         2: (0x01, 4),
       }[num]
       bridge = self.pciRoot.pciBridge(device=device, func=func)
       return bridge.downstreamPort(port=0)

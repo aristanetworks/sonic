@@ -12,6 +12,7 @@ class SfpOptoe(SfpOptoeBase):
    """
    Platform-specific sfp class
    """
+   # pylint: disable=too-many-public-methods
 
    RESET_DELAY = 1
 
@@ -143,3 +144,9 @@ class SfpOptoe(SfpOptoeBase):
 
    def get_write_max(self):
       return self._slot.slot.xcvr.driver.getWriteMax()
+
+   def set_power(self, mode):
+      raise NotImplementedError
+
+   def get_power(self):
+      return True

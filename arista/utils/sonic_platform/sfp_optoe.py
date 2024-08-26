@@ -63,9 +63,15 @@ class SfpOptoe(SfpOptoeBase):
    def get_status(self):
       return self.get_presence() and bool(self.get_transceiver_bulk_status())
 
+   def get_hw_lpmode(self):
+      return self._slot.getLowPowerMode()
+
+   def set_hw_lpmode(self, lpmode):
+      self._slot.setLowPowerMode(lpmode)
+
    def get_lpmode(self):
       try:
-         return self._slot.getLowPowerMode()
+         return self.get_hw_lpmode()
       except NotImplementedError:
          return super().get_lpmode()
       except: # pylint: disable-msg=W0702
@@ -73,7 +79,7 @@ class SfpOptoe(SfpOptoeBase):
 
    def set_lpmode(self, lpmode):
       try:
-         self._slot.setLowPowerMode(lpmode)
+         self.set_hw_lpmode(lpmode)
       except NotImplementedError:
          return super().set_lpmode(lpmode)
       except: # pylint: disable-msg=W0702
@@ -87,13 +93,22 @@ class SfpOptoe(SfpOptoeBase):
    def reset(self):
       try:
          self._slot.getReset().resetIn()
-      except: # pylint: disable-msg=W0702
+      except Exception: # pylint: disable-msg=broad-except
          return False
+
+      if Config().api_sfp_reset_lpmode:
+         try:
+            self._slot.setLowPowerMode(True)
+         except Exception: # pylint: disable-msg=broad-except
+            pass
+
       time.sleep(self.RESET_DELAY)
+
       try:
          self._slot.getReset().resetOut()
-      except: # pylint: disable-msg=W0702
+      except Exception: # pylint: disable-msg=broad-except
          return False
+
       # XXX: Hack to handle SFP modules plugged into non-SFP ports, which could
       # allow for a reset to "succeed" when it shouldn't
       if self.sfp_type == "SFP":

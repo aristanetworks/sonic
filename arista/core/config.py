@@ -37,6 +37,7 @@ class Config():
          cls.instance_.xcvr_lpmode_out = False
          cls.instance_.api_use_sfpoptoe = True
          cls.instance_.api_sfp_thermal = False
+         cls.instance_.api_sfp_reset_lpmode = True
          cls.instance_.api_event_use_interrupts = False
          cls.instance_.flash_path = DEFAULT_FLASH_PATH
          cls.instance_.tmpfs_path = '/var/run/platform_cache/arista'

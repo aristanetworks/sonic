@@ -87,9 +87,21 @@ class SfpOptoe(SfpOptoeBase):
          return False
       return True
 
-   def get_reset_status(self):
+   def set_hw_reset(self, mode):
+      reset = self._slot.getReset()
+      if not reset:
+         return
+      if mode:
+         reset.resetIn()
+      else:
+         reset.resetOut()
+
+   def get_hw_reset(self):
       reset = self._slot.getReset()
       return reset.read() if reset else False
+
+   def get_reset_status(self):
+      return self.get_hw_reset()
 
    def reset(self):
       try:

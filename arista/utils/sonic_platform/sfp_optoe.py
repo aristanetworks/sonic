@@ -70,23 +70,6 @@ class SfpOptoe(SfpOptoeBase):
    def set_hw_lpmode(self, lpmode):
       self._slot.setLowPowerMode(lpmode)
 
-   def get_lpmode(self):
-      try:
-         return self.get_hw_lpmode()
-      except NotImplementedError:
-         return super().get_lpmode()
-      except: # pylint: disable-msg=W0702
-         return False
-
-   def set_lpmode(self, lpmode):
-      try:
-         self.set_hw_lpmode(lpmode)
-      except NotImplementedError:
-         return super().set_lpmode(lpmode)
-      except: # pylint: disable-msg=W0702
-         return False
-      return True
-
    def set_hw_reset(self, mode):
       reset = self._slot.getReset()
       if not reset:

@@ -88,6 +88,7 @@ enum cpld_type {
 
 struct cpld_info {
    u8 fan_count;
+   u32 tach_hz;
 };
 
 struct cpld_fan_data {
@@ -123,19 +124,23 @@ struct cpld_data {
 static const struct cpld_info cpld_infos[] = {
    [PALI2_CPLD] = {
       .fan_count = 4,
+      .tach_hz = 100000,
    },
 };
 
 static const struct fan_id {
    const char *model;
-   unsigned hz;
    unsigned pulses;
 } fan_ids[] = {
-   [0b00000]        = { "FAN-7021H-RED",  100000, 2 },
-   [0b00001]        = { "FAN-7021H-RED",  100000, 2 },
-   [0b10000]        = { "FAN-7021H-BLUE", 100000, 2 },
-   [0b10001]        = { "FAN-7021H-BLUE", 100000, 2 },
-   [FAN_ID_UNKNOWN] = { "Unknown",        100000, 2 },
+   [0b00000]        = { "FAN-7021H-RED",   2 },
+   [0b00001]        = { "FAN-7021H-RED",   2 },
+   [0b01000]        = { "FAN-7022HQ-RED",  2 },
+   [0b01001]        = { "FAN-7022HQ-RED",  2 },
+   [0b10000]        = { "FAN-7021H-BLUE",  2 },
+   [0b10001]        = { "FAN-7021H-BLUE",  2 },
+   [0b11000]        = { "FAN-7022HQ-BLUE", 2 },
+   [0b11001]        = { "FAN-7022HQ-BLUE", 2 },
+   [FAN_ID_UNKNOWN] = { "Unknown",         2 },
 };
 
 static struct cpld_fan_data *fan_from_cpld(struct cpld_data *cpld, u8 fan_id)
@@ -404,7 +409,8 @@ static s32 cpld_read_fan_tach(struct cpld_data *cpld, u8 fan_id)
    s32 err = 0;
    int i;
 
-   for (i = 0; i < (1 + fan->dual); i++) {
+   /* read inner fan first id=1, then outer id=0 (when dual) */
+   for (i = 1; i >= !fan->dual; i--) {
       err = cpld_read_tach_single(cpld, fan_id, i, &fan->tach);
       if (err)
          break;
@@ -647,7 +653,7 @@ static ssize_t cpld_fan_tach_show(struct device *dev, struct device_attribute *d
       return -EINVAL;
    }
 
-   rpms = ((fan->fan_id->hz * 60) / fan->tach) / fan->fan_id->pulses;
+   rpms = ((cpld->info->tach_hz * 60) / fan->tach) / fan->fan_id->pulses;
 
    return sprintf(buf, "%d\n", rpms);
 }
@@ -854,9 +860,9 @@ static int cpld_init(struct cpld_data *cpld)
       }
    }
 
-   cpld_write_byte(cpld, FAN_OK_CHNG_REG, 0xff);
-   cpld_write_byte(cpld, FAN_ID_CHNG_REG, 0xff);
-   cpld_write_byte(cpld, FAN_ID_CHNG_REG, 0xff);
+   cpld_write_byte(cpld, FAN_OK_CHNG_REG, 0x00);
+   cpld_write_byte(cpld, FAN_PRES_CHNG_REG, 0x00);
+   cpld_write_byte(cpld, FAN_ID_CHNG_REG, 0x00);
 
    if (managed_leds) {
       err = cpld_update_leds(cpld);

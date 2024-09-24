@@ -52,6 +52,7 @@ class ShearwaterCpu(Cpu):
          ScdCause(0x0c, ScdCause.CPU),
          ScdCause(0x0d, ScdCause.CPU_S3),
          ScdCause(0x0e, ScdCause.CPU_S5),
+         ScdCause(0x11, ScdCause.CPU, 'Unexpected PCIe reset'),
          ScdCause(0x20, ScdCause.RAIL, 'CPU_PWROK_3V3'),
          ScdCause(0x21, ScdCause.RAIL, 'POSVDD_CPU_S0'),
          ScdCause(0x22, ScdCause.RAIL, 'POSVDD_SOC_S0'),

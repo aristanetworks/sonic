@@ -77,9 +77,11 @@ class Eldridge(DenaliFabric):
       for i, slotId in enumerate(incrange(begin, end)):
          led = self.gpio2.addGpioLed('fanFault%d' % slotId)
          chip.addFan(FanDesc(fanId=i * 2 + 1, position=FanPosition.INLET,
-                             airflow=Airflow.EXHAUST), led=led)
+                             airflow=Airflow.EXHAUST,
+                             namespaceFn=self.getRelativeSlotId), led=led)
          chip.addFan(FanDesc(fanId=i * 2 + 2, position=FanPosition.OUTLET,
-                             airflow=Airflow.EXHAUST), led=led)
+                             airflow=Airflow.EXHAUST,
+                             namespaceFn=self.getRelativeSlotId), led=led)
 
    def createStandbyFans(self):
       chip1 = self.pca.newComponent(Max31790, self.pca.i2cAddr(0x2d),

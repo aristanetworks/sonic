@@ -12,8 +12,9 @@ class FanDesc(HwDesc):
 
    OID_FIELD = 'fanId'
 
-   def __init__(self, fanId, name='fan%(fanId)s', position=FanPosition.UNKNOWN,
-                airflow=Airflow.UNKNOWN, model='N/A', minRpm=None, maxRpm=None,
+   def __init__(self, fanId, name='fan%(namespaceId)s%(fanId)s',
+                position=FanPosition.UNKNOWN, airflow=Airflow.UNKNOWN,
+                model='N/A', minRpm=None, maxRpm=None, namespaceFn=None,
                 **kwargs):
       super(FanDesc, self).__init__(**kwargs)
       self.fmt = name
@@ -24,10 +25,12 @@ class FanDesc(HwDesc):
       self.model = model
       self.minRpm = minRpm
       self.maxRpm = maxRpm
+      self.namespaceFn = namespaceFn
 
    def renderName(self, **kwargs):
       values = kwargs.copy()
       values.update(self.__dict__)
+      values['namespaceId'] = f'{self.namespaceFn()}/' if self.namespaceFn else ''
       self.name = self.fmt % values
 
 class FanSlotDesc(HwDesc):

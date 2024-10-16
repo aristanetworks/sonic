@@ -28,7 +28,7 @@ class SysfsEntry(object):
    def __init__(self, parent, name, prefix=None, pathCallback=None):
       self.parent = parent
       self.driver = parent.driver
-      self.baseName_ = name
+      self.baseName = name
       self.name_ = None
       self.prefix_ = prefix
       self.pathCallback = pathCallback or self.driver.getHwmonEntry
@@ -48,7 +48,7 @@ class SysfsEntry(object):
    @property
    def name(self):
       if self.name_ is None:
-         self.name_ = '%s%s' % (self.prefix, self.baseName_)
+         self.name_ = '%s%s' % (self.prefix, self.baseName)
       return self.name_
 
    @property
@@ -212,6 +212,10 @@ class GenericSysfsImpl(GenericSysfs):
       self.__dict__.update(**kwargs)
 
    def _getOr(self, entry, *defaults):
+      # If the Desc object provides an override for this entry return it
+      override = getattr(self.desc, 'overrides', {}).get(entry.baseName)
+      if override is not None:
+         return override
       if entry.exists():
          return entry.read()
       for default in defaults:
@@ -669,7 +673,11 @@ class RailSysfsImpl(Rail):
       return desc.voltage or VoltageDesc(
          voltId=desc.railId,
          name=desc.name,
-         direction=desc.direction
+         direction=desc.direction,
+         overrides={
+            'rated_max': getattr(desc, 'maxVoltage', None),
+            'rated_min': getattr(desc, 'minVoltage', None),
+         },
       )
 
    def _getCurrentDesc(self, desc):

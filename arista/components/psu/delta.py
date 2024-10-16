@@ -181,6 +181,8 @@ class ECD1502005(DeltaPsu):
          ('primary hotspot', Position.OTHER, 110, 115, 120),
       ],
       maxRpm=25500,
+      outputMinVoltage=11.40,
+      outputMaxVoltage=12.60,
    )
    IDENTIFIERS = [
       PsuIdent('ECD15020056', 'PWR-2421-HV-RED', Airflow.EXHAUST),

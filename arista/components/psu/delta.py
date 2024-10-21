@@ -53,10 +53,10 @@ class DPS750AB(DeltaPsu):
    )
    IDENTIFIERS = [
       PsuIdent('DPS-750AB-24 A', 'PWR-745AC-F', Airflow.EXHAUST),
-      PsuIdent('DPS-750AB-24 B', 'PWR-745AC-F', Airflow.EXHAUST),
+      PsuIdent('DPS-750AB-24 B', 'PWR-747AC-RED', Airflow.EXHAUST),
       PsuIdent('DPS-750AB-24 C', 'PWR-745AC-F', Airflow.EXHAUST),
       PsuIdent('DPS-750AB-25 A', 'PWR-745AC-R', Airflow.INTAKE),
-      PsuIdent('DPS-750AB-25 B', 'PWR-745AC-R', Airflow.INTAKE),
+      PsuIdent('DPS-750AB-25 B', 'PWR-747AC-BLUE', Airflow.INTAKE),
       PsuIdent('DPS-750AB-25 C', 'PWR-745AC-R', Airflow.INTAKE),
    ]
 
@@ -72,7 +72,9 @@ class DPS1500AB(DeltaPsu):
    )
    IDENTIFIERS = [
       PsuIdent('DPS-1500AB-7 A',  'PWR-1511-AC-RED', Airflow.EXHAUST),
+      PsuIdent('DPS-1500AB-7 B',  'PWR-1512-AC-RED', Airflow.EXHAUST),
       PsuIdent('DPS-1500AB-8 A',  'PWR-1511-AC-BLUE', Airflow.INTAKE),
+      PsuIdent('DPS-1500AB-8 B',  'PWR-1512-AC-BLUE', Airflow.INTAKE),
       PsuIdent('DPS-1500AB-9 A',  'PWR-1511-DC-RED', Airflow.EXHAUST),
       PsuIdent('DPS-1500AB-10 A', 'PWR-1511-DC-BLUE', Airflow.INTAKE),
    ]

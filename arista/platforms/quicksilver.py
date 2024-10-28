@@ -24,6 +24,7 @@ class QuicksilverBase(FixedSystem):
 
    CHASSIS = MaunaKea2
    CPU_CLS = ShearwaterCpu
+   LED_FP_TRICOLOR = True
 
    HAS_TH5_EXT_DIODE = True
 
@@ -96,7 +97,7 @@ class QuicksilverBase(FixedSystem):
          ports=self.PORTS.getOsfps(),
          addr=0xA000,
          bus=24,
-         ledAddr=0x6100,
+         ledAddr=0x6104,
          ledAddrOffsetFn=lambda x: 0x10,
          intrRegs=intrRegs,
          intrRegIdxFn=lambda xcvrId: xcvrId // 33 + 1,

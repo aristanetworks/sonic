@@ -43,6 +43,8 @@
 #define FAN_PRESENT_REG   0x70
 #define FAN_OK_REG        0x71
 
+#define FAN_BLUE_LED_REG  0x73
+#define FAN_AMBER_LED_REG 0x74
 #define FAN_GREEN_LED_REG 0x75
 #define FAN_RED_LED_REG   0x76
 
@@ -57,6 +59,8 @@
 
 #define FAN_LED_GREEN 1
 #define FAN_LED_RED 2
+#define FAN_LED_AMBER 3
+#define FAN_LED_BLUE 4
 
 #define FAN_MAX_PWM 255
 
@@ -117,6 +121,8 @@ struct cpld_data {
    u8 major;
    u8 present;
    u8 ok;
+   u8 blue_led;
+   u8 amber_led;
    u8 green_led;
    u8 red_led;
 };
@@ -218,6 +224,8 @@ static int cpld_update_leds(struct cpld_data *cpld)
    int err;
    int i;
 
+   cpld->blue_led = 0;
+   cpld->amber_led = 0;
    cpld->green_led = 0;
    cpld->red_led = 0;
 
@@ -229,11 +237,19 @@ static int cpld_update_leds(struct cpld_data *cpld)
          cpld->red_led |= (1 << i);
    }
 
-   err = cpld_write_byte(cpld, FAN_GREEN_LED_REG, ~cpld->green_led);
+   err = cpld_write_byte(cpld, FAN_BLUE_LED_REG, cpld->blue_led);
    if (err)
       return err;
 
-   err = cpld_write_byte(cpld, FAN_RED_LED_REG, ~cpld->red_led);
+   err = cpld_write_byte(cpld, FAN_AMBER_LED_REG, cpld->amber_led);
+   if (err)
+      return err;
+
+   err = cpld_write_byte(cpld, FAN_GREEN_LED_REG, cpld->green_led);
+   if (err)
+      return err;
+
+   err = cpld_write_byte(cpld, FAN_RED_LED_REG, cpld->red_led);
    if (err)
       return err;
 
@@ -453,14 +469,20 @@ static s32 cpld_read_fan_pwm(struct cpld_data *cpld, u8 fan_id)
 
 static s32 cpld_read_fan_led(struct cpld_data *data, u8 fan_id, u8 *val)
 {
+   bool blue = data->blue_led & (1 << fan_id);
+   bool amber = data->amber_led & (1 << fan_id);
    bool red = data->red_led & (1 << fan_id);
    bool green = data->green_led & (1 << fan_id);
 
    *val = 0;
+   if (blue)
+      *val |= FAN_LED_BLUE;
+   if (amber)
+      *val |= FAN_LED_AMBER;
    if (green)
-      *val += FAN_LED_GREEN;
+      *val |= FAN_LED_GREEN;
    if (red)
-      *val += FAN_LED_RED;
+      *val |= FAN_LED_RED;
 
    return 0;
 }
@@ -469,24 +491,42 @@ static s32 cpld_write_fan_led(struct cpld_data *cpld, u8 fan_id, u8 val)
 {
    int err = 0;
 
-   if (val > 3)
+   if (val > 7)
       return -EINVAL;
 
-   if (val & FAN_LED_GREEN)
+   if (val & FAN_LED_BLUE)
+      cpld->blue_led |= (1 << fan_id);
+   else
+      cpld->blue_led &= ~(1 << fan_id);
+
+   if (val & FAN_LED_AMBER)
+      cpld->amber_led |= (1 << fan_id);
+   else
+      cpld->amber_led &= ~(1 << fan_id);
+
+   if (val & FAN_LED_GREEN && (val & FAN_LED_AMBER) != FAN_LED_AMBER)
       cpld->green_led |= (1 << fan_id);
    else
       cpld->green_led &= ~(1 << fan_id);
 
-   if (val & FAN_LED_RED)
+   if (val & FAN_LED_RED && (val & FAN_LED_AMBER) != FAN_LED_AMBER)
       cpld->red_led |= (1 << fan_id);
    else
       cpld->red_led &= ~(1 << fan_id);
 
-   err = cpld_write_byte(cpld, FAN_GREEN_LED_REG, ~cpld->green_led);
+   err = cpld_write_byte(cpld, FAN_BLUE_LED_REG, cpld->blue_led);
    if (err)
       return err;
 
-   err = cpld_write_byte(cpld, FAN_RED_LED_REG, ~cpld->red_led);
+   err = cpld_write_byte(cpld, FAN_AMBER_LED_REG, cpld->amber_led);
+   if (err)
+      return err;
+
+   err = cpld_write_byte(cpld, FAN_GREEN_LED_REG, cpld->green_led);
+   if (err)
+      return err;
+
+   err = cpld_write_byte(cpld, FAN_RED_LED_REG, cpld->red_led);
 
    return err;
 }

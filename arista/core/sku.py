@@ -16,6 +16,8 @@ class Sku(Component):
    MAX_POWER_DRAW = 0
    TYP_POWER_DRAW = 0
 
+   LED_FP_TRICOLOR = False
+
    def __init__(self, *args, **kwargs):
       self.hwApi = kwargs.pop('hwApi', None)
       super(Sku, self).__init__(*args, **kwargs)

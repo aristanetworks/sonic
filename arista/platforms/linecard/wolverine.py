@@ -149,45 +149,37 @@ class Wolverine(DenaliLinecard):
       self.syscpld = self.pca.newComponent(I2cScd, addr=self.pca.i2cAddr(0x23),
                                            registerCls=WolverineStandbyRegMap)
 
+      slot_prefix = f'LINE-CARD{self.getRelativeSlotId()} '
       self.pca.newComponent(Tmp464, addr=self.pca.i2cAddr(0x48),
                             sensors=[
-         SensorDesc(diode=0, name='Right', position=Position.OTHER,
+         SensorDesc(diode=0, name=slot_prefix + 'Right', position=Position.OTHER,
                     target=70, overheat=80, critical=90),
-         SensorDesc(diode=1, name='Inlet', position=Position.INLET,
+         SensorDesc(diode=1, name=slot_prefix + 'Inlet', position=Position.INLET,
                     target=70, overheat=100, critical=105),
-         SensorDesc(diode=2, name='Outlet', position=Position.OUTLET,
+         SensorDesc(diode=2, name=slot_prefix + 'Outlet', position=Position.OUTLET,
                     target=70, overheat=100, critical=105),
-         SensorDesc(diode=3, name='Fap0 Back', position=Position.OUTLET,
+         SensorDesc(diode=3, name=slot_prefix + 'Fap0 Back',
+                    position=Position.OUTLET,
                     target=75, overheat=90, critical=100),
-         SensorDesc(diode=4, name='Fap1 Back', position=Position.OUTLET,
+         SensorDesc(diode=4, name=slot_prefix + 'Fap1 Back',
+                    position=Position.OUTLET,
                     target=75, overheat=90, critical=100),
       ])
-      self.pca.newComponent(Tmp464, addr=self.pca.i2cAddr(0x49),
-                            sensors=[
-         SensorDesc(diode=0, name='Fap0 Front', position=Position.OTHER,
-                    target=70, overheat=80, critical=90),
-         SensorDesc(diode=1, name='Fap0 C', position=Position.OTHER,
-                    target=75, overheat=100, critical=105),
-         SensorDesc(diode=2, name='Fap0 AVS', position=Position.OTHER,
-                    target=75, overheat=100, critical=105),
-         SensorDesc(diode=3, name='Fap0 FAB', position=Position.OTHER,
-                    target=75, overheat=100, critical=105),
-         SensorDesc(diode=4, name='Fap0 NIF', position=Position.OTHER,
-                    target=75, overheat=100, critical=105),
-      ])
-      self.pca.newComponent(Tmp464, addr=self.pca.i2cAddr(0x4a),
-                            sensors=[
-         SensorDesc(diode=0, name='Fap1 Front', position=Position.OTHER,
-                    target=70, overheat=80, critical=90),
-         SensorDesc(diode=1, name='Fap1 C', position=Position.OTHER,
-                    target=75, overheat=100, critical=105),
-         SensorDesc(diode=2, name='Fap1 AVS', position=Position.OTHER,
-                    target=75, overheat=100, critical=105),
-         SensorDesc(diode=3, name='Fap1 FAB', position=Position.OTHER,
-                    target=75, overheat=100, critical=105),
-         SensorDesc(diode=4, name='Fap1 NIF', position=Position.OTHER,
-                    target=75, overheat=100, critical=105),
-      ])
+      for fapId, addr in enumerate((0x49, 0x4a)):
+         prefix = slot_prefix + f'Fap{fapId} '
+         self.pca.newComponent(Tmp464, addr=self.pca.i2cAddr(addr),
+                               sensors=[
+            SensorDesc(diode=0, name=prefix + 'Front', position=Position.OTHER,
+                       target=70, overheat=80, critical=90),
+            SensorDesc(diode=1, name=prefix + 'C', position=Position.OTHER,
+                       target=75, overheat=100, critical=105),
+            SensorDesc(diode=2, name=prefix + 'AVS', position=Position.OTHER,
+                       target=75, overheat=100, critical=105),
+            SensorDesc(diode=3, name=prefix + 'FAB', position=Position.OTHER,
+                       target=75, overheat=100, critical=105),
+            SensorDesc(diode=4, name=prefix + 'NIF', position=Position.OTHER,
+                       target=75, overheat=100, critical=105),
+         ])
 
       self.cookies.register(ReloadCauseDesc.WATCHDOG,
                             self.syscpld.lcScdWatchdogInterrupt)

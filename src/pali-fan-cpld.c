@@ -57,10 +57,10 @@
 #define FAN_INT_PRES BIT(1)
 #define FAN_INT_ID   BIT(2)
 
-#define FAN_LED_GREEN 1
-#define FAN_LED_RED 2
-#define FAN_LED_AMBER 3
-#define FAN_LED_BLUE 4
+#define FAN_LED_GREEN BIT(0)
+#define FAN_LED_RED   BIT(1)
+#define FAN_LED_AMBER ((FAN_LED_GREEN) | (FAN_LED_RED))
+#define FAN_LED_BLUE  BIT(2)
 
 #define FAN_MAX_PWM 255
 
@@ -499,7 +499,7 @@ static s32 cpld_write_fan_led(struct cpld_data *cpld, u8 fan_id, u8 val)
    else
       cpld->blue_led &= ~(1 << fan_id);
 
-   if (val & FAN_LED_AMBER)
+   if ((val & FAN_LED_AMBER) == FAN_LED_AMBER)
       cpld->amber_led |= (1 << fan_id);
    else
       cpld->amber_led &= ~(1 << fan_id);

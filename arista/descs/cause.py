@@ -27,6 +27,7 @@ class ReloadCauseDesc(object):
    UNKNOWN = 'unknown'
    KILLSWITCH = 'killswitch'
    OVERTEMP = 'overtemp'
+   CPU_OVERTEMP = 'cpu-overtemp'
    POWERLOSS = 'powerloss'
    RAIL = 'rail'
    REBOOT = 'reboot'

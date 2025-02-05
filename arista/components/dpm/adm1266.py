@@ -1,4 +1,5 @@
 
+from arista.descs.cause import ReloadCauseDesc
 from ...core.cause import (
    ReloadCauseEntry,
    ReloadCausePriority,
@@ -23,14 +24,21 @@ logging = getLogger(__name__)
 class AdmPriority(ReloadCausePriority):
    pass
 
-class AdmPin():
+class AdmCause(ReloadCauseDesc):
+   def __init__(self, value, name=ReloadCauseDesc.UNKNOWN,
+                description=None, mask=None,
+                priority=AdmPriority.NORMAL):
+      super().__init__(value, name, description, priority)
+      # default mask to value, for one-hot encoded causes
+      self.mask = value if mask is None else mask
 
-   GPIO = 'gpio'
+   @property
+   def value(self):
+      return self.code
 
-   def __init__(self, bit, typ, priority=AdmPriority.NORMAL):
-      self.bit = bit
-      self.typ = typ
-      self.priority = priority
+   @property
+   def name(self):
+      return self.typ
 
 class AdmReloadCauseEntry(ReloadCauseEntry):
    pass
@@ -103,19 +111,28 @@ class Adm1266(PmbusDpm):
       causes = []
       for fault in self.driver.getBlackboxFaults():
          logging.debug('fault: %s', fault.summary())
-         for name, pin in self.causes.items():
-            assert pin.typ == AdmPin.GPIO, \
-               "Unhandled cause of type %s" % pin.typ
-            if fault.isGpio(pin.bit):
-               logging.debug('found: %s', name)
+         for cause in self.causes:
+            # check if the set pins correspond to this fault
+            if (self._gpioToCause(fault.gpio_in) & cause.mask) == cause.value:
+               logging.debug('found: %s', cause.name)
                causes.append(AdmReloadCauseEntry(
-                  cause=name,
+                  cause=cause.name,
                   rcTime=datetimeToStr(fault.getTime()),
                   rcDesc='detailed fault powerup=%d' % fault.powerup,
                   score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
-                        ReloadCauseScore.getPriority(pin.priority),
+                        ReloadCauseScore.getPriority(cause.priority),
                ))
       return causes
+
+   def _gpioToCause(self, gpio_in):
+      gpio_to_cause_map = [0, 1, 2, 8, 9, 10, 11, 6, 7]
+
+      cause = 0
+      for cause_bit_pos, gpio_bit_pos in enumerate(gpio_to_cause_map):
+         bit = (gpio_in >> gpio_bit_pos) & 1
+         cause |= (bit << cause_bit_pos)
+
+      return cause
 
    def getReloadCauses(self):
       if inSimulation():

@@ -7,7 +7,7 @@ from ...components.cpu.lorikeet import (
     LorikeetPrimeScdReloadCauseRegisters,
     LorikeetSysCpld,
 )
-from ...components.dpm.adm1266 import Adm1266, AdmPin, AdmPriority
+from ...components.dpm.adm1266 import Adm1266, AdmCause, AdmPriority
 from ...components.max6658 import Max6658
 from ...components.scd import Scd, ScdCause
 
@@ -66,11 +66,13 @@ class LorikeetCpu(Cpu):
 
    def addCpuDpm(self, addr=None, causes=None):
       addr = addr or self.cpuDpmAddr()
-      return self.cpld.newComponent(Adm1266, addr=addr, causes=causes or {
-         'fansmissing': AdmPin(5, AdmPin.GPIO),
-         'overtemp': AdmPin(6, AdmPin.GPIO),
-         'procerror': AdmPin(7, AdmPin.GPIO, priority=AdmPriority.LOW),
-      })
+      return self.cpld.newComponent(Adm1266, addr=addr, causes=causes or [
+         AdmCause(1 << 2, AdmCause.CPU_S5, priority=AdmPriority.LOW),
+         AdmCause(1 << 3, AdmCause.CPU_S3, priority=AdmPriority.LOW),
+         AdmCause(1 << 4, AdmCause.NOFANS),
+         AdmCause(1 << 5, AdmCause.OVERTEMP),
+         AdmCause(1 << 6, AdmCause.CPU, priority=AdmPriority.LOW)
+      ])
 
    def cpuDpmAddr(self, addr=0x4f, t=3, **kwargs):
       return self.cpld.i2cAddr(1, addr, t=t, **kwargs)

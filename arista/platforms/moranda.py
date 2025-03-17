@@ -66,8 +66,8 @@ class MorandaBase(FixedSystem):
 
       scd.addXcvrSlots(
          ports=self.PORTS.getOsfps(),
-         addr=0xA000,
-         bus=24,
+         addr=0xA010,
+         bus=8,
          ledAddr=0x6100,
          intrRegs=intrRegs,
          intrRegIdxFn=lambda xcvrId: 1,
@@ -76,8 +76,8 @@ class MorandaBase(FixedSystem):
 
       scd.addXcvrSlots(
          ports=self.PORTS.getSfps(),
-         addr=0xA200,
-         bus=24,
+         addr=0xA210,
+         bus=40,
          ledAddr=0x6300,
          intrRegs=intrRegs,
          intrRegIdxFn=lambda xcvrId: 2,

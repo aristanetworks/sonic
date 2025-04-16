@@ -6,8 +6,11 @@ except ImportError:
    print('This feature only works in python3')
    raise
 
+from datetime import datetime, timezone
+import json
+
 from ...core.cause import getLinecardReloadCauseManager
-from ...core.config import Config
+from ...core.config import Config, flashPath
 from ...core.log import getLogger
 from ...core.supervisor import Supervisor
 from ...core.utils import inSimulation
@@ -218,5 +221,11 @@ class RpcLinecardApi(RpcApi):
    @registerSupToLinecardMethod
    async def gracefulShutdown(self):
       """Shutdown the linecard itself."""
+      with open(flashPath('reboot-cause', 'platform', 'reboot-extra-info.json'), 'w', encoding='utf-8') as f:
+         json.dump({
+            'from': 'supervisor',
+            'when': datetime.now(timezone.utc).strftime("%a %b %d %I:%M:%S %p %Z %Y"),
+            'version': 1,
+         }, f, indent=4, separators=(',', ': '))
       self.tasks.append(asyncio.create_task(self._doSelfReboot()))
       return {'status': True, 'detail': 'Reboot started'}

@@ -53,7 +53,7 @@ class QuartzDd(FixedSystem):
       scd.setMsiRearmOffset(0x180)
       scd.addSmbusMasterRange(0x8000, 6, 0x80)
 
-      scd.newComponent(Tmp464, addr=scd.i2cAddr(0, 0x48), sensors=[
+      scd.newComponent(Tmp464, addr=scd.i2cAddr(7, 0x48), sensors=[
             SensorDesc(diode=0, name='JE0 Front Side', position=Position.OTHER,
                        target=60, overheat=62, critical=65),
             SensorDesc(diode=1, name='Air Inlet', position=Position.INLET,

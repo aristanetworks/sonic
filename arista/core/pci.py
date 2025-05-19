@@ -8,6 +8,13 @@ from .utils import inSimulation
 
 from ..libs.wait import waitForPath
 
+class PciPortDesc:
+   def __init__(self, device, func, port=0, quirks=None):
+      self.device = device
+      self.func = func
+      self.port = port
+      self.quirks = quirks or []
+
 class PciNotReady(Exception):
    pass
 

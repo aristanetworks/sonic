@@ -7,7 +7,7 @@ from ...components.lm75 import Tmp75
 from ...components.scd import Scd, ScdCause
 
 from ...core.cpu import Cpu
-from ...core.pci import PciRoot
+from ...core.pci import PciPortDesc, PciRoot
 
 from ...descs.sensor import Position, SensorDesc
 
@@ -16,6 +16,9 @@ class ShearwaterCpu(Cpu):
    PLATFORM = 'shearwater'
    SID = ['ShearwaterMk2', 'ShearwaterMk2N']
    SKU = ['DCS-7001-SUP-A', 'DCS-7001-SUP-A-N']
+
+   PCI_PORT_ASIC0 = PciPortDesc(0x3, 5)
+   PCI_PORT_SCD0 = PciPortDesc(0x1, 3)
 
    def __init__(self, **kwargs):
       super(ShearwaterCpu, self).__init__(**kwargs)
@@ -67,10 +70,6 @@ class ShearwaterCpu(Cpu):
       ], regmap=ShearwaterReloadCauseRegisters,
          priority=ScdCause.Priority.SECONDARY)
 
-   def getPciPort(self, num):
-      device, func = {
-         0: (0x3, 5),
-         2: (0x1, 3),
-      }[num]
-      bridge = self.pciRoot.pciBridge(device=device, func=func)
-      return bridge.downstreamPort(port=0)
+   def getPciPort(self, desc):
+      bridge = self.pciRoot.pciBridge(device=desc.device, func=desc.func)
+      return bridge.downstreamPort(port=desc.port)

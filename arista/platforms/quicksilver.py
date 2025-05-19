@@ -33,7 +33,7 @@ class QuicksilverBase(FixedSystem):
       self.cpu = self.newComponent(self.CPU_CLS)
       self.syscpld = self.cpu.syscpld
 
-      port = self.cpu.getPciPort(2)
+      port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       scd = port.newComponent(Scd, addr=port.addr)
       self.scd = scd
       scd.setMsiRearmOffset(0x180)
@@ -129,7 +129,7 @@ class QuicksilverBase(FixedSystem):
             ],
          )
 
-      port = self.cpu.getPciPort(0)
+      port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC0)
       self.asic = port.newComponent(Tomahawk5, addr=port.addr,
          coreResets=[
             scd.inventory.getReset('switch_chip_reset'),

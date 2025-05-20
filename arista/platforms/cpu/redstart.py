@@ -7,6 +7,7 @@ from ...components.cpu.redstart import (
     RedstartReloadCauseRegisters,
     RedstartSysCpld,
 )
+from ...components.pci import EcrcPciQuirk
 from ...components.scd import Scd, ScdCause
 
 from ...descs.sensor import Position, SensorDesc
@@ -17,7 +18,7 @@ class RedstartCpu(Cpu):
    SID = ['Redstart8Mk2']
    SKU = ['DCS-7001-SUP-L']
 
-   PCI_PORT_ASIC0 = PciPortDesc(0x1, 2)
+   PCI_PORT_ASIC0 = PciPortDesc(0x1, 2, quirks=[EcrcPciQuirk()])
    PCI_PORT_SCD0 = PciPortDesc(0x2, 5)
 
    def __init__(self, **kwargs):
@@ -60,4 +61,5 @@ class RedstartCpu(Cpu):
 
    def getPciPort(self, desc):
       bridge = self.pciRoot.pciBridge(device=desc.device, func=desc.func)
+      desc.maybeAddQuirks(bridge.upstream)
       return bridge.downstreamPort(port=desc.port)

@@ -15,6 +15,10 @@ class PciPortDesc:
       self.port = port
       self.quirks = quirks or []
 
+   def maybeAddQuirks(self, port):
+      # FIXME: do something better by removing this requirement altogether
+      port.quirks.extend(self.quirks)
+
 class PciNotReady(Exception):
    pass
 
@@ -183,6 +187,10 @@ class PciPort(PciComponent):
       if not self.upstream.reachable():
          return False
       return os.path.exists(self.addr.getSysfsPath())
+
+   def setup(self, **kwargs):
+      super().setup(**kwargs)
+      self.applyQuirks()
 
    def pciAddr(self, device=0, func=0):
       addr = self.addrs.get((device, func))

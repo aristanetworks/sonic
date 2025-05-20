@@ -72,4 +72,5 @@ class ShearwaterCpu(Cpu):
 
    def getPciPort(self, desc):
       bridge = self.pciRoot.pciBridge(device=desc.device, func=desc.func)
+      desc.maybeAddQuirks(bridge.upstream)
       return bridge.downstreamPort(port=desc.port)

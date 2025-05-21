@@ -276,8 +276,8 @@ static int scd_uart_startup(struct uart_port *port)
    scd_uart_flush_rx_queue(&sp->port);
 
    hrtimer_init(&sp->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-   hrtimer_start(&sp->timer, sp->poll_interval, HRTIMER_MODE_REL);
    sp->timer.function = scd_uart_port_timer_callback;
+   hrtimer_start(&sp->timer, sp->poll_interval, HRTIMER_MODE_REL);
 
    return 0;
 }

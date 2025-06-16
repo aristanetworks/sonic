@@ -15,6 +15,8 @@ from ...core.log import getLogger
 from ...core.supervisor import Supervisor
 from ...core.utils import inSimulation
 
+from ...libs.rebootfs import getAndSetLcRebootCause
+
 logging = getLogger(__name__)
 
 class RpcPermissionError(Exception):
@@ -215,6 +217,10 @@ class RpcSupervisorApi(RpcApi):
    @registerLinecardToSupMethod
    async def hasSeuError(self, lc, name):
       return lc.plx.driver.regs.hasScdSeuError()
+
+   @registerLinecardToSupMethod
+   async def getRebootCause(self, lc):
+      return {'status': True, 'reboot_cause' : getAndSetLcRebootCause(lc)}
 
 class RpcLinecardApi(RpcApi):
 

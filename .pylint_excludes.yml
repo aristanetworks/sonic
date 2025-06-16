@@ -116,6 +116,7 @@ arista/components/denali/fabric.py:
 arista/components/denali/linecard.py:
 - broad-except
 - too-many-ancestors
+- too-many-public-methods
 - unrecognized-inline-option
 arista/components/denali/supervisor.py:
 - unused-import
@@ -392,6 +393,9 @@ arista/utils/rpc/api.py:
 - raise-missing-from
 arista/utils/rpc/client.py:
 - line-too-long
+arista/utils/rpc/helper.py:
+- global-statement
+- raise-missing-from
 arista/utils/rpc/server.py:
 - too-many-return-statements
 arista/utils/rpc/tests/api.py:
@@ -414,9 +418,6 @@ arista/utils/sonic_platform/chassis.py:
 - raise-missing-from
 - too-many-public-methods
 - unused-import
-arista/utils/sonic_platform/common.py:
-- global-statement
-- raise-missing-from
 arista/utils/sonic_platform/eeprom.py:
 - raise-missing-from
 - redefined-outer-name

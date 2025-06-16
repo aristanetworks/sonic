@@ -38,3 +38,6 @@ class Sku(Component):
       output = super(Sku, self).genDiag(ctx)
       output['eeprom'] = self.getEeprom() if ctx.performIo else None
       return output
+
+   def handleUngracefulReboot(self):
+      pass

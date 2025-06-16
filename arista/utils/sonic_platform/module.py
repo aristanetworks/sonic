@@ -8,7 +8,7 @@ import time
 try:
    from arista.core.onie import OnieEeprom
    from arista.libs.ping import ping
-   from arista.utils.sonic_platform.common import RpcClientSource, getGlobalRpcClient
+   from arista.utils.rpc.helper import RpcClientSource, getGlobalRpcClient
    from arista.utils.sonic_platform.component import Component
    from arista.utils.sonic_platform.fan import Fan
    from arista.utils.sonic_platform.thermal import Thermal
@@ -44,7 +44,7 @@ class Module(ModuleBase):
             self._component_list.append(Component(self, programmable))
 
    def _get_rpc_client(self):
-      return getGlobalRpcClient(self.RPC_CLIENT_SOURCE)
+      return getGlobalRpcClient(source=self.RPC_CLIENT_SOURCE)
 
    def _get_eeprom(self):
       return self._eeprom

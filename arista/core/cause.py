@@ -305,6 +305,7 @@ def getReloadCauseManager(platform, read=False):
    if read:
       rcm.readCauses(platform.getInventory())
       rcm.storeCauses()
+      platform.handleUngracefulReboot()
    else:
       rcm.loadCauses()
    return rcm

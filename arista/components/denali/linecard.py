@@ -17,6 +17,9 @@ from ...drivers.scd.register import (
 from ...drivers.scd.sram import SramContent
 
 from ...libs.wait import waitFor
+from ...libs.rebootfs import setOsSoftwareRebootCause
+
+from ...utils.rpc.helper import getGlobalRpcClient
 
 from ..plx import Plx8700RegisterMap
 from ..scd import Scd
@@ -226,6 +229,13 @@ class DenaliLinecard(DenaliLinecardBase):
       if self.syscpld.lcpuPresent():
          return self.syscpld.nextPostCodeAvailable()
       return False
+
+   def handleUngracefulReboot(self):
+      supervisorClient = getGlobalRpcClient(platform=self)
+      response = supervisorClient.getRebootCause()
+
+      if response and response.get('reboot_cause') != 'None':
+         setOsSoftwareRebootCause(response['reboot_cause'])
 
 class GpioRegisterMap(RegisterMap):
    BANK0 = GpioRegister(0x0,

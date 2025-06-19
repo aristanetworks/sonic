@@ -9,10 +9,11 @@ from .utils import inSimulation
 from ..libs.wait import waitForPath
 
 class PciPortDesc:
-   def __init__(self, device, func, port=0, quirks=None):
+   def __init__(self, device, func, port=0, root=False, quirks=None):
       self.device = device
       self.func = func
       self.port = port
+      self.root = root
       self.quirks = quirks or []
 
    def maybeAddQuirks(self, port):

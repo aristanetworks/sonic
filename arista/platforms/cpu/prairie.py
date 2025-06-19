@@ -1,5 +1,5 @@
 from ...core.cpu import Cpu
-from ...core.pci import PciRoot
+from ...core.pci import PciPortDesc, PciRoot
 
 from ...components.cpu.amd.designware import DesignWareI2cBus
 from ...components.cpu.amd.k10temp import K10Temp
@@ -10,6 +10,9 @@ from ...descs.sensor import Position, SensorDesc
 class PrairieCpu(Cpu):
 
    PLATFORM = 'prairie'
+
+   PCI_PORT_ASIC0 = PciPortDesc(0x01, 1)
+   PCI_PORT_SCD0 = PciPortDesc(0x18, 7, root=True)
 
    def __init__(self, tempBus=1, **kwargs):
       super().__init__(**kwargs)
@@ -38,12 +41,3 @@ class PrairieCpu(Cpu):
          SensorDesc(diode=0, name='MAC external temp sensor',
                     position=Position.OTHER, overheat=75, critical=80),
       ])
-
-   def getPciPort(self, num):
-      if num == 0:
-         return self.pciRoot.rootPort(device=0x18, func=7)
-      device, func = {
-         1: (0x01, 1),
-      }[num]
-      bridge = self.pciRoot.pciBridge(device=device, func=func)
-      return bridge.downstreamPort(port=0)

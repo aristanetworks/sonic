@@ -1,6 +1,6 @@
 from ...core.cpu import Cpu
 from ...core.fan import FanSlot
-from ...core.pci import PciRoot
+from ...core.pci import PciPortDesc, PciRoot
 from ...core.utils import incrange
 
 from ...components.cpu.amd.k10temp import K10Temp
@@ -19,6 +19,9 @@ from ...descs.sensor import Position, SensorDesc
 class CrowCpu(Cpu):
 
    PLATFORM = 'crow'
+
+   PCI_PORT_ASIC0 = PciPortDesc(0x02, 1)
+   PCI_PORT_SCD0 = PciPortDesc(0x02, 2)
 
    def __init__(self, registerCls=CrowCpldRegisters, sysCpldCls=CrowSysCpld,
                 **kwargs):
@@ -58,11 +61,3 @@ class CrowCpu(Cpu):
                cpld.addFan(fanDesc),
             ]
          )
-
-   def getPciPort(self, num):
-      device, func = {
-         0: (0x02, 1),
-         1: (0x02, 2),
-      }[num]
-      bridge = self.pciRoot.pciBridge(device=device, func=func)
-      return bridge.downstreamPort(port=0)

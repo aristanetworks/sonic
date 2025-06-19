@@ -1,5 +1,5 @@
 from ...core.cpu import Cpu
-from ...core.pci import PciRoot
+from ...core.pci import PciPortDesc, PciRoot
 
 from ...components.cpu.amd.k10temp import K10Temp
 from ...components.cpu.lorikeet import (
@@ -16,6 +16,9 @@ from ...descs.sensor import Position, SensorDesc
 class LorikeetCpu(Cpu):
 
    PLATFORM = 'lorikeet'
+
+   PCI_PORT_ASIC0 = PciPortDesc(0x03, 1)
+   PCI_PORT_SCD0 = PciPortDesc(0x01, 1)
 
    def __init__(self, cpldRegisterCls=LorikeetCpldRegisters, **kwargs):
       super(LorikeetCpu, self).__init__(**kwargs)
@@ -81,13 +84,6 @@ class LorikeetCpu(Cpu):
    def addFanGroup(self, slots=3, count=2):
       self.cpld.addFanGroup(0x9000, 3, slots, count)
 
-   def getPciPort(self, num):
-      device, func = {
-         0: (0x01, 1),
-         1: (0x03, 1),
-      }[num]
-      bridge = self.pciRoot.pciBridge(device=device, func=func)
-      return bridge.downstreamPort(port=0)
 
 class LorikeetPrimeCpu(LorikeetCpu):
    def addCpuDpm(self, addr=None, causes=None):

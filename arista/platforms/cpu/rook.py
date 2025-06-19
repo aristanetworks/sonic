@@ -1,6 +1,6 @@
 from ...core.cpu import Cpu
 from ...core.fan import FanSlot
-from ...core.pci import PciRoot
+from ...core.pci import PciPortDesc, PciRoot
 from ...core.utils import incrange
 
 from ...components.cpu.intel.coretemp import Coretemp
@@ -23,6 +23,9 @@ from ...descs.sensor import Position, SensorDesc
 class RookCpu(Cpu):
 
    PLATFORM = 'rook'
+
+   PCI_PORT_ASIC0 = PciPortDesc(0x1c, 4)
+   PCI_PORT_SCD0 = PciPortDesc(0x1c, 0)
 
    def __init__(self, mgmtBus=15, fanCpldCls=LaFanCpld, hasLmSensor=True,
                 hasCpuLeds=True, cpldRegisterCls=RookCpldRegisters, **kwargs):
@@ -106,11 +109,3 @@ class RookCpu(Cpu):
 
    def switchDpmAddr(self, addr=0x4e, t=3, **kwargs):
       return self.cpld.i2cAddr(10, addr, t=t, **kwargs)
-
-   def getPciPort(self, num):
-      device, func = {
-         0: (0x1c, 0),
-         1: (0x1c, 4),
-      }[num]
-      bridge = self.pciRoot.pciBridge(device=device, func=func)
-      return bridge.downstreamPort(port=0)

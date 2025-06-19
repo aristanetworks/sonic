@@ -65,7 +65,7 @@ class BlackhawkTH4DD(FixedSystem):
       self.cpu.addCpuDpm()
       self.syscpld = self.cpu.syscpld
 
-      port = self.cpu.getPciPort(0)
+      port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       scd = port.newComponent(Scd, addr=port.addr)
       self.scd = scd
 
@@ -149,7 +149,7 @@ class BlackhawkTH4DD(FixedSystem):
             ],
          )
 
-      port = self.cpu.getPciPort(1)
+      port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC0)
       port.newComponent(Tomahawk4, addr=port.addr,
          coreResets=[
             scd.inventory.getReset('switch_chip_reset'),

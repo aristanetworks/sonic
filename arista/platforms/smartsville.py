@@ -48,7 +48,7 @@ class Smartsville(FixedSystem):
          'overtemp': UcdGpi(4),
       })
 
-      port = self.cpu.getPciPort(0)
+      port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       scd = port.newComponent(Scd, addr=port.addr)
       self.scd = scd
 
@@ -157,7 +157,7 @@ class Smartsville(FixedSystem):
          phy = self.PHY(phyId, mdios, reset=reset)
          self.inventory.addPhy(phy)
 
-      port = self.cpu.getPciPort(2)
+      port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC0)
       port.newComponent(Jericho2, addr=port.addr,
          coreResets=[
             scd.inventory.getReset('switch_chip_reset'),

@@ -43,7 +43,7 @@ class Gardena(FixedSystem):
       self.cpu = cpu
       self.syscpld = cpu.syscpld
 
-      port = self.cpu.getPciPort(0)
+      port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       scd = port.newComponent(Scd, addr=port.addr)
       self.scd = scd
 
@@ -113,7 +113,7 @@ class Gardena(FixedSystem):
          ledAddr=0x7100
       )
 
-      port = self.cpu.getPciPort(1)
+      port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC0)
       port.newComponent(Tomahawk2, addr=port.addr,
          coreResets=[
             scd.inventory.getReset('switch_chip_reset'),

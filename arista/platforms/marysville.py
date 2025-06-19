@@ -45,7 +45,7 @@ class Marysville(FixedSystem):
          'cpu': UcdGpi(7),
       })
 
-      port = self.cpu.getPciPort(0)
+      port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       scd = port.newComponent(Scd, addr=port.addr)
 
       scd.createWatchdog()
@@ -128,7 +128,7 @@ class Marysville(FixedSystem):
          isHwLpModeAvail=False,
       )
 
-      port = self.cpu.getPciPort(1)
+      port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC0)
       port.newComponent(Trident3, addr=port.addr,
          coreResets=[
             scd.inventory.getReset('switch_chip_reset'),

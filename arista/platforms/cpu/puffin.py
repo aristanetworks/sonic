@@ -1,5 +1,5 @@
 from ...core.cpu import Cpu
-from ...core.pci import PciRoot
+from ...core.pci import PciPortDesc, PciRoot
 
 from ...components.cpu.amd.k10temp import K10Temp
 from ...components.cpld import (
@@ -17,6 +17,9 @@ class PuffinPrimeSysCpld(SysCpld):
 class PuffinPrimeCpu(Cpu):
 
    PLATFORM = 'puffin'
+
+   PCI_PORT_ASIC0 = PciPortDesc(0x01, 3)
+   PCI_PORT_SCD0 = PciPortDesc(0x01, 2)
 
    def __init__(self, registerCls=SysCpldCommonRegistersV2, **kwargs):
       super().__init__(**kwargs)
@@ -82,15 +85,6 @@ class PuffinPrimeCpu(Cpu):
 
    def addScdComponents(self, scd, hwmonBus=0):
       pass
-
-   def getPciPort(self, num):
-      device, func = {
-         0: (0x01, 2),
-         1: (0x01, 3),
-         2: (0x01, 4),
-      }[num]
-      bridge = self.pciRoot.pciBridge(device=device, func=func)
-      return bridge.downstreamPort(port=0)
 
    def addFanGroup(self, slots=3, count=2):
       self.cpld.addFanGroup(0x9000, 3, slots, count)

@@ -36,6 +36,14 @@ class CormorantCpu(Cpu):
       cpld = port.newComponent(Scd, addr=port.addr)
       self.cpld = cpld
 
+      cpld.addLeds([
+         (0x4100, 'beacon'),
+         (0x4110, 'status'),
+         (0x4120, 'fan_status'),
+         (0x4130, 'psu1'),
+         (0x4140, 'psu2'),
+      ])
+
       cpld.createInterrupt(addr=0x3000, num=0)
 
       cpld.addSmbusMasterRange(0x8000, 2, 0x80, 4)

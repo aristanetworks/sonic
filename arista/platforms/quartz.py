@@ -66,14 +66,6 @@ class QuartzDd(FixedSystem):
                        target=80, overheat=100, critical=105),
       ])
 
-      scd.addLeds([
-         (0x6050, 'status'),
-         (0x6060, 'fan_status'),
-         (0x6070, 'psu1'),
-         (0x6080, 'psu2'),
-         (0x6090, 'beacon'),
-      ])
-
       scd.addResets([
          ResetDesc('switch_chip0_pcie_reset', addr=0x4000, bit=0, auto=False),
          ResetDesc('switch_chip0_reset', addr=0x4000, bit=1, auto=False),
@@ -108,7 +100,7 @@ class QuartzDd(FixedSystem):
             presentGpio=scd.inventory.getGpio("%s_present" % name),
             inputOkGpio=scd.inventory.getGpio("%s_ac_status" % name),
             outputOkGpio=scd.inventory.getGpio("%s_status" % name),
-            led=scd.inventory.getLed('%s' % name),
+            led=self.cpu.cpld.inventory.getLed('%s' % name),
             psus=[
                PS2242,
             ],

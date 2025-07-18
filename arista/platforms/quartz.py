@@ -36,6 +36,7 @@ class QuartzDd(FixedSystem):
 
       self.cpu = self.newComponent(CormorantCpu)
       self.cpu.addCpuDpm()
+      self.syscpld = self.cpu.syscpld
 
       self.cpu.cpld.newComponent(Ucd90320, addr=self.cpu.switchDpmAddr(0x11),
          causes=[
@@ -48,6 +49,7 @@ class QuartzDd(FixedSystem):
 
       port = self.cpu.getPciPort(0)
       scd = port.newComponent(Scd, addr=port.addr)
+      self.scd = scd
 
       scd.createWatchdog()
       scd.setMsiRearmOffset(0x180)

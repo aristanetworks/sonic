@@ -39,5 +39,5 @@ class Sku(Component):
       output['eeprom'] = self.getEeprom() if ctx.performIo else None
       return output
 
-   def handleUngracefulReboot(self):
+   def handleUngracefulReboot(self, reloadCauseReport):
       pass

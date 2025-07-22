@@ -230,7 +230,7 @@ class DenaliLinecard(DenaliLinecardBase):
          return self.syscpld.nextPostCodeAvailable()
       return False
 
-   def handleUngracefulReboot(self):
+   def handleUngracefulReboot(self, reloadCauseReport):
       supervisorClient = getGlobalRpcClient(platform=self)
       response = supervisorClient.getRebootCause()
 

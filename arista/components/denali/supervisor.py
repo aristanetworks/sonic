@@ -155,11 +155,14 @@ class DenaliSupervisor(Supervisor):
    def readSlotId(self):
       return 2 if self.scd.inventory.getGpio('supervisor_slotid').isActive() else 1
 
-   def handleUngracefulReboot(self):
-      rebootCause = getOsSoftwareRebootCause()
+   def handleUngracefulReboot(self, reloadCauseReport):
+      hwRebootCause = (
+         "None" if reloadCauseReport is None else reloadCauseReport.cause.getCause()
+      )
+      swRebootCause = getOsSoftwareRebootCause()
       ungracefulRebootCause = (
-         'Heartbeat with the Supervisor card lost'
-         if 'Kernel Panic' in rebootCause
-         else 'None'
+         "Heartbeat with the Supervisor card lost"
+         if "Kernel Panic" in swRebootCause or "powerloss" in hwRebootCause
+         else "None"
       )
       setAllLcRebootInfo(self.getChassis(), ungracefulRebootCause)

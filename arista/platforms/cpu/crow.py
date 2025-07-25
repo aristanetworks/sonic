@@ -20,7 +20,8 @@ class CrowCpu(Cpu):
 
    PLATFORM = 'crow'
 
-   def __init__(self, registerCls=CrowCpldRegisters, **kwargs):
+   def __init__(self, registerCls=CrowCpldRegisters, sysCpldCls=CrowSysCpld,
+                **kwargs):
       super(CrowCpu, self).__init__(**kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
@@ -32,7 +33,7 @@ class CrowCpu(Cpu):
       ])
 
       bus = PiixI2cBus(1, 0x0b20)
-      self.syscpld = self.newComponent(CrowSysCpld, addr=bus.i2cAddr(0x23),
+      self.syscpld = self.newComponent(sysCpldCls, addr=bus.i2cAddr(0x23),
                                        registerCls=registerCls)
       self.syscpld.addPowerCycle()
 

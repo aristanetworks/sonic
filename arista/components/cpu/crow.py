@@ -8,7 +8,7 @@ from ...core.utils import LastRebootType, inSimulation
 
 from ...drivers.crow import CrowFanCpldKernelDriver
 
-from ..cpld import SysCpld, SysCpldCommonRegisters
+from ..cpld import SysCpld, SysCpldCommonRegisters, SysCpldSeuReporter
 
 logging = getLogger(__name__)
 
@@ -67,26 +67,24 @@ class DramScrubberQuirk(Quirk):
       with open(path, 'w', encoding='utf8') as f:
          f.write(str(self.rate))
 
+class KoiSysCpldSeuReporter(SysCpldSeuReporter):
+   def hasSeuError(self):
+      return self.cpld.driver.regs.scdCrcError() or \
+            self.cpld.driver.regs.cpldSeuDetected()
+
+   def powerCycleOnSeu(self, on=None):
+      res1 = self.cpld.driver.regs.powerCycleOnCrc(on)
+      res2 = self.cpld.driver.regs.powerCycleOnCpldSeu(on)
+      return res1 or res2
+
 class CrowSysCpld(SysCpld):
    REGISTER_CLS = CrowCpldRegisters
    QUIRKS = [
       DramScrubberQuirk(),
    ]
 
-   def powerCycleOnSeu(self, value=None):
-      if not isinstance(self.driver.regs, KoiCpldRegisters):
-         return super().powerCycleOnSeu(value)
-
-      res1 = self.driver.regs.powerCycleOnCrc(value)
-      res2 = self.driver.regs.powerCycleOnCpldSeu(value)
-      return res1 or res2
-
-   def hasSeuError(self):
-      if not isinstance(self.driver.regs, KoiCpldRegisters):
-         return super().hasSeuError()
-
-      return self.driver.regs.scdCrcError() or \
-             self.driver.regs.cpldSeuDetected()
+class KoiSysCpld(CrowSysCpld):
+   SEU_REPORTER_CLS = KoiSysCpldSeuReporter
 
 class CrowFanCpld(I2cComponent):
    DRIVER = CrowFanCpldKernelDriver

@@ -218,10 +218,12 @@ class SysCpld(I2cComponent):
    DRIVER = SysCpldI2cDriver
    PRIORITY = Priority.DEFAULT
 
+   SEU_REPORTER_CLS = SysCpldSeuReporter
+
    def __init__(self, *args, **kwargs):
       super(SysCpld, self).__init__(*args, **kwargs)
       self.inventory.addProgrammable(SysCpldProgrammable(self))
-      self.inventory.addSeuReporter(SysCpldSeuReporter(self))
+      self.inventory.addSeuReporter(self.SEU_REPORTER_CLS(self))
 
    def getVersion(self):
       if inSimulation():

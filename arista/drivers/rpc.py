@@ -28,6 +28,9 @@ class RpcPowerCycleImpl(PowerCycle):
       self.driver = driver
       self.desc = desc
 
+   def ensureAvailable(self):
+      pass
+
    def powerCycle(self):
       return self.driver.client.linecardSelfPowerCycle()
 

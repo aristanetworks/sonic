@@ -81,10 +81,11 @@ class SysCpldPowerCycle(PowerCycle):
    def __init__(self, parent):
       self.parent = parent
 
-   def powerCycle(self):
+   def ensureAvailable(self):
       # Modprobe for kdump kernel
       modprobe('i2c-dev')
 
+   def powerCycle(self):
       logging.info("Initiating powercycle through CPLD")
       self.parent.driver.regs.powerCycle(0xDE)
       logging.info("Powercycle triggered from CPLD")

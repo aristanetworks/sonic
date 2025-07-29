@@ -10,11 +10,15 @@ class AmdGpioController(Component):
 
    def addPowerCycle(self, desc, **kwargs):
       gpio = self.addGpio(desc, **kwargs)
-      return self.inventory.addPowerCycle(GpioPowerCycle(gpio))
+      return self.inventory.addPowerCycle(GpioPowerCycle(gpio, self.driver))
 
 class GpioPowerCycle(PowerCycle):
-   def __init__(self, gpio):
+   def __init__(self, gpio, driver):
       self.gpio = gpio
+      self.driver = driver
+
+   def ensureAvailable(self):
+      self.driver.setup()
 
    def powerCycle(self):
       self.gpio.setActive(1)

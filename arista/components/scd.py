@@ -75,6 +75,9 @@ class ScdPowerCycle(PowerCycle):
       self.reg = reg
       self.wr = wr
 
+   def ensureAvailable(self):
+      pass
+
    def powerCycle(self):
       logging.info("Initiating powercycle through SCD")
       try:

@@ -51,6 +51,7 @@ def do_reboot(platform=None):
    klog("Restarting system", level=0)
    for powerCycle in powerCycles:
       try:
+         powerCycle.ensureAvailable()
          powerCycle.powerCycle()
       except:
          klog("Failed to power cycle using %s" % powerCycle, level=0)

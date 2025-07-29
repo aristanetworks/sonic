@@ -201,6 +201,9 @@ class MockPowerCycle(PowerCycle):
    def __init__(self, powered=True):
       self.powered = powered
 
+   def ensureAvailable(self):
+      pass
+
    def powerCycle(self):
       self.powered = not self.powered
 

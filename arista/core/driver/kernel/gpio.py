@@ -40,6 +40,8 @@ class GpioController:
 
    def acquirePin(self, pin):
       globalOffset = self._getGpioOffset()
+      if os.path.exists(f"{self.SYSFS_INTERFACE}/gpio{globalOffset + pin}"):
+         return
       exportPath = f"{self.SYSFS_INTERFACE}/export"
       self._writeSysfs(exportPath, globalOffset + pin)
 

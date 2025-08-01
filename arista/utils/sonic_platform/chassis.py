@@ -3,7 +3,6 @@
 try:
    from sonic_platform_base.chassis_base import ChassisBase
    from sonic_platform_base.sfp_base import SfpBase
-   from arista.core import thermal_control
    from arista.core.bmc import BmcSubsystem
    from arista.core.card import Card
    from arista.core.cause import getReloadCauseManager
@@ -249,9 +248,6 @@ class Chassis(ChassisBase):
    def get_thermal_manager(self):
       import arista.utils.sonic_platform.thermal_manager
       return arista.utils.sonic_platform.thermal_manager.ThermalManager
-
-   def getThermalControl(self):
-      return thermal_control
 
    def get_liquid_cooling(self):
       return self._liquidCooling

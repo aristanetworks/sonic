@@ -52,7 +52,8 @@ class RedstartCpu(Cpu):
 
       cpld.addReloadCauseProvider(causes=[
          ScdCause(0x01, ScdCause.OVERTEMP),
-         ScdCause(0x08, ScdCause.REBOOT, 'Software Reboot'),
+         ScdCause(0x08, ScdCause.REBOOT, 'Software Reboot',
+                  priority=ScdCause.Priority.HIGH),
          ScdCause(0x0a, ScdCause.POWERLOSS, 'PSU DC to CPU'),
          ScdCause(0x0c, ScdCause.CPU),
          ScdCause(0x0d, ScdCause.CPU_S3, 'CPU Sleep Mode'),

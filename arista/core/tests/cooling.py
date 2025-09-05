@@ -8,6 +8,7 @@ from ...tests.testing import unittest
 
 from ..cooling import (
     CoolingAlgorithm,
+    CoolingConfig,
     CoolingFanBase,
     CoolingThermalBase,
 )
@@ -79,6 +80,9 @@ class CoolingMockInventory(object):
       return self.thermals
 
 class CoolingMockPlatform(object):
+
+   COOLING = CoolingConfig()
+
    def __init__(self, inventory):
       self.inventory = inventory
 

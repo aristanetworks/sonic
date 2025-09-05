@@ -1,6 +1,8 @@
+import copy
 import json
 import os
 from collections import deque
+from dataclasses import dataclass
 
 from ..libs.python import monotonicRaw
 
@@ -9,6 +11,14 @@ from .log import getLogger
 from .utils import inSimulation
 
 logging = getLogger(__name__)
+
+@dataclass
+class CoolingConfig:
+   minSpeed: float = 30
+
+   def update(self):
+      if Config().cooling_min_speed is not None:
+         self.minSpeed = Config().cooling_min_speed
 
 class Airflow(object):
    UNKNOWN = 'unknown'
@@ -176,7 +186,7 @@ class CoolingZone(object):
       self.name = name
       self.maxDecrease = Config().cooling_max_decrease
       self.maxIncrease = Config().cooling_max_increase
-      self.minSpeed = Config().cooling_min_speed
+      self.minSpeed = algo.config.minSpeed
       self.targetOffset = Config().cooling_target_offset
       self.speed = HistoricalData('target')
       self.fans = None
@@ -292,6 +302,7 @@ class CoolingAlgorithm(object):
 
    def __init__(self, platform):
       self.platform = platform
+      self.config = None
       self.previous = None
       self.now = None
       self.elapsed = None
@@ -302,6 +313,8 @@ class CoolingAlgorithm(object):
       return '%s()' % self.__class__.__name__
 
    def load(self):
+      self.config = copy.deepcopy(self.platform.COOLING)
+      self.config.update()
       # NOTE: for now only one zone
       self.zones.append(CoolingZone(self, 'System'))
 

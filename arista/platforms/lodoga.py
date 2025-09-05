@@ -1,3 +1,4 @@
+from ..core.cooling import CoolingConfig
 from ..core.fixed import FixedSystem
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
@@ -216,6 +217,7 @@ class LodogaPrime(LodogaBase):
 
    CHASSIS = LodogaPrimeChassis
    PSU_CLS = [DPS500AB, CSU500DP]
+   COOLING = CoolingConfig(minSpeed=15)
 
    class SmBusAddresses(object):
       TS  = 0

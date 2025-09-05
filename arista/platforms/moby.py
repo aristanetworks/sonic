@@ -1,4 +1,4 @@
-
+from ..core.cooling import CoolingConfig
 from ..core.fixed import FixedSystem, FixedChassis
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
@@ -74,6 +74,7 @@ class Moby(FixedSystem):
 
    CHASSIS = MobyChassis
    CPU_CLS = RedstartCpu
+   COOLING = CoolingConfig(minSpeed=15)
    LED_FP_TRICOLOR = True
 
    BACKPLANE_CONNECTORS = 8

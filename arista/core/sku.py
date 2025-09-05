@@ -1,5 +1,6 @@
 
 from .component.component import Component
+from .cooling import CoolingConfig
 from .hwapi import HwApi
 from .port import PortLayout
 
@@ -8,6 +9,8 @@ class Sku(Component):
    PLATFORM = None
    SID = None
    SKU = None
+
+   COOLING = CoolingConfig()
 
    DEFAULT_HWAPI = (0, 0)
 

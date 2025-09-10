@@ -21,7 +21,7 @@ def setOsSoftwareRebootCause(description):
       f.write(description)
 
 def getOsSoftwareRebootCause():
-   rebootCause = None
+   rebootCause = 'Unknown'
    try:
       with open(REBOOT_CAUSE_FILE, 'r', encoding='utf-8') as f:
          rebootCause = f.read()

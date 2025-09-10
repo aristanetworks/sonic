@@ -160,12 +160,20 @@ class ReloadCauseReport(object):
 
    def processProviders(self, providers):
       for provider in sorted(providers, key=lambda p: p.getPriority()):
-         provider.process()
-         remotes = provider.getRemoteProviders()
-         if remotes:
-            self.providers.extend(remotes)
-         else:
-            self.providers.append(provider)
+         try:
+            provider.process()
+            remotes = provider.getRemoteProviders()
+            if remotes:
+               self.providers.extend(remotes)
+            else:
+               self.providers.append(provider)
+         except Exception:  # pylint: disable=broad-except
+            sourceName = 'unknown'
+            try:
+               sourceName = provider.getSourceName()
+            finally:
+               logging.exception(
+                  "Failed to get reload cause from provider %s", sourceName)
 
    def analyzeCauses(self):
       causes = defaultdict(list)
@@ -232,7 +240,10 @@ class ReloadCauseManager(object):
       if data["version"] != self.VERSION:
          raise ValueError("Expected reload cause version to be %d" % self.VERSION)
       if data["name"] != self.name:
-         raise ValueError("Expected reload cause name to match %s" % self.name)
+         logging.warning(
+            "Expected reload cause name to match %s, existing name is %s",
+            self.name, data["name"])
+         data["name"] = self.name
       self.reports.extend(ReloadCauseReport.fromDict(d) for d in data['reports'])
 
    def loadLegacyCauseFile(self):

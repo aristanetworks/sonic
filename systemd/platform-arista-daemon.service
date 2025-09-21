@@ -11,7 +11,7 @@ StartLimitBurst=10
 Restart=always
 RestartSec=30
 
-ExecStart=/usr/bin/arista -l /var/log/arista-daemon.log --logfile-verbosity '.*/INFO' daemon
+ExecStart=/usr/bin/arista -l /var/log/arista-daemon.log --logfile-verbosity '.*/IO' daemon
 
 [Install]
 RequiredBy=platform-arista.target

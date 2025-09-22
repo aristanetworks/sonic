@@ -1,8 +1,14 @@
 
+from ...core.quirk import RegMapSetQuirk
 from ...core.register import Register, RegBitField
 
 from ..cpld import SysCpld, SysCpldCommonRegisters
 from ..scd import ScdReloadCauseRegisters
+
+class ShearwaterPowerCycleOnRailFaultQuirk(RegMapSetQuirk):
+   DESCRIPTION = 'enable power cycle on rail fault'
+   REG_NAME = 'powerCycleOnRailFault'
+   REG_VALUE = True
 
 class ShearwaterSysCpldRegisters(SysCpldCommonRegisters):
    PWR_CTRL_STS = Register(0x05,
@@ -24,6 +30,7 @@ class ShearwaterSysCpldRegisters(SysCpldCommonRegisters):
       RegBitField(0, 'scdConfDone'),
    )
    PWR_CYC_EN = Register(0x11,
+      RegBitField(6, 'powerCycleOnRailFault', ro=False),
       RegBitField(2, 'powerCycleOnCrc', ro=False),
    )
    RT_FAULT_0 = Register(0x46,
@@ -32,6 +39,7 @@ class ShearwaterSysCpldRegisters(SysCpldCommonRegisters):
 
 class ShearwaterSysCpld(SysCpld):
    REGISTER_CLS = ShearwaterSysCpldRegisters
+   QUIRKS = [ShearwaterPowerCycleOnRailFaultQuirk()]
 
 class ShearwaterReloadCauseRegisters(ScdReloadCauseRegisters):
    pass

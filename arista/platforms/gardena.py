@@ -2,9 +2,9 @@ from ..core.fixed import FixedSystem
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
 from ..core.psu import PsuSlot
-from ..core.quirk import Quirk
+from ..core.quirk import RegMapSetQuirk
 from ..core.register import Register, RegBitField
-from ..core.utils import incrange, inSimulation
+from ..core.utils import incrange
 
 from ..components.asic.xgs.tomahawk2 import Tomahawk2
 from ..components.cpld import SysCpldCommonRegistersV2
@@ -27,19 +27,10 @@ class GardenaCpldRegisters(SysCpldCommonRegistersV2):
       RegBitField(4, 'powerCycleOnDpPowerFail', ro=False),
    )
 
-class GardenaDpPwrFailQuirk(Quirk):
-   DELAYED = True
-   def __init__(self, description='enable DP_PWR_FAIL'):
-      self.description = description
-
-   def __str__(self):
-      return self.description
-
-   def run(self, component):
-      if inSimulation():
-         return
-
-      component.driver.regs.powerCycleOnDpPowerFail(True)
+class GardenaDpPwrFailQuirk(RegMapSetQuirk):
+   DESCRIPTION = 'enable DP_PWR_FAIL'
+   REG_NAME = 'powerCycleOnDpPowerFail'
+   REG_VALUE = True
 
 @registerPlatform()
 class Gardena(FixedSystem):

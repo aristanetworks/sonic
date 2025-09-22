@@ -23,7 +23,12 @@ class ShearwaterSysCpldRegisters(SysCpldCommonRegisters):
       RegBitField(1, 'scdInitDone'),
       RegBitField(0, 'scdConfDone'),
    )
-   # TODO crc seu
+   PWR_CYC_EN = Register(0x11,
+      RegBitField(2, 'powerCycleOnCrc', ro=False),
+   )
+   RT_FAULT_0 = Register(0x46,
+      RegBitField(2, 'scdCrcError'),
+   )
 
 class ShearwaterSysCpld(SysCpld):
    REGISTER_CLS = ShearwaterSysCpldRegisters

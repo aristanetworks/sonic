@@ -1,5 +1,11 @@
 
+from enum import Enum
+
 from ..core.desc import HwDesc
+
+class PsuStatusPolicy(Enum):
+   PMBUS_STATUS = 1
+   GPIO_OR_PMBUS_POWER = 2
 
 class PsuDesc(HwDesc):
 

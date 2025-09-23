@@ -9,7 +9,7 @@ from .log import getLogger
 from .utils import JsonStoredData, inSimulation
 
 from ..drivers.pmbus import PsuPmbusDetect
-from ..descs.psu import PsuDesc
+from ..descs.psu import PsuDesc, PsuStatusPolicy
 
 from ..inventory.psu import PsuSlot as PsuSlotInv
 from ..inventory.psu import Psu as PsuInv
@@ -223,7 +223,9 @@ class PsuSlot(SlotComponent):
 
    def __init__(self, slotId=None, desc=None, addrFunc=None, psus=None,
                 presentGpio=None, inputOkGpio=None, outputOkGpio=None, led=None,
-                forcePsuLoad=False, autoDetectTryAll=True, **kwargs):
+                forcePsuLoad=False, autoDetectTryAll=True,
+                psuStatusPolicy=PsuStatusPolicy.GPIO_OR_PMBUS_POWER,
+                **kwargs):
       super().__init__(**kwargs)
       self.slotId = slotId
       self.model = None
@@ -237,6 +239,7 @@ class PsuSlot(SlotComponent):
       self.psus = psus or []
       self.forcePsuLoad = forcePsuLoad
       self.autoDetectTryAll = autoDetectTryAll and not forcePsuLoad
+      self.psuStatusPolicy = psuStatusPolicy
 
       if self.addrFunc:
          self.addrFunc(0x00) # workaround to configure a bus wide parameter
@@ -246,6 +249,13 @@ class PsuSlot(SlotComponent):
       self.psuInv = None
       self.psu = None
       self.load(cacheOnly=True) # no IO in the constructor
+
+   def genDiag(self, ctx):
+      data = super().genDiag(ctx)
+      data.update({
+             'psu': self.psu.genDiag(ctx) if self.psu else None,
+      })
+      return data
 
    def _forcePsuModel(self, model):
       ident = copy.deepcopy(model.IDENTIFIERS[0])
@@ -382,9 +392,33 @@ class PsuSlot(SlotComponent):
    def isOutputGood(self):
       return self._getGpioActiveOr(self.outputOkGpio)
 
+   def checkPmbusStatus(self):
+      if self.psu and self.psu.driver is not None:
+         try:
+            return self.psu.driver.isPmbusStatusGood()
+         except Exception as e: # pylint: disable=broad-except
+            logging.error("PSU %d failed to read PMBus status: %s",
+                          self.slotId, e)
+            return None
+      else:
+         logging.debug("PSU %d has no PMBus driver cannot read status", self.slotId)
+         return None
+
    def isPowerGood(self):
       if not self.getPresence():
          return False
+      if self.psuStatusPolicy == PsuStatusPolicy.PMBUS_STATUS:
+         pmbusStatus = self.checkPmbusStatus()
+         if pmbusStatus is True:
+            return True
+         if pmbusStatus is None:
+            logging.debug("PSU %d PMBus status unknown, "
+                          "falling back to input and output pins for status",
+                           self.slotId)
+         else:
+            logging.debug("PSU %d PMBus status check failed, "
+                          "falling back to input and output pins for status",
+                          self.slotId)
       if not self.isInputGood():
          return False
       return self.isOutputGood()

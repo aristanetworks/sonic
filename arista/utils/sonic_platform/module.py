@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import subprocess
 import time
+import datetime
 
 try:
    from arista.core.onie import OnieEeprom
@@ -66,6 +67,9 @@ class Module(ModuleBase):
       # TODO: implement logic for this
       return True
 
+   def _is_warm(self):
+      return True
+
    def is_replaceable(self):
       return True
 
@@ -98,6 +102,8 @@ class Module(ModuleBase):
          return self.MODULE_STATUS_OFFLINE
       if not self.get_status():
          return self.MODULE_STATUS_FAULT
+      if not self._is_warm():
+         return self.MODULE_STATUS_PRESENT
       return self.MODULE_STATUS_ONLINE
 
    def set_admin_state(self, up):
@@ -167,6 +173,12 @@ class FabricModule(Module):
 
 class LinecardModule(Module):
    RPC_CLIENT_SOURCE = RpcClientSource.FROM_SUPERVISOR
+   PING_LC_CACHE_TIMEOUT = 5
+
+   def __init__(self, parent, sku):
+      super().__init__(parent, sku)
+      self._midplane_reachable = False
+      self._last_midplane_ping = datetime.datetime.min
 
    def get_name(self):
       return '%s%s' % (self.MODULE_TYPE_LINE, self._sku.getRelativeSlotId())
@@ -174,10 +186,21 @@ class LinecardModule(Module):
    def get_type(self):
       return self.MODULE_TYPE_LINE
 
+   def _is_warm(self):
+      # For LC we'll use the midplane being reachable to indicate the LC is in an
+      # operational state. This is to correct a discrepancy seen in issue806
+      return self.is_midplane_reachable()
+
    def is_midplane_reachable(self):
       if not self.get_presence() or not self._sku.poweredOn():
-         return False
-      return ping(self.get_midplane_ip())
+         self._midplane_reachable = False
+      else:
+         now = datetime.datetime.now()
+         time_elapsed = now - self._last_midplane_ping
+         if time_elapsed > datetime.timedelta(seconds=self.PING_LC_CACHE_TIMEOUT):
+            self._midplane_reachable = ping(self.get_midplane_ip())
+            self._last_midplane_ping = now
+      return self._midplane_reachable
 
    def get_all_asics(self):
       self._asic_list = []
@@ -202,6 +225,9 @@ class LinecardSelfModule(LinecardModule):
 
    def get_name(self):
       return self.MODULE_TYPE_LINE
+
+   def _is_warm(self):
+      return True
 
    def reboot(self, reboot_type):
       subprocess.run(['sync'], check=False)

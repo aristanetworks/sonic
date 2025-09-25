@@ -19,6 +19,7 @@ RULES = (
       forbidden=('arista.utils',),
       allowlist={
          ('cli/actions/reboot.py', 'arista.utils.sonic_reboot'),
+         ('core/linecard.py', 'arista.utils.rpc'),
          ('core/reboot.py', 'arista.utils.rpc'),
          ('components/denali/linecard.py', 'arista.utils.rpc'),
          ('drivers/rpc.py', 'arista.utils.rpc'),

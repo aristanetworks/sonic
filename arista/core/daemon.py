@@ -98,11 +98,15 @@ def registerDaemonFeature():
       return cls
    return wrapper
 
-def getDaemonFeatureCls(names):
+def getDaemonFeatureCls(enableNames, skipNames):
    from .. import daemon as _
 
-   if not names:
+   if not enableNames and not skipNames:
       return _features.values()
+
+   names = enableNames or _features.keys()
+   if skipNames:
+      names = set(names) - set(skipNames)
 
    features = []
    for name in names:

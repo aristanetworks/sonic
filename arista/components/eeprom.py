@@ -17,11 +17,11 @@ logging = getLogger(__name__)
 def maybeCached(name, func, cls=JsonStoredData):
    name += '.json'
    try:
-      cache = JsonStoredData(name)
+      cache = cls(name)
       if cache.exist():
          return cache.read()
    except Exception: # pylint: disable=broad-except
-      logging.debug('Failed to read cache for %s' % name)
+      logging.debug('Failed to read cache for %s', name)
 
    data = func()
 
@@ -29,9 +29,18 @@ def maybeCached(name, func, cls=JsonStoredData):
       try:
          cache.write(data, mode='w')
       except Exception: # pylint: disable=broad-except
-         logging.debug('Failed to cache value for %s' % name)
+         logging.debug('Failed to cache value for %s', name)
 
    return data
+
+def isCached(name, cls=JsonStoredData):
+   name += '.json'
+   try:
+      cache = cls(name)
+      return cache.exist()
+   except Exception: # pylint: disable=broad-except
+      logging.debug('Failed to read cache for %s', name)
+      return False
 
 def maybeClearCache(name):
    name += '.json'
@@ -39,7 +48,7 @@ def maybeClearCache(name):
       cache = JsonStoredData(name)
       cache.clear()
    except Exception: # pylint: disable=broad-except
-      logging.debug("Failed to clear cache %s" % name)
+      logging.debug("Failed to clear cache %s", name)
 
 class I2cEeprom(I2cComponent):
    DRIVER = EepromKernelDriver
@@ -47,6 +56,12 @@ class I2cEeprom(I2cComponent):
 
    def eepromName(self):
       return self.label or 'eeprom_%s' % self.addr
+
+   def prefdlCached(self):
+      return isCached(self.eepromName())
+
+   def clearPrefdlCache(self):
+      maybeClearCache(self.eepromName())
 
    def prefdl(self):
       return maybeCached(self.eepromName(), lambda: self.readPrefdl().data())
@@ -62,7 +77,7 @@ class I2cEeprom(I2cComponent):
 
    def clean(self):
       super(I2cEeprom, self).clean()
-      maybeClearCache(self.eepromName())
+      self.clearPrefdlCache()
 
 class I2cSeeprom(I2cEeprom):
    def __init__(self, *args, hdrSz=8, **kwargs):

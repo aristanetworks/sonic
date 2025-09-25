@@ -14,7 +14,7 @@ def doDaemon(ctx, args):
    if isinstance(ctx.platform, Supervisor):
       ctx.platform.getChassis().loadAll()
    daemon = Daemon(ctx.platform)
-   for featureCls in getDaemonFeatureCls(args.feature):
+   for featureCls in getDaemonFeatureCls(args.feature, args.skip_feature):
       if featureCls.runnable(daemon):
          logging.debug('daemon: loading feature %s', featureCls.NAME)
          daemon.addFeature(featureCls())

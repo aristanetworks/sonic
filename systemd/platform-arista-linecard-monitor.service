@@ -1,0 +1,19 @@
+[Unit]
+Description=Arista platform linecard monitor daemon
+After=platform-arista-pmon.service platform-arista-linecard.service
+Requires=platform-arista-pmon.service platform-arista-linecard.service
+PartOf=platform-arista.target
+StartLimitIntervalSec=1200
+StartLimitBurst=10
+Type=simple
+ConditionKernelCommandLine=Aboot
+ConditionKernelCommandLine=sonic.mode=supervisor
+
+[Service]
+Restart=always
+RestartSec=60
+
+ExecStart=/usr/bin/arista -l /var/log/arista-monitor.log --logfile-verbosity '.*/IO' daemon --feature linecard_monitor
+
+[Install]
+RequiredBy=platform-arista.target

@@ -7,5 +7,8 @@ from .default import defaultPlatformParser
 @registerParser('daemon', parent=defaultPlatformParser,
                 help='run arista daemon to monitor the hardware')
 def daemonParser(parser):
-   parser.add_argument('-f', '--feature', action='append',
+   group = parser.add_mutually_exclusive_group()
+   group.add_argument('-f', '--feature', action='append',
       help='Name of the features to run, default all')
+   group.add_argument('-s', '--skip-feature', action='append',
+      help='Name of the features to skip, default none')

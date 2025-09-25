@@ -12,6 +12,7 @@ import json
 from ...core.cause import getLinecardReloadCauseManager
 from ...core.config import Config, flashPath
 from ...core.log import getLogger
+from ...core.provision import ProvisionManifest
 from ...core.supervisor import Supervisor
 from ...core.utils import inSimulation
 
@@ -221,6 +222,13 @@ class RpcSupervisorApi(RpcApi):
    @registerLinecardToSupMethod
    async def getRebootCause(self, lc):
       return {'status': True, 'reboot_cause' : getAndSetLcRebootCause(lc)}
+
+   @registerLinecardToSupMethod
+   async def provisionComplete(self, lc):
+      manifest = ProvisionManifest(self.platform)
+      manifest.read()
+      manifest.setLinecardProvisioned(lc)
+      manifest.write()
 
 class RpcLinecardApi(RpcApi):
 

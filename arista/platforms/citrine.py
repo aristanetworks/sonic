@@ -7,7 +7,11 @@ from ..core.psu import PsuSlot
 
 from ..components.scd import Scd
 from ..components.asic.dnx.jericho3 import Jericho3
-from ..components.dpm.adm1266 import Adm1266, AdmCause
+from ..components.dpm.adm1266 import (
+   Adm1266,
+   AdmCauseUnique as AdmCauseU,
+   AdmGpio
+)
 from ..components.lm75 import Tmp75
 from ..components.phy.screamingeagle import ScreamingEagle
 
@@ -33,19 +37,20 @@ class CitrineBase(FixedSystem):
    def __init__(self):
       super(CitrineBase, self).__init__()
       self.cpu = self.newComponent(RedstartCpu)
-      gpioMask = 0b000001111
+      gpioInMask = 0b000001111
       self.cpu.cpld.newComponent(Adm1266,
-                addr=self.cpu.getSmbus(self.cpu.SMBUS_POL).i2cAddr(0x40),
-                causes=[
-            AdmCause(0x01, AdmCause.OVERTEMP, mask=gpioMask),
-            AdmCause(0x03, AdmCause.WATCHDOG, mask=gpioMask),
-            AdmCause(0x04, AdmCause.POWERLOSS, "CPU Power bad", mask=gpioMask),
-            AdmCause(0x08, AdmCause.REBOOT, mask=gpioMask),
-            AdmCause(0x09, AdmCause.POWERLOSS,
-                     "Both PSUs lost input power", mask=gpioMask),
-            AdmCause(0x0a, AdmCause.POWERLOSS,
-                     "Both PSUs lost DC output power", mask=gpioMask),
-            AdmCause(0x0b, AdmCause.NOFANS, mask=gpioMask),
+         addr=self.cpu.getSmbus(self.cpu.SMBUS_POL).i2cAddr(0x40),
+         causes=[
+            AdmCauseU(AdmCauseU.OVERTEMP,  AdmGpio(1),             gpioInMask),
+            AdmCauseU(AdmCauseU.WATCHDOG,  AdmGpio.fromPins(1, 2), gpioInMask),
+            AdmCauseU(AdmCauseU.POWERLOSS, AdmGpio(3),             gpioInMask,
+                           description="CPU Power bad"),
+            AdmCauseU(AdmCauseU.REBOOT,    AdmGpio(4),             gpioInMask),
+            AdmCauseU(AdmCauseU.POWERLOSS, AdmGpio.fromPins(1, 4), gpioInMask,
+                           description="Both PSUs lost input power"),
+            AdmCauseU(AdmCauseU.POWERLOSS, AdmGpio.fromPins(2, 4), gpioInMask,
+                           description="Both PSUs lost DC output power"),
+            AdmCauseU(AdmCauseU.NOFANS, AdmGpio.fromPins(1, 2, 4), gpioInMask),
       ])
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)

@@ -7,7 +7,12 @@ from ...core.utils import getCmdlineDict
 from ...components.cookie import SonicReloadCauseCookieComponent
 from ...components.cpu.amd.k10temp import K10Temp
 from ...components.cpu.amd.sbtsi import SbTsi
-from ...components.dpm.adm1266 import Adm1266, AdmCause, AdmPriority
+from ...components.dpm.adm1266 import (
+   Adm1266,
+   AdmCauseOneHot,
+   AdmGpio,
+   AdmPdio,
+)
 from ...components.rpc import LinecardRpcClient
 from ...components.scd import Scd
 
@@ -72,7 +77,12 @@ class HedgehogCpu(Cpu):
    @classmethod
    def addCpuDpm(cls, bus, addr=None, causes=None):
       return bus.newComponent(Adm1266, addr=addr, causes=causes or [
-         AdmCause(1 << 1, AdmCause.REBOOT),
-         AdmCause(1 << 7, AdmCause.OVERTEMP, priority=AdmPriority.NONE),
-         AdmCause(1 << 8, AdmCause.CPU_OVERTEMP),
+         AdmCauseOneHot(AdmCauseOneHot.REBOOT,
+                        AdmPdio(12), AdmCauseOneHot.Direction.INOUT, True, 14, 4),
+         AdmCauseOneHot(AdmCauseOneHot.OVERTEMP,
+                        AdmGpio(8),  AdmCauseOneHot.Direction.IN,    True, 15, 1),
+         AdmCauseOneHot(AdmCauseOneHot.CPU_S3,
+                        AdmPdio(13), AdmCauseOneHot.Direction.IN,    True, 15, 2),
+         AdmCauseOneHot(AdmCauseOneHot.CPU_S5,
+                        AdmPdio(14), AdmCauseOneHot.Direction.IN,    True, 15, 2)
       ])

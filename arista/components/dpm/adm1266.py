@@ -1,5 +1,9 @@
+from enum import Enum
+from functools import cached_property
 
-from arista.descs.cause import ReloadCauseDesc
+from ...descs.cause import ReloadCauseDesc
+from ...libs.integer import isBitSet
+
 from ...core.cause import (
    ReloadCauseEntry,
    ReloadCausePriority,
@@ -24,21 +28,169 @@ logging = getLogger(__name__)
 class AdmPriority(ReloadCausePriority):
    pass
 
-class AdmCause(ReloadCauseDesc):
-   def __init__(self, value, name=ReloadCauseDesc.UNKNOWN,
-                description=None, mask=None,
-                priority=AdmPriority.NORMAL):
-      super().__init__(value, name, description, priority)
-      # default mask to value, for one-hot encoded causes
-      self.mask = value if mask is None else mask
+class AdmPin():
+   class Typ(Enum):
+      GPIO = 'gpio'
+      PDIO = 'pdio'
 
-   @property
-   def value(self):
-      return self.code
+   def __init__(self, pin, typ):
+      self.pin = pin
+      self.typ = typ
+
+class AdmGpio(AdmPin):
+   def __init__(self, pin):
+      super().__init__(pin, AdmPin.Typ.GPIO)
+
+   @staticmethod
+   def fromPins(*pins):
+      return [AdmGpio(pin) for pin in pins]
+
+class AdmPdio(AdmPin):
+   def __init__(self, pin):
+      super().__init__(pin, AdmPin.Typ.PDIO)
+
+   @staticmethod
+   def fromPins(*pins):
+      return [AdmPdio(pin) for pin in pins]
+
+class AdmCauseBase(ReloadCauseDesc):
+   def __init__(self, current=None, action=None, pins=None,
+                name=ReloadCauseDesc.UNKNOWN,
+                description=None,
+                priority=AdmPriority.NORMAL):
+      self._pins = pins or []
+      if not isinstance(self._pins, list):
+         self._pins = [self._pins]
+      super().__init__((current, action, self._pins), name, description, priority)
+
+   @cached_property
+   def gpios(self):
+      return [p for p in self._pins if p.typ == AdmPin.Typ.GPIO]
+
+   @cached_property
+   def pdios(self):
+      return [p for p in self._pins if p.typ == AdmPin.Typ.PDIO]
 
    @property
    def name(self):
       return self.typ
+
+   def matchesCurrentAndAction(self, fault):
+      if (self.code[0] is not None and self.code[0] != fault.current) or \
+         (self.code[1] is not None and self.code[1] != fault.action):
+         return False
+      return True
+
+class AdmCauseOneHot(AdmCauseBase):
+   class Direction(Enum):
+      IN = 'input'
+      OUT = 'output'
+      INOUT = 'both'
+
+   def __init__(self, name, pin, direction=Direction.IN, activeLow=False,
+                current=None, action=None, description=None,
+                priority=AdmPriority.NORMAL):
+      self.direction = direction
+      self.activeLow = activeLow
+      super().__init__(current, action, pin, name, description, priority)
+
+   def _isPinActive(self, bit, inBits, outBits):
+      isActiveIn = isBitSet(bit, inBits) != self.activeLow
+      isActiveOut = isBitSet(bit, outBits) != self.activeLow
+
+      if self.direction == self.Direction.INOUT:
+         return isActiveIn or isActiveOut
+      if self.direction == self.Direction.IN:
+         return isActiveIn
+      if self.direction == self.Direction.OUT:
+         return isActiveOut
+      # Disabled pin
+      return False
+
+   def matchesFault(self, fault):
+      for pin in self.gpios:
+         bit = fault.GPIO_MAP.index(pin.pin)
+         if not self._isPinActive(bit, fault.gpio_in, fault.gpio_out):
+            return False
+      for pin in self.pdios:
+         bit = pin.pin - 1
+         if not self._isPinActive(bit, fault.pdio_in, fault.pdio_out):
+            return False
+      return super().matchesCurrentAndAction(fault)
+
+class AdmCauseUnique(AdmCauseBase):
+   def __init__(self, name, pins,
+                gpioInMask=0, gpioOutMask=0, gpioActiveLowMask=0,
+                pdioInMask=0, pdioOutMask=0, pdioActiveLowMask=0,
+                current=None, action=None,
+                description=None,
+                priority=AdmPriority.NORMAL):
+      self.gpioInMask = gpioInMask
+      self.gpioOutMask = gpioOutMask
+      self.gpioActiveLowMask = gpioActiveLowMask
+      self.pdioInMask = pdioInMask
+      self.pdioOutMask = pdioOutMask
+      self.pdioActiveLowMask = pdioActiveLowMask
+      super().__init__(current, action, pins, name, description, priority)
+
+   @cached_property
+   def gpioPinSet(self):
+      return {gpio.pin for gpio in self.gpios}
+
+   @cached_property
+   def pdioPinSet(self):
+      return {pdio.pin for pdio in self.pdios}
+
+   def _isPinActive(self, pin, bit, inBits, outBits, inMask, outMask, activeLowMask):
+      pinIndex = pin - 1
+
+      isActiveLow = isBitSet(pinIndex, activeLowMask)
+      isActiveIn = isBitSet(bit, inBits) != isActiveLow
+      isActiveOut = isBitSet(bit, outBits) != isActiveLow
+      isInput = isBitSet(pinIndex, inMask)
+      isOutput = isBitSet(pinIndex, outMask)
+
+      if isInput and isOutput:
+         return isActiveIn or isActiveOut
+      if isInput:
+         return isActiveIn
+      if isOutput:
+         return isActiveOut
+      # Disabled pin
+      return False
+
+   def matchesFault(self, fault):
+      inBits = fault.gpio_in
+      outBits = fault.gpio_out
+      pinSet = self.gpioPinSet
+      pinBitMap = fault.GPIO_MAP
+      for pinNum in range(1, 10):
+         bit = pinBitMap.index(pinNum)
+
+         isFaultPin = pinNum in pinSet
+         isPinActive = self._isPinActive(pinNum, bit, inBits, outBits,
+                                         self.gpioInMask, self.gpioOutMask,
+                                         self.gpioActiveLowMask)
+         # only fault pins should be active.
+         if isPinActive != isFaultPin:
+            return False
+
+      inBits = fault.pdio_in
+      outBits = fault.pdio_out
+      pinSet = self.pdioPinSet
+      pinBitMap = range(1, 17)
+      for pinNum in range(1, 17):
+         bit = pinBitMap.index(pinNum)
+
+         isFaultPin = pinNum in pinSet
+         isPinActive = self._isPinActive(pinNum, bit, inBits, outBits,
+                                         self.pdioInMask, self.pdioOutMask,
+                                         self.pdioActiveLowMask)
+         # only fault pins should be active.
+         if isPinActive != isFaultPin:
+            return False
+
+      return super().matchesCurrentAndAction(fault)
 
 class AdmReloadCauseEntry(ReloadCauseEntry):
    pass
@@ -112,8 +264,7 @@ class Adm1266(PmbusDpm):
       for fault in self.driver.getBlackboxFaults():
          logging.debug('fault: %s', fault.summary())
          for cause in self.causes:
-            # check if the set pins correspond to this fault
-            if (self._gpioToCause(fault.gpio_in) & cause.mask) == cause.value:
+            if cause.matchesFault(fault):
                logging.debug('found: %s', cause.name)
                causes.append(AdmReloadCauseEntry(
                   cause=cause.name,
@@ -123,16 +274,6 @@ class Adm1266(PmbusDpm):
                         ReloadCauseScore.getPriority(cause.priority),
                ))
       return causes
-
-   def _gpioToCause(self, gpio_in):
-      gpio_to_cause_map = [0, 1, 2, 8, 9, 10, 11, 6, 7]
-
-      cause = 0
-      for cause_bit_pos, gpio_bit_pos in enumerate(gpio_to_cause_map):
-         bit = (gpio_in >> gpio_bit_pos) & 1
-         cause |= (bit << cause_bit_pos)
-
-      return cause
 
    def getReloadCauses(self):
       if inSimulation():

@@ -77,10 +77,6 @@ class Adm1266Fault(object):
    def isValid(self):
       return self.empty & 0x1 == 0
 
-   def isGpio(self, gpio):
-      bit = self.GPIO_MAP.index(gpio)
-      return bool(self.gpio_in & (1 << bit))
-
    def getTime(self):
       return admToDatetime(self.timestamp)
 

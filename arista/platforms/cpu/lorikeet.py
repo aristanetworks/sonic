@@ -7,7 +7,13 @@ from ...components.cpu.lorikeet import (
     LorikeetPrimeScdReloadCauseRegisters,
     LorikeetSysCpld,
 )
-from ...components.dpm.adm1266 import Adm1266, AdmCause, AdmPriority
+from ...components.dpm.adm1266 import (
+   Adm1266,
+   AdmCauseOneHot as AdmCauseOH,
+   AdmGpio,
+   AdmPdio,
+   AdmPriority,
+)
 from ...components.max6658 import Max6658
 from ...components.scd import Scd, ScdCause
 
@@ -70,11 +76,12 @@ class LorikeetCpu(Cpu):
    def addCpuDpm(self, addr=None, causes=None):
       addr = addr or self.cpuDpmAddr()
       return self.cpld.newComponent(Adm1266, addr=addr, causes=causes or [
-         AdmCause(1 << 2, AdmCause.CPU_S5, priority=AdmPriority.LOW),
-         AdmCause(1 << 3, AdmCause.CPU_S3, priority=AdmPriority.LOW),
-         AdmCause(1 << 4, AdmCause.NOFANS),
-         AdmCause(1 << 5, AdmCause.OVERTEMP),
-         AdmCause(1 << 6, AdmCause.CPU, priority=AdmPriority.LOW)
+         AdmCauseOH(AdmCauseOH.CPU_S5,       AdmPdio(13), activeLow=True),
+         AdmCauseOH(AdmCauseOH.CPU_S3,       AdmPdio(14), activeLow=True),
+         AdmCauseOH(AdmCauseOH.NOFANS,       AdmGpio(5)),
+         AdmCauseOH(AdmCauseOH.OVERTEMP,     AdmGpio(6)),
+         AdmCauseOH(AdmCauseOH.CPU,          AdmGpio(7), priority=AdmPriority.LOW),
+         AdmCauseOH(AdmCauseOH.CPU_OVERTEMP, AdmGpio(8), activeLow=True),
       ])
 
    def cpuDpmAddr(self, addr=0x4f, t=3, **kwargs):

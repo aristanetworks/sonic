@@ -7,7 +7,11 @@ from ...components.cpu.cormorant import (
    CormorantCpldRegisters,
    CormorantSysCpld,
 )
-from ...components.dpm.adm1266 import Adm1266, AdmCause
+from ...components.dpm.adm1266 import (
+   Adm1266,
+   AdmCauseUnique as AdmCauseU,
+   AdmGpio
+)
 from ...components.max6658 import Max6658
 from ...components.scd import Scd
 
@@ -71,14 +75,14 @@ class CormorantCpu(Cpu):
 
    def addCpuDpm(self, addr=None, causes=None):
       addr = addr or self.cpuDpmAddr()
-      gpioMask = 0b000111110
+      gpioInMask = 0b000111110
       return self.cpld.newComponent(Adm1266, addr=addr, causes=causes or [
-         AdmCause(0x11 << 1, AdmCause.NOFANS, mask=gpioMask),
-         AdmCause(0x12 << 1, AdmCause.REBOOT, mask=gpioMask),
-         AdmCause(0x13 << 1, AdmCause.CPU_OVERTEMP, mask=gpioMask),
-         AdmCause(0x14 << 1, AdmCause.OVERTEMP, mask=gpioMask),
-         AdmCause(0x15 << 1, AdmCause.POWERLOSS, mask=gpioMask),
-         AdmCause(0x16 << 1, AdmCause.CPU, mask=gpioMask),
+         AdmCauseU(AdmCauseU.NOFANS,       AdmGpio.fromPins(2, 6),    gpioInMask),
+         AdmCauseU(AdmCauseU.REBOOT,       AdmGpio.fromPins(3, 6),    gpioInMask),
+         AdmCauseU(AdmCauseU.CPU_OVERTEMP, AdmGpio.fromPins(2, 3, 6), gpioInMask),
+         AdmCauseU(AdmCauseU.OVERTEMP,     AdmGpio.fromPins(4, 6),    gpioInMask),
+         AdmCauseU(AdmCauseU.POWERLOSS,    AdmGpio.fromPins(2, 4, 6), gpioInMask),
+         AdmCauseU(AdmCauseU.CPU,          AdmGpio.fromPins(3, 4, 6), gpioInMask),
       ])
 
    def cpuDpmAddr(self, addr=0x4f, t=3, **kwargs):

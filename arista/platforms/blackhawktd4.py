@@ -5,7 +5,7 @@ from ..core.psu import PsuSlot
 from ..core.utils import incrange
 
 from ..components.asic.xgs.trident4 import Trident4
-from ..components.dpm.adm1266 import Adm1266, AdmCause
+from ..components.dpm.adm1266 import Adm1266, AdmCauseOneHot, AdmGpio
 from ..components.psu.delta import DPS1500AB, DPS1600AB, DPS1600CB
 from ..components.scd import Scd
 from ..components.tmp468 import Tmp468
@@ -37,12 +37,13 @@ class BlackhawkTD4(FixedSystem):
       self.cpu = self.newComponent(LorikeetCpu)
       self.cpu.addCpuDpm()
       self.cpu.cpld.newComponent(Adm1266, addr=self.cpu.switchDpmAddr(), causes=[
-         AdmCause(1, AdmCause.OVERTEMP),
-         AdmCause(1 << 2, AdmCause.WATCHDOG),
-         AdmCause(1 << 3, AdmCause.POWERLOSS, "Both PSUs lost input power"),
-         AdmCause(1 << 4, AdmCause.POWERLOSS, "Both PSUs lost DC output power"),
-         AdmCause(1 << 5, AdmCause.REBOOT)
-      ])
+         AdmCauseOneHot(AdmCauseOneHot.OVERTEMP,  AdmGpio(1)),
+         AdmCauseOneHot(AdmCauseOneHot.WATCHDOG,  AdmGpio(3)),
+         AdmCauseOneHot(AdmCauseOneHot.POWERLOSS, AdmGpio(4),
+                  description="Both PSUs lost input power"),
+         AdmCauseOneHot(AdmCauseOneHot.POWERLOSS, AdmGpio(5),
+                  description="Both PSUs lost DC output power")
+         ])
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       scd = port.newComponent(Scd, addr=port.addr)

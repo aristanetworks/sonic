@@ -102,7 +102,9 @@ class DBHelper(object):
       return self._get_table_objects(self._chassis_state_db, tbl)
 
    def get_all_xcvrs(self):
-      tbls = ('TRANSCEIVER_DOM_SENSOR', 'TRANSCEIVER_DOM_THRESHOLD')
+      tbls = ['TRANSCEIVER_DOM_SENSOR', 'TRANSCEIVER_DOM_THRESHOLD']
+      if Config().cooling_xcvrs_use_dom_temperature:
+         tbls += ['TRANSCEIVER_DOM_TEMPERATURE']
       return self._get_multi_table_objects(self._state_db, *tbls)
 
    def get_all_module_xcvrs(self, idx):
@@ -246,6 +248,8 @@ class CoolingXcvrThermal(CoolingThermal):
    def target(self):
       if Config().cooling_override_xcvr_target is not None:
          return Config().cooling_override_xcvr_target
+      if Config().cooling_xcvr_target_offset is not None and self.overheat:
+         return self.overheat + Config().cooling_xcvr_target_offset
       return super().target
 
    def _float_or_none(self, value):
@@ -262,15 +266,19 @@ class CoolingXcvrThermal(CoolingThermal):
          return False
       self.temperature = api.get_module_temperature()
       if not self._initialized:
-         if hasattr(api, 'get_transceiver_threshold_support') and \
-            api.get_transceiver_threshold_support():
-            self.init_thresholds(api.get_transceiver_threshold_support())
+         if hasattr(api, 'get_transceiver_thresholds_support') and \
+            api.get_transceiver_thresholds_support():
+            self.update_thresholds(api.get_transceiver_threshold_info())
          self._initialized = True
       return True
 
    def update_from_db(self):
-      data = self.dbent.get_all(0)
-      self.temperature = self._float_or_none(data['temperature'])
+      for i in ([2, 0] if Config().cooling_xcvrs_use_dom_temperature else [0]):
+         data = self.dbent.get_all(i)
+         self.temperature = self._float_or_none(data['temperature'])
+         if self.temperature is not None:
+            break
+
       if not self._initialized:
          data = self.dbent.get_all(1)
          self.update_thresholds(data)
@@ -405,10 +413,13 @@ class CoolingEntityManager(object):
       # NOTE: direct api calls are pretty slow and redundant with xcvrd
       #       a setting is therefore needed to enable direct temperature reads
       if self._xcvrs_via_api:
+         # NOTE: we have to disable xcvrs from DB when reading via API due to
+         # the widely different naming used `EthernetX` vs `osfpY`
          for sfp in chassis.get_all_sfps():
             self.get_xcvr(sfp.get_name()).register_api(sfp)
-      for dbent in self._dbhelper.get_all_xcvrs():
-         self.get_xcvr(dbent.name).register_db(dbent)
+      else:
+         for dbent in self._dbhelper.get_all_xcvrs():
+            self.get_xcvr(dbent.name).register_db(dbent)
       # TODO: handle linecard xcvrs
       #       requires xcvr data to be published in CHASSIS_STATE_DB
 
@@ -426,11 +437,11 @@ class CoolingEntityManager(object):
             print(f'{obj.__class__.__name__} "{obj.name}" {" ".join(attrs)}')
 
    def gc(self):
-      self.update()
-
       self._gc_count += 1
       if self._gc_count < Config().cooling_gc_count:
          return
+
+      self.update()
 
       for col in [self._fans, self._psus, self._thermals, self._xcvrs]:
          todelete = []

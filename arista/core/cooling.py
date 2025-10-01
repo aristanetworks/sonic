@@ -11,14 +11,6 @@ from .utils import inSimulation
 
 logging = getLogger(__name__)
 
-@dataclass
-class CoolingConfig:
-   minSpeed: float = 30
-
-   def update(self):
-      if Config().cooling_min_speed is not None:
-         self.minSpeed = Config().cooling_min_speed
-
 class Airflow(object):
    UNKNOWN = 'unknown'
    EXHAUST = 'exhaust'
@@ -153,7 +145,7 @@ class ThermalInfo(object):
       self.target = target
       self.overheat = overheat
       self.delta = value - target
-      self.deltap = self.delta / (overheat - target)
+      self.deltap = self.delta * 0.1
 
    def __str__(self):
       kwargs = ', '.join('%s=%s' % (k, str(v)) for k, v in self.__dict__.items())
@@ -193,17 +185,91 @@ class ThermalInfos(object):
             selected = info
       return selected
 
+class CoolingLogic:
+   def __init__(self, zone):
+      self.zone = zone
+
+   @property
+   def config(self):
+      return self.zone.algo.config
+
+   def scaleOnElapsed(self, value):
+      factor = min(self.zone.algo.elapsed / self.zone.algo.INTERVAL, 1.0)
+      return value * factor
+
+   def computePwm(self, lastPwm):
+      raise NotImplementedError
+
+class CoolingLogicLegacy(CoolingLogic):
+   NAME = 'legacy'
+
+   def __init__(self, zone):
+      super().__init__(zone)
+      self.maxDecrease = Config().cooling_max_decrease
+      self.maxIncrease = Config().cooling_max_increase
+
+   def computePwm(self, lastPwm):
+      infos = ThermalInfos(self.config.targetOffset)
+      for thermal in self.zone.thermals.values():
+         infos.process(thermal)
+
+      # Select the most critical sensor in the system
+      info = infos.choose()
+      if info is None:
+         # No sensor found, run at 100%
+         return self.config.maxSpeed
+
+      logging.debug('%s: using %s to set fan speed', self, info.thermal)
+
+      # Skip any fan speed adjustment if the temperature change is between some
+      # configurable values
+      if -self.config.negHyst < info.delta < self.config.posHyst:
+         return lastPwm
+
+      if info.delta < 0:
+         pwmDelta = max(self.maxDecrease * info.deltap, -self.maxDecrease)
+      else:
+         pwmDelta = min(self.maxIncrease * info.deltap, self.maxIncrease)
+
+      # adjust speed delta based on elapsed time
+      pwmDelta = self.scaleOnElapsed(pwmDelta)
+
+      # Enforce fan speed limits
+      pwm = max(lastPwm + pwmDelta, self.config.minSpeed)
+      pwm = min(pwm, self.config.maxSpeed)
+
+      return pwm
+
+
+@dataclass
+class CoolingConfig:
+
+   minSpeed: float = 30
+   maxSpeed: float = 100
+   targetOffset: float = 0
+   logic: CoolingLogic = CoolingLogicLegacy
+   negHyst: float = 1
+   posHyst: float = 1
+
+   def update(self):
+      for kgc, kcc in [
+            ('cooling_min_speed', 'minSpeed'),
+            ('cooling_target_offset', 'targetOffset'),
+            ('cooling_hysteresis_negative', 'negHyst'),
+            ('cooling_hysteresis_positive', 'posHyst'),
+         ]:
+         if value := getattr(Config(), kgc, None):
+            # TODO: ensure type is correct or convert
+            setattr(self, kcc, value)
+
 class CoolingZone(object):
 
    MAX_SPEED = 100
 
-   def __init__(self, algo, name):
+   def __init__(self, algo, name, logicCls):
       self.algo = algo
       self.name = name
-      self.maxDecrease = Config().cooling_max_decrease
-      self.maxIncrease = Config().cooling_max_increase
-      self.minSpeed = algo.config.minSpeed
-      self.targetOffset = Config().cooling_target_offset
+      self.logic = logicCls(self)
       self.speed = HistoricalData('target')
       self.fans = None
       self.thermals = None
@@ -226,44 +292,6 @@ class CoolingZone(object):
    @property
    def lastSpeed(self):
       return self.speed.lastSet
-
-   def computeFanSpeed(self, lastSpeed, infos):
-      if infos.overheat:
-         # Run the fans at 100% if one sensor is in overheat state
-         return self.MAX_SPEED
-
-      # Select the most critical sensor in the system
-      info = infos.choose()
-      if info is None:
-         # No sensor found, run at 100%
-         return self.MAX_SPEED
-
-      logging.debug('%s: using %s to set fan speed', self, info.thermal)
-
-      # Skip any fan speed adjustment if the temperature is between some
-      # percentage of target to overheat delta
-      under = Config().cooling_adjust_under
-      over = Config().cooling_adjust_over
-      if under < info.deltap * 100. < over:
-         return lastSpeed
-
-      if info.delta < 0:
-         speedDelta = max(self.maxDecrease * info.deltap, -self.maxDecrease)
-      else:
-         speedDelta = min(self.maxIncrease * info.deltap, self.maxIncrease)
-
-      # adjust speed delta based on elapsed time
-      speedDelta = self.scaleOnElapsed(speedDelta)
-
-      # Enforce fan speed limits
-      speed = max(lastSpeed + speedDelta, self.minSpeed)
-      speed = min(speed, self.MAX_SPEED)
-
-      return speed
-
-   def scaleOnElapsed(self, value):
-      factor = min(self.algo.elapsed / self.algo.INTERVAL, 1.0)
-      return value * factor
 
    def readLastSpeed(self):
       lastSpeed = self.lastSpeed
@@ -288,14 +316,10 @@ class CoolingZone(object):
          self.update()
 
       lastSpeed = self.readLastSpeed()
+      desiredSpeed = self.logic.computePwm(lastSpeed)
 
-      infos = ThermalInfos(self.targetOffset)
-      for thermal in self.thermals.values():
-         infos.process(thermal)
-
-      desiredSpeed = self.computeFanSpeed(lastSpeed, infos)
-
-      logging.debug('%s: fan speed selected is %.3f', self, desiredSpeed)
+      logging.debug('%s: fan speed selected is %.3f from %.3f (%+.3f)', self,
+                    desiredSpeed, lastSpeed, desiredSpeed - lastSpeed)
       self.speed.setValue(self.algo.now, desiredSpeed)
 
       # Set new fan speed
@@ -318,6 +342,9 @@ class CoolingZone(object):
 class CoolingAlgorithm(object):
 
    INTERVAL = 60.
+   LOGICS = {l.NAME: l for l in [
+      CoolingLogicLegacy,
+   ]}
 
    def __init__(self, platform):
       self.platform = platform
@@ -334,8 +361,17 @@ class CoolingAlgorithm(object):
    def load(self):
       self.config = copy.deepcopy(self.platform.COOLING)
       self.config.update()
+      logging.debug('%s: with config %s', self, self.config)
+
+      logicCls = self.config.logic
+      if not issubclass(logicCls, CoolingLogic):
+         logicCls = self.LOGICS[self.config.logic]
+
       # NOTE: for now only one zone
-      self.zones.append(CoolingZone(self, 'System'))
+      zone = CoolingZone(self, 'System', logicCls)
+      logging.debug('%s: creating zone %s', self, zone)
+
+      self.zones.append(zone)
 
    def export(self, path):
       if inSimulation():

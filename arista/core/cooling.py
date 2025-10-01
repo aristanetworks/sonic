@@ -240,6 +240,33 @@ class CoolingLogicLegacy(CoolingLogic):
 
       return pwm
 
+class CoolingLogicIncPid(CoolingLogic):
+   NAME = 'incpid'
+
+   def computePwmForThermal(self, lastPwm, thermal):
+      temperature = thermal.temperature
+      lastTemperature = thermal.getLast(2) or temperature
+      llastTemperature = thermal.getLast(3) or lastTemperature
+      target = thermal.target + self.config.targetOffset
+      minVal = target - self.config.negHyst
+      maxVal = target + self.config.posHyst
+
+      pwmDelta = 0
+      if temperature < minVal or temperature > maxVal:
+         pwmDelta = self.config.kp * (temperature - lastTemperature) + \
+                    self.config.ki * (temperature - target) + \
+                    self.config.kd * (temperature - 2 * lastTemperature +
+                                      llastTemperature)
+
+      logging.debug('%s temperature=%f target=%f pwmDelta=%f',
+                    thermal, temperature, target, pwmDelta)
+
+      return lastPwm + pwmDelta
+
+   def computePwm(self, lastPwm):
+      pwms = [self.computePwmForThermal(lastPwm, thermal)
+              for thermal in self.zone.thermals.values() if thermal.valid()]
+      return min(max(*pwms, self.config.minSpeed), self.config.maxSpeed)
 
 @dataclass
 class CoolingConfig:
@@ -248,6 +275,9 @@ class CoolingConfig:
    maxSpeed: float = 100
    targetOffset: float = 0
    logic: CoolingLogic = CoolingLogicLegacy
+   kp: float = 0.075
+   ki: float = 1
+   kd: float = 10
    negHyst: float = 1
    posHyst: float = 1
 
@@ -255,6 +285,9 @@ class CoolingConfig:
       for kgc, kcc in [
             ('cooling_min_speed', 'minSpeed'),
             ('cooling_target_offset', 'targetOffset'),
+            ('cooling_kp', 'kp'),
+            ('cooling_ki', 'ki'),
+            ('cooling_kd', 'kd'),
             ('cooling_hysteresis_negative', 'negHyst'),
             ('cooling_hysteresis_positive', 'posHyst'),
          ]:
@@ -344,6 +377,7 @@ class CoolingAlgorithm(object):
    INTERVAL = 60.
    LOGICS = {l.NAME: l for l in [
       CoolingLogicLegacy,
+      CoolingLogicIncPid,
    ]}
 
    def __init__(self, platform):

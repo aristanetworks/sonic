@@ -52,13 +52,16 @@ class Config():
          cls.instance_.cooling_max_decrease = 10
          cls.instance_.cooling_max_increase = 25
          cls.instance_.cooling_min_speed = None
-         cls.instance_.cooling_loop_interval = 20
+         cls.instance_.cooling_loop_interval = 10
          cls.instance_.cooling_target_offset = None
          cls.instance_.cooling_target_factor = 0.8
          cls.instance_.cooling_xcvr_target_offset = -10
          cls.instance_.cooling_gc_count = 15
          cls.instance_.cooling_hysteresis_negative = None
          cls.instance_.cooling_hysteresis_positive = None
+         cls.instance_.cooling_kp = None
+         cls.instance_.cooling_ki = None
+         cls.instance_.cooling_kd = None
          cls.instance_.cooling_xcvrs_via_api = False
          cls.instance_.cooling_xcvrs_use_dom_temperature = True
          cls.instance_.cooling_override_xcvr_target = None

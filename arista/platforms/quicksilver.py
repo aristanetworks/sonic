@@ -1,3 +1,4 @@
+from ..core.cooling import CoolingConfig, CoolingLogicIncPid
 from ..core.fixed import FixedSystem
 from ..core.hwapi import HwApi
 from ..core.platform import registerPlatform
@@ -72,6 +73,15 @@ class QuicksilverBase(FixedSystem):
    LED_FP_TRICOLOR = True
 
    HAS_TH5_EXT_DIODE = True
+
+   COOLING = CoolingConfig(
+      logic=CoolingLogicIncPid,
+      kp=9,
+      ki=0.75,
+      kd=0,
+      negHyst=0,
+      posHyst=0,
+   )
 
    def __init__(self):
       super().__init__()

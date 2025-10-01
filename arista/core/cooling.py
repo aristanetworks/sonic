@@ -1,7 +1,6 @@
 import copy
-import json
+import csv
 import os
-from collections import deque
 from dataclasses import dataclass
 
 from ..libs.python import monotonicRaw
@@ -28,32 +27,46 @@ class Airflow(object):
 class HistoricalData(object):
    def __init__(self, name):
       self.name = name
-      size = max(Config().cooling_data_points, 2)
-      self.set = deque([(None, None)] * size, size)
-      self.get = deque([(None, None)] * size, size)
+      self.maxlen = max(3, Config().cooling_data_points)
+      self.set = []
+      self.get = []
 
    def getValue(self, now, value):
       self.get.append((now, value))
+      if len(self.get) > self.maxlen:
+         self.get = self.get[1:]
       return value
 
    def setValue(self, now, value):
       self.set.append((now, value))
+      if len(self.set) > self.maxlen:
+         self.set = self.set[1:]
       return value
 
    @property
    def lastSet(self):
+      if not self.set:
+         return None
       return self.set[-1][1]
 
    @property
    def lastGet(self):
+      if not self.get:
+         return None
       return self.get[-1][1]
+
+   def getLast(self, num):
+      try:
+         return self.get[-num][1]
+      except IndexError:
+         return None
 
    @property
    def data(self):
       return {
          'name': self.name,
-         'get': list(self.get),
-         'set': list(self.set),
+         'get': self.get,
+         'set': self.set,
       }
 
 class CoolingObject(object):
@@ -66,6 +79,9 @@ class CoolingObject(object):
 
    def __str__(self):
       return '%s(%s)' % (self.__class__.__name__, self.name)
+
+   def getLast(self, num):
+      return self.data.getLast(num)
 
    def dump(self):
       return self.data.data
@@ -84,7 +100,7 @@ class CoolingFanBase(CoolingObject):
 
    @property
    def current(self):
-      return self.data.get[-1][1]
+      return self.data.lastGet
 
    @property
    def last(self):
@@ -287,14 +303,17 @@ class CoolingZone(object):
          fan.set(self.algo.now, desiredSpeed)
 
    def export(self, path):
-      data = {
-         'name': self.name,
-         'fans': [ f.dump() for f in self.fans.values() ],
-         'thermals': [ t.dump() for t in self.thermals.values() ],
-      }
-      path = os.path.join(path, '%s.cooling.json' % self.name)
-      with open(path, 'w', encoding='utf8') as f:
-         json.dump(data, f)
+      path = os.path.join(path, '%s.cooling.csv' % self.name)
+      with open(path, 'a', encoding='utf8', newline='') as f:
+         writer = csv.writer(f, dialect='unix')
+         for col in (self.fans, self.thermals):
+            for obj in col.values():
+               for op in ['get', 'set']:
+                  entry = getattr(obj.data, op, None)
+                  if not entry:
+                     continue
+                  ts, value = entry[-1]
+                  writer.writerow((str(ts), obj.name, op, str(value)))
 
 class CoolingAlgorithm(object):
 

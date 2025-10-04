@@ -72,7 +72,7 @@ Note that the support in this package does not necessarily means that the
 dataplane is working in SONiC.
 Though most should be, some could face some ASIC/PHY bringup challenges.
 
-SONiC's [list of supported devices](https://azure.github.io/SONiC/Supported-Devices-and-Platforms.html)
+SONiC's [list of supported devices](https://sonic-net.github.io/SONiC/Supported-Devices-and-Platforms.html)
 should be crossed referenced though it might not be up to date either.
 
 Some product variants were omitted in the previous list but might be supported

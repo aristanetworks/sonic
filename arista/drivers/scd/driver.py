@@ -14,7 +14,6 @@ from ...core.driver.kernel.sysfs import (
    LedMultiColorSysfsImpl,
    ResetSysfsImpl,
 )
-
 from ...core.driver.user.i2c import I2cDevDriver
 
 from ...descs.led import LedKind
@@ -124,6 +123,14 @@ class ScdKernelDriver(PciKernelDriver):
       for gpio in scd.gpios:
          data += ["gpio %#x %s %u %d %d" % (gpio.addr, gpio.name, gpio.bit,
                                             int(gpio.ro), int(gpio.activeLow))]
+
+      for idx, controller in enumerate(scd.iterSpiControllers()):
+         data += ["spi_controller %u %#x %#x %u" % (idx,
+                                                    controller.addr,
+                                                    controller.stride,
+                                                    controller.numCs)]
+         for device in controller.iterSpiComponents():
+            data += ["spi_device %u %u" % (idx, device.addr.cs)]
 
       self.waitReady()
 

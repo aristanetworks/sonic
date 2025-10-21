@@ -85,6 +85,26 @@ class I2cBus(object):
    def i2cAddr(self, address, **kwargs):
       return self.ADDR_CLS(self, address, **kwargs)
 
+class SpiAddr(SysfsPath):
+
+   @property
+   def bus(self):
+      raise NotImplementedError
+
+   @property
+   def cs(self):
+      raise NotImplementedError
+
+   def __str__(self):
+      return f'spi{self.bus}.{self.cs}'
+
+   def __repr__(self):
+      return "%s(%d, %#x)" % (
+         self.__class__.__name__, self.bus, self.cs)
+
+   def getSysfsPath(self):
+      return os.path.join('/sys/bus/spi/devices', str(self))
+
 class MdioClause(enum.IntEnum):
    C22 = 1
    C45 = 2

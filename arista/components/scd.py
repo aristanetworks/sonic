@@ -8,10 +8,11 @@ from dataclasses import dataclass, field
 # TODO: use core.component.pci.PciComponent
 from ..core.component import Priority, PciComponent
 from ..core.component.i2c import I2cComponent
+from ..core.component.spi import SpiController
 from ..core.config import Config
 from ..core.driver.kernel import KernelDriver
 from ..core.fan import FanSlot
-from ..core.types import I2cAddr, MdioClause, MdioSpeed
+from ..core.types import I2cAddr, MdioClause, MdioSpeed, SpiAddr
 from ..core.utils import (
    FileWaiter,
    incrange,
@@ -70,6 +71,26 @@ class ScdI2cAddr(I2cAddr):
    @property
    def bus(self):
       return self.scd_.i2cOffset + self.bus_
+
+class ScdSpiAddr(SpiAddr):
+
+   def __init__(self, controller, cs):
+      self.scd_ = controller.parent
+      self.controller_ = controller
+      self.cs_ = cs
+
+   @property
+   def bus(self):
+      return self.controller_.getKernelBusNumber()
+
+   @property
+   def cs(self):
+      return self.cs_
+
+   def getSysfsPath(self):
+      return os.path.join(self.scd_.driver.getSysfsPath(),
+                          f'spi_master/spi{self.bus}',
+                          str(self))
 
 class ScdPowerCycle(PowerCycle):
    def __init__(self, scd, reg=0x7000, wr=0xDEAD):
@@ -202,6 +223,51 @@ class ScdSmbus():
    def i2cAddr(self, addr):
       return self.scd.i2cAddr(self.bus, addr)
 
+class ScdSpiController(SpiController):
+   def __init__(self, addr, stride, numCs, **kwargs):
+      super().__init__(**kwargs)
+      self.addr = addr
+      self.stride = stride
+      self.numCs = numCs
+      self.kernelBusNumber_ = None
+      self.spiAddrCache_ = {}
+
+   def getKernelBusNumber(self):
+      if self.kernelBusNumber_ is None:
+         if inSimulation():
+            self.kernelBusNumber_ = self._getControllerIndex()
+         else:
+            self.kernelBusNumber_ = self._resolveKernelBusNumber()
+      return self.kernelBusNumber_
+
+   def _getControllerIndex(self):
+      controllers = list(self.parent.iterSpiControllers())
+      return controllers.index(self)
+
+   def _resolveKernelBusNumber(self):
+      scdPath = self.parent.driver.getSysfsPath()
+      spiMasterPath = os.path.join(scdPath, 'spi_master')
+
+      if not os.path.exists(spiMasterPath):
+         logging.warning('SPI master path not found: %s', spiMasterPath)
+         return self._getControllerIndex()
+
+      entries = sorted([e for e in os.listdir(spiMasterPath) if e.startswith('spi')])
+      controllerIdx = self._getControllerIndex()
+
+      if controllerIdx < len(entries):
+         busName = entries[controllerIdx]
+         return int(busName[3:])
+
+      logging.warning('Could not resolve SPI bus for controller %d', controllerIdx)
+      return controllerIdx
+
+   def spiAddr(self, cs):
+      if cs >= self.numCs:
+         raise ValueError(f"{cs} exceeds controller's numCs={self.numCs}")
+      if cs not in self.spiAddrCache_:
+         self.spiAddrCache_[cs] = ScdSpiAddr(self, cs)
+      return self.spiAddrCache_[cs]
 
 @dataclass
 class ScdInterruptDesc:
@@ -504,6 +570,9 @@ class Scd(PciComponent):
 
    def addGpios(self, descs, **kwargs):
       return [self.addGpio(desc, **kwargs) for desc in descs]
+
+   def iterSpiControllers(self):
+      return [c for c in self.components if isinstance(c, ScdSpiController)]
 
    def addXcvrGpio(self, desc, **kwargs):
       # Note: separate adder to avoid conflicting with kernel driver

@@ -4,7 +4,13 @@ from ...components.cpu.shearwater import (
     ShearwaterSysCpld,
 )
 from ...components.lm75 import Tmp75
-from ...components.scd import Scd, ScdCause
+from ...components.scd import (
+   BlackBoxRegisterMap,
+   Scd,
+   ScdBlackBox,
+   ScdCause,
+   ScdSpiController
+)
 
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
@@ -42,6 +48,18 @@ class ShearwaterCpu(Cpu):
          SensorDesc(diode=0, name='Ambient',
                     position=Position.OUTLET, target=55, overheat=75, critical=85),
       ])
+
+      bbCtrl = cpld.newComponent(
+         ScdSpiController,
+         addr=0x1100,
+         stride=0x100,
+         numCs=2
+      )
+      bbCtrl.newComponent(
+         ScdBlackBox,
+         addr=bbCtrl.spiAddr(cs=1),
+         ctrl=BlackBoxRegisterMap(cpld.driver, offset=0x1400)
+      )
 
       self.fanboard = self.parent.CHASSIS.addFanboard(cpld, cpld.getSmbus(7))
 

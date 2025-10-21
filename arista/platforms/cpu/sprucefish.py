@@ -7,7 +7,12 @@ from ...components.cpu.sprucefish import (
    CpldWatchdogRegisterMap,
    CpuScdPowerCycleOnWdFaultQuirk,
 )
-from ...components.scd import Scd
+from ...components.scd import (
+   BlackBoxRegisterMap,
+   Scd,
+   ScdBlackBox,
+   ScdSpiController
+)
 from ...components.eeprom import At24C512
 from ...components.max6658 import Max6658
 from ...components.pci import CompletionTimeoutPciQuirk
@@ -55,6 +60,18 @@ class SprucefishCpu(Cpu):
       cpld.createPowerCycle()
       cpld.addSeuReporter(CpldSeuRegisterMap)
       cpld.addSmbusMasterRange(0x8000, 0, 0x80, 9)
+      blackboxController = cpld.newComponent(
+         ScdSpiController,
+         addr=0x1100,
+         stride=0x100,
+         numCs=2
+      )
+      blackboxController.newComponent(
+         ScdBlackBox,
+         addr=blackboxController.spiAddr(cs=1),
+         ctrl=BlackBoxRegisterMap(cpld.driver, offset=0x1400)
+      )
+
       # TODO: add led and interrupt logic for SFP port
       cpld.addXcvrSlots(
          ports=[Sfp(index=1, leds=0)],

@@ -17,7 +17,12 @@ from ...components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ...components.eeprom import At24C512
 from ...components.pca9555 import Pca9555
 from ...components.plx import PlxPortDesc
-from ...components.scd import I2cScd
+from ...components.scd import (
+   BlackBoxRegisterMap,
+   I2cScd,
+   ScdBlackBox,
+   ScdSpiController
+)
 from ...components.tmp464 import Tmp464
 from ...components.vrm.mp8796b import Mp8796B
 
@@ -90,6 +95,18 @@ class Wolverine(DenaliLinecard):
          SysfsQuirk("aer/correctable_ratelimit_burst", "1",
                     "Suppress excessive SCD correctable errors")
       ])
+
+      blackboxController = self.scd.newComponent(
+         ScdSpiController,
+         addr=0x7120,
+         stride=0x10,
+         numCs=2
+      )
+      blackboxController.newComponent(
+         ScdBlackBox,
+         addr=blackboxController.spiAddr(cs=1),
+         ctrl=BlackBoxRegisterMap(self.scd.driver, offset=0x1400)
+      )
 
       for intId in incrange(0, 6):
          addr = 0x3000 + intId * 0x30

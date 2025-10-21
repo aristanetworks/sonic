@@ -163,6 +163,8 @@ static void scd_uart_transmit_chars(struct uart_port *port)
 
    uart_dbg(port, "transmit chars pending=%ld\n", uart_circ_chars_pending(xmit));
 
+   scd_write_tx_sm_req(sp, req);
+
    req.push = 1;
    req.st = 1;
 

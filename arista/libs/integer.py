@@ -9,3 +9,6 @@ def listToIntLsb(l):
    for i, v in enumerate(l):
       value |= v << (i * 8)
    return value
+
+def isBitSet(bitIndex, value):
+   return bool(value & (1 << bitIndex))

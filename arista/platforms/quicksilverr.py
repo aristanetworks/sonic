@@ -51,7 +51,9 @@ class QuicksilverRedstartDd(QuicksilverRedstartBase):
 
 @registerPlatform()
 class QuicksilverP512(QuicksilverRedstartP):
+   SKU = ['DCS-7060X6-64PE-B']
    SID = [
+      'QuicksilverP512',
       'Redstart8Mk2QuicksilverP512',
       'Redstart8Mk2NQuicksilverP512',
       'Redstart832Mk2QuicksilverP512',

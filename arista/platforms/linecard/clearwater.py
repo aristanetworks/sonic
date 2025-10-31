@@ -2,6 +2,7 @@
 from ...core.hwapi import HwApi
 from ...core.platform import registerPlatform
 from ...core.port import PortLayout
+from ...core.quirk import SysfsQuirk
 from ...core.types import MdioSpeed
 from ...core.utils import incrange
 
@@ -75,6 +76,14 @@ class ClearwaterBase(DenaliLinecard):
       for intId in incrange(0, 6):
          addr = 0x3000 + intId * 0x30
          self.scd.createInterrupt(addr=addr, num=intId)
+
+      scdPort = self.scd.addr.port.upstream
+      scdPort.quirks.extend([
+         SysfsQuirk("aer/correctable_ratelimit_interval_ms", "60000",
+                    "Suppress excessive SCD correctable errors"),
+         SysfsQuirk("aer/correctable_ratelimit_burst", "1",
+                    "Suppress excessive SCD correctable errors")
+      ])
 
       # At the moment there is no unique name for objects added to the kernel such
       # as leds, mdios, ... As a result, the kernel does some renaming, which is

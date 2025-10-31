@@ -1,5 +1,6 @@
 
 from ...core.component.i2c import I2cByteQuirk, I2cBlockQuirk
+from ...core.quirk import SysfsQuirk
 from ...core.hwapi import HwApi
 from ...core.platform import registerPlatform
 from ...core.port import PortLayout
@@ -81,6 +82,14 @@ class Wolverine(DenaliLinecard):
 
    def mainDomain(self):
       self.scd.addSmbusMasterRange(0x8000, 10, spacing=0x80)
+
+      scdPort = self.scd.addr.port.upstream
+      scdPort.quirks.extend([
+         SysfsQuirk("aer/correctable_ratelimit_interval_ms", "60000",
+                    "Suppress excessive SCD correctable errors"),
+         SysfsQuirk("aer/correctable_ratelimit_burst", "1",
+                    "Suppress excessive SCD correctable errors")
+      ])
 
       for intId in incrange(0, 6):
          addr = 0x3000 + intId * 0x30

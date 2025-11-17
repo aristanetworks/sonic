@@ -107,9 +107,9 @@ class QuicksilverBase(FixedSystem):
                     position=Position.INLET, target=85, overheat=95, critical=105),
       ] + ([
          SensorDesc(diode=6, name='TH5 Diode 1',
-                    position=Position.OTHER, target=105, overheat=115, critical=125),
+                    position=Position.OTHER, target=90, overheat=115, critical=125),
          SensorDesc(diode=7, name='TH5 Diode 2',
-                    position=Position.OTHER, target=105, overheat=115, critical=125),
+                    position=Position.OTHER, target=90, overheat=115, critical=125),
       ] if self.HAS_TH5_EXT_DIODE else []))
 
       if self.getHwApi() >= HwApi(2): # Kona
@@ -255,5 +255,3 @@ class QuicksilverP(QuicksilverBase):
       (Osfp(i) for i in incrange(1, 64)),
       (Sfp(i) for i in incrange(65, 66)),
    )
-
-   HAS_TH5_EXT_DIODE = False

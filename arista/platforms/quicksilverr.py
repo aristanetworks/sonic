@@ -33,8 +33,6 @@ class QuicksilverRedstartP(QuicksilverRedstartBase):
       (Sfp(i) for i in incrange(65, 66)),
    )
 
-   HAS_TH5_EXT_DIODE = False
-
 @registerPlatform()
 class QuicksilverRedstartDd(QuicksilverRedstartBase):
    SID = [

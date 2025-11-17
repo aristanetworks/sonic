@@ -1,5 +1,6 @@
 import os
 import shutil
+from types import UnionType
 import yaml
 
 from .log import getLogger
@@ -11,86 +12,103 @@ DEFAULT_FLASH_PATH = '/host'
 CONFIG_PATH = "/etc/sonic/arista.config"
 FLASH_CONFIG_PATH = os.path.join(DEFAULT_FLASH_PATH, 'arista-platform.config')
 
+class DefaultConfig:
+   plugin_xcvr: str = 'native'
+   plugin_led: str = 'native'
+   plugin_psu: str = 'native'
+   lock_scd_conf: bool = True
+   init_irq: bool = True
+   reboot_cause_file: str = 'last_reboot_cause'
+   persistent_presence_check: bool = True
+   lock_file: str = '/var/lock/arista.lock'
+   linecard_lock_file_pattern: str = \
+      '/var/lock/arista.linecard{:d}.lock'
+   linecard_standby_only: bool = True
+   linecard_cpu_enable: bool = False
+   power_off_linecard_on_reboot: bool = True
+   power_off_fabric_on_reboot: bool = False
+   write_hw_thresholds: bool = True
+   report_hw_thresholds: bool = False
+   watchdog_state_file: str = 'watchdog.json'
+   xcvr_lpmode_out: bool = False
+   api_use_sfpoptoe: bool = True
+   api_sfp_thermal: bool = False
+   api_sfp_reset_lpmode: bool = True
+   api_event_use_interrupts: bool = False
+   flash_path: str = DEFAULT_FLASH_PATH
+   tmpfs_path: str = '/var/run/platform_cache/arista'
+   etc_path: str = '/etc/sonic'
+   api_rpc_sup: str = '127.100.1.1'
+   api_rpc_lcx: str = "127.100.{}.1"
+   api_rpc_host: str = '127.0.0.1'
+   api_rpc_port: str = '12322'
+   api_linecard_reboot_graceful: bool = False
+   cooling_data_points: int = 3
+   cooling_export_path: str | None = None
+   cooling_max_decrease: float = 10.
+   cooling_max_increase: float = 25.
+   cooling_min_speed: float | None = None
+   cooling_loop_interval: int = 10
+   cooling_target_offset: float | None = None
+   cooling_target_factor: float = 0.8
+   cooling_xcvr_target_offset: float = -10.
+   cooling_gc_count: int = 15
+   cooling_hysteresis_negative: float | None = None
+   cooling_hysteresis_positive: float | None = None
+   cooling_kp: float | None = None
+   cooling_ki: float | None = None
+   cooling_kd: float | None = None
+   cooling_xcvrs_via_api: bool = False
+   cooling_xcvrs_use_dom_temperature: bool = True
+   cooling_override_xcvr_target: float | None = None
+
 class Config():
    instance_ = None
 
    def __new__(cls):
       if cls.instance_ is None:
          cls.instance_ = object.__new__(cls)
-         cls.instance_.plugin_xcvr = 'native'
-         cls.instance_.plugin_led = 'native'
-         cls.instance_.plugin_psu = 'native'
-         cls.instance_.lock_scd_conf = True
-         cls.instance_.init_irq = True
-         cls.instance_.reboot_cause_file = 'last_reboot_cause'
-         cls.instance_.persistent_presence_check = True
-         cls.instance_.lock_file = '/var/lock/arista.lock'
-         cls.instance_.linecard_lock_file_pattern = \
-            '/var/lock/arista.linecard{:d}.lock'
-         cls.instance_.linecard_standby_only = True
-         cls.instance_.linecard_cpu_enable = False
-         cls.instance_.power_off_linecard_on_reboot = True
-         cls.instance_.power_off_fabric_on_reboot = False
-         cls.instance_.write_hw_thresholds = True
-         cls.instance_.report_hw_thresholds = False
-         cls.instance_.watchdog_state_file = 'watchdog.json'
-         cls.instance_.xcvr_lpmode_out = False
-         cls.instance_.api_use_sfpoptoe = True
-         cls.instance_.api_sfp_thermal = False
-         cls.instance_.api_sfp_reset_lpmode = True
-         cls.instance_.api_event_use_interrupts = False
-         cls.instance_.flash_path = DEFAULT_FLASH_PATH
-         cls.instance_.tmpfs_path = '/var/run/platform_cache/arista'
-         cls.instance_.etc_path = '/etc/sonic'
-         cls.instance_.api_rpc_sup = '127.100.1.1'
-         cls.instance_.api_rpc_lcx = "127.100.{}.1"
-         cls.instance_.api_rpc_host = '127.0.0.1'
-         cls.instance_.api_rpc_port = '12322'
-         cls.instance_.api_linecard_reboot_graceful = False
-         cls.instance_.cooling_data_points = 3
-         cls.instance_.cooling_export_path = None
-         cls.instance_.cooling_max_decrease = 10
-         cls.instance_.cooling_max_increase = 25
-         cls.instance_.cooling_min_speed = None
-         cls.instance_.cooling_loop_interval = 10
-         cls.instance_.cooling_target_offset = None
-         cls.instance_.cooling_target_factor = 0.8
-         cls.instance_.cooling_xcvr_target_offset = -10
-         cls.instance_.cooling_gc_count = 15
-         cls.instance_.cooling_hysteresis_negative = None
-         cls.instance_.cooling_hysteresis_positive = None
-         cls.instance_.cooling_kp = None
-         cls.instance_.cooling_ki = None
-         cls.instance_.cooling_kd = None
-         cls.instance_.cooling_xcvrs_via_api = False
-         cls.instance_.cooling_xcvrs_use_dom_temperature = True
-         cls.instance_.cooling_override_xcvr_target = None
+         cls.instance_.types = None
+
+         cls.instance_._parseDefaultConfig()
          cls.instance_._parseConfig()
          cls.instance_._parseCmdline()
+
       return cls.instance_
 
    def _getKeys(self):
       return self.__dict__.keys()
 
    @staticmethod
-   def _parseVal(val):
-      if not isinstance(val, str):
+   def _parseBoolVal(val):
+      if isinstance(val, bool):
          return val
-      yes = ['yes', 'y', 'true']
-      no = ['no', 'n', 'false']
-      vl = val.lower()
-      if vl in yes:
-         return True
-      if vl in no:
-         return False
-      return val
+      if isinstance(val, str):
+         yes = ['yes', 'y', 'true']
+         no = ['no', 'n', 'false']
+         vl = val.lower()
+         if vl in yes:
+            return True
+         if vl in no:
+            return False
 
-   def setAttr(self, key, val):
-      v = getattr(self, key, None)
-      if type(v) != type(val):
-         logging.warning('%s attr type changed: old %s, new %s',
-                         key, type(v), type(val))
-      setattr(self, key, self._parseVal(val))
+      raise ValueError(f"Couldn't parse bool, invalid value: {val!r}")
+
+   def setAttr(self, key: str, val):
+      if not hasattr(DefaultConfig, key):
+         logging.warning("Invalid config option: %s. Skipping...", key)
+         return
+
+      try:
+         if self.getType(key) is bool:
+            val = self._parseBoolVal(val)
+         else:
+            val = self._convertType(key, val)
+      except ValueError as e:
+         logging.warning("Type conversion failed: %s", str(e))
+         return
+
+      setattr(self, key, val)
 
    def _parseCmdline(self):
       cmdline = getCmdlineDict()
@@ -132,6 +150,36 @@ class Config():
 
    def get(self, confName):
       return getattr(self, confName, None)
+
+   def _convertType(self, key: str, value):
+      type_ = self.getType(key)
+
+      try:
+         return type_(value)
+      except ValueError as e:
+         raise ValueError(
+            f'Cannot convert {key} = {value!r} to type: {type_!r}') from e
+      except TypeError as e:
+         raise TypeError(
+            f"Cannot convert type because attribute {key} does NOT exist") from e
+
+   def getType(self, key: str):
+      return self.types.get(key, type(None))
+
+   def _parseDefaultConfig(self):
+      for key, value in DefaultConfig.__dict__.items():
+         if not key.startswith('__'):
+            setattr(self, key, value)
+
+      self.types = DefaultConfig.__annotations__.copy() # pylint: disable=attribute-defined-outside-init
+      for key, value in self.types.items():
+         type_ = value
+         if isinstance(value, UnionType):
+            for i in value.__args__:
+               if i is not type(None):
+                  type_ = i
+         self.types[key] = type_
+
 
 def flashPath(*args):
    return os.path.join(Config().flash_path, *args)

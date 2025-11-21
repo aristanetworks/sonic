@@ -128,7 +128,9 @@ class Psu(PsuBase):
       # TODO: remove color= argument
       led = self._slot.getLed()
       if led is None:
-         return self.STATUS_LED_COLOR_OFF
+         if self.get_status():
+            return self.STATUS_LED_COLOR_GREEN
+         return self.STATUS_LED_COLOR_RED
       try:
          return led.getColor()
       except Exception: # pylint: disable=broad-except

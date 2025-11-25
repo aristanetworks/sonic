@@ -87,8 +87,8 @@ class ProvisionManifest:
       self.manifest.write(self.data)
 
    def getLinecardSerial(self, lc):
-      return lc.getEeprom().prefdl().get('Serial') or \
-         lc.getEeprom().prefdl().get('SerialNumber')
+      return lc.getEeprom().get('Serial') or \
+         lc.getEeprom().get('SerialNumber')
 
    def checkLinecardSerial(self, lc, clearCache=True):
       update = not lc.eeprom.prefdlCached()

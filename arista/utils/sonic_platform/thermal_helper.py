@@ -275,7 +275,7 @@ class CoolingXcvrThermal(CoolingThermal):
    def update_from_db(self):
       for i in ([2, 0] if Config().cooling_xcvrs_use_dom_temperature else [0]):
          data = self.dbent.get_all(i)
-         self.temperature = self._float_or_none(data['temperature'])
+         self.temperature = self._float_or_none(data.get('temperature'))
          if self.temperature is not None:
             break
 

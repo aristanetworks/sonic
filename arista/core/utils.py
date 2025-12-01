@@ -331,6 +331,7 @@ class StoredData():
          self.maybeCreatePath(dirPath)
          self.path = os.path.join(dirPath, name)
       else:
+         self.maybeCreatePath(os.path.dirname(path))
          self.path = path
 
    def __str__(self):

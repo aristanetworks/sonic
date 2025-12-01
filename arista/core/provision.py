@@ -48,10 +48,14 @@ class ProvisionManifest:
    FILE_VERSION = 1
    PATH = provisionPath('manifest.json')
 
-   def __init__(self, platform):
+   def __init__(self, platform, pathOverride=None):
       self.platform = platform
-      self.manifest = JsonStoredData('manifest.json', lifespan='permanent',
-                                 path=self.PATH, append=False)
+      if pathOverride:
+         self.manifest = JsonStoredData('manifest.json', lifespan='temporary',
+                                        path=pathOverride, append=False)
+      else:
+         self.manifest = JsonStoredData('manifest.json', lifespan='permanent',
+                                        path=self.PATH, append=False)
       self.data = {}
 
    def __str__(self):
@@ -69,7 +73,7 @@ class ProvisionManifest:
             return
 
       if init:
-         self.data = {}
+         self.data.clear()
          self.data['version'] = self.FILE_VERSION
          self.data['linecards'] = {}
          for lc in self.platform.chassis.iterLinecards(presentOnly=True):
@@ -94,7 +98,7 @@ class ProvisionManifest:
       update = not lc.eeprom.prefdlCached()
 
       cardName = f'LINE-CARD{lc.getRelativeSlotId()}'
-      entry = self.data['linecards'].get(cardName)
+      entry = self.data['linecards'].setdefault(cardName, {})
       prev = entry.get('serial') if entry else None
       if clearCache:
          lc.eeprom.clearPrefdlCache()
@@ -113,6 +117,6 @@ class ProvisionManifest:
       entry = self.data['linecards'].get(cardName)
       if not entry:
          logging.warning('%s: entry missing for %s', self, lc)
-         entry = self.data['linecards'][cardName]
+         entry = self.data['linecards'].setdefault(cardName, {})
          entry['serial'] = self.getLinecardSerial(lc)
       entry['provisioned'] = True

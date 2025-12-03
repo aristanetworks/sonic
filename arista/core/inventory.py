@@ -47,6 +47,8 @@ class Inventory():
 
       self.gpios = {}
 
+      self.blackbox = []
+
       self.causeProviders = []
 
       self.programmables = []
@@ -376,6 +378,12 @@ class Inventory():
    def getReloadCauseProviders(self):
       return self.causeProviders
 
+   def addBlackBox(self, blackbox):
+      self.blackbox.append(blackbox)
+
+   def getBlackBox(self):
+      return self.blackbox
+
    def __diag__(self, ctx):
       return {
          "version": 1,
@@ -400,4 +408,5 @@ class Inventory():
          "programmables" : [c.genDiag(ctx) for c in self.programmables],
          "switchAsics" : [a.genDiag(ctx) for a in self.getSwitchAsics().values()],
          "rtcs" : [r.genDiag(ctx) for r in self.rtcs],
+         "blackbox" : [b.genDiag(ctx) for b in self.blackbox],
       }

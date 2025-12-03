@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 # TODO: use core.component.pci.PciComponent
 from ..core.component import Priority, PciComponent
 from ..core.component.i2c import I2cComponent
-from ..core.component.spi import SpiController
+from ..core.component.spi import SpiComponent, SpiController
 from ..core.config import Config
 from ..core.driver.kernel import KernelDriver
 from ..core.fan import FanSlot
@@ -41,6 +41,7 @@ from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
 from ..descs.xcvr import Osfp, Qsfp, QsfpDD, Rj45, Sfp
 
+from ..drivers.scd.blackbox import ScdBlackBoxDriver
 from ..drivers.scd.driver import ScdI2cDevDriver, ScdKernelDriver
 from ..drivers.scd.watchdog import ScdWatchdog
 from ..drivers.scd.programmable import ScdProgrammable
@@ -268,6 +269,43 @@ class ScdSpiController(SpiController):
       if cs not in self.spiAddrCache_:
          self.spiAddrCache_[cs] = ScdSpiAddr(self, cs)
       return self.spiAddrCache_[cs]
+
+class BlackBoxRegisterMap(RegisterMap):
+   LOGGER_CTRL = Register(0x0,
+      RegBitField(28, 'bbVersion'),
+      RegBitField(0, 'bbEnabled', ro=False),
+   )
+
+class ScdBlackBox(SpiComponent):
+   DRIVER = ScdBlackBoxDriver
+
+   def __init__(self, **kwargs):
+      super().__init__(**kwargs)
+      self.inventory.addBlackBox(self.driver.getBlackBox(self))
+
+   def regs(self):
+      return self.ctrl
+
+   def simVersion(self):
+      return 1
+
+   @simulateWith(simVersion)
+   def version(self):
+      return self.ctrl.bbVersion() + 1
+
+   def simEnabled(self):
+      return False
+
+   @simulateWith(simEnabled)
+   def enabled(self):
+      return bool(self.ctrl.bbEnabled())
+
+   def simSetEnabled(self, enable):
+      return bool(enable)
+
+   @simulateWith(simSetEnabled)
+   def setEnabled(self, enable):
+      return bool(self.ctrl.bbEnabled(value=enable))
 
 @dataclass
 class ScdInterruptDesc:

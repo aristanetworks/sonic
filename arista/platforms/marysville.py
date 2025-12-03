@@ -202,6 +202,8 @@ class MarsvillePrime(MarysvilleBase):
       self.scd.newComponent(Max6658, addr=self.scd.i2cAddr(2, 0x4c), sensors=[
          SensorDesc(diode=0, name='Switch Card temp sensor', position=Position.OTHER,
                     target=85, overheat=100, critical=110),
+         SensorDesc(diode=1, name='Front-panel temp sensor', position=Position.INLET,
+                    target=60, overheat=65, critical=75),
       ])
 
       syscpld = self.cpu.syscpld

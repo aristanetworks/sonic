@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 
 from ...core.card import Card, CardSlot
+from ...core.config import Config
 from ...core.domain import PowerDomain
 from ...core.fabric import Fabric
 from ...core.linecard import Linecard
@@ -192,7 +193,8 @@ class DenaliCard(Card):
          # NOTE: Wait for linux to be done processing pci hotplug events
          #       not waiting would lead to uncorrectable pci errors with a high
          #       risk of softlockups
-         waitFor(lambda: not self.getUpstreamPort().reachable())
+         waitFor(lambda: not self.getUpstreamPort().reachable(),
+                 timeout=Config().power_off_linecard_wait_pci_timeout)
          if lcpuCtx:
             self.powerLcpuIs(False, lcpuCtx)
          else:

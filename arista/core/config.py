@@ -27,6 +27,7 @@ class DefaultConfig:
    linecard_cpu_enable: bool = False
    power_off_linecard_on_reboot: bool = True
    power_off_fabric_on_reboot: bool = False
+   power_off_linecard_wait_pci_timeout: int = 20
    write_hw_thresholds: bool = True
    report_hw_thresholds: bool = False
    watchdog_state_file: str = 'watchdog.json'

@@ -1,0 +1,21 @@
+[Unit]
+Description=Disable the watchdog at system startup
+Before=platform-arista-swss.service
+Before=platform-arista-firmware-update.service
+PartOf=platform-arista.target
+ConditionKernelCommandLine=Aboot
+ConditionKernelCommandLine=|sid=Clearwater2
+ConditionKernelCommandLine=|sid=Clearwater2Ms
+ConditionKernelCommandLine=|sid=WolverineQCpu
+ConditionKernelCommandLine=|sid=WolverineQCpuBk
+ConditionKernelCommandLine=|sid=WolverineQCpuMs
+ConditionKernelCommandLine=|sid=WolverineQCpuBkMs
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+
+ExecStart=/usr/bin/arista watchdog --stop
+
+[Install]
+RequiredBy=platform-arista.target

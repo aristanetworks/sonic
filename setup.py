@@ -21,24 +21,6 @@ py_install_requires = [
    'bottle',
 ]
 
-if sys.version_info.major == 2:
-   # these sources are python3 only, they raise SyntaxError on python2
-   package_exclude.extend([
-      '*.daemon',
-      '*.daemon.*',
-      '*.rpc',
-      '*.rpc.*',
-   ])
-   file_exclude.extend([
-      '*/daemon.py',
-   ])
-   tests_require.extend([
-      'mock<=3.0.5', # for python2, version >=4.0.0 drops support for py2
-   ])
-   py_install_requires.extend([
-      'enum34', # for python2, enum support requires this package
-   ])
-
 class build_py_with_exclude(build_py):
    def find_package_modules(self, package, package_dir):
       modules = build_py.find_package_modules(self, package, package_dir)
@@ -52,6 +34,7 @@ setup(
    name='sonic_platform',
    version='%s' % os.environ.get('ARISTA_PLATFORM_MODULE_VERSION', '1.0'),
    description='Module to initialize arista platforms',
+   python_requires='>=3.9',
    install_requires=py_install_requires,
    packages=find_packages(exclude=package_exclude),
    test_suite='arista.tests.selftest.allTests',

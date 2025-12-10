@@ -1,7 +1,6 @@
 INTERACTIVE := $(shell [ -t 0 ] && echo 1)
 
 # tools
-PYTHON2 ?= python2
 PYTHON3 ?= python3
 MKDIR ?= mkdir
 CP ?= cp
@@ -30,13 +29,11 @@ DBGDUMP_SRC    := $(wildcard $(BASE_DIR)/debug-dump/*)
 PACKAGE_NAME     ?= arista
 PACKAGE_VERSION  ?= $(shell git rev-parse --short HEAD)
 PACKAGE_DATE     ?= $(shell git log -1 --format='%ad' --date=short)
-PY2_PACKAGE_NAME ?= $(PACKAGE_NAME)
 PY3_PACKAGE_NAME ?= $(PACKAGE_NAME)
 
 DESTDIR         ?= $(CURDIR)/install
 BIN_DESTDIR     ?= $(DESTDIR)/usr/bin
 DRV_DESTDIR     ?= $(DESTDIR)/$(KERNEL_DST)/$(INSTALL_MOD_DIR)
-PY2_DESTDIR     ?= $(DESTDIR)
 PY3_DESTDIR     ?= $(DESTDIR)
 RULE_DESTDIR    ?= $(DESTDIR)/etc/udev/rules.d
 SYSTEMD_DESTDIR ?= $(DESTDIR)/lib/systemd/system
@@ -49,10 +46,8 @@ PLATFORM_COMMON_DESTDIR ?= $(PLATFORM_DESTDIR)/x86_64-arista_common
 
 # build
 PY_BUILD_ARGS ?=
-PY2_BUILD_ARGS ?= $(PY_BUILD_ARGS) --build-base=$(BUILD_DIR)/python2
 PY3_BUILD_ARGS ?= $(PY_BUILD_ARGS) --build-base=$(BUILD_DIR)/python3
 PYLINTRC ?= $(BASE_DIR)/.pylintrc
-PY3K_EXCLUDEFILELIST ?= $(shell tr '\n' ',' <$(BASE_DIR)/.py3k_excludefilelist)
 PYLINT_EXCLUDEFILELIST ?= $(shell tr '\n' ',' <$(BASE_DIR)/.pylint_excludefilelist)
 PYLINT_JOBS ?= 4
 PYTEST_ARGS ?=
@@ -66,7 +61,6 @@ EXTRA_SYMBOLS := /lib/modules/$(KVERSION)/extra/scd-Module.symvers
 export EXTRA_SYMBOLS
 
 # dev
-PY2_VENV_PATH ?= venv2
 PY3_VENV_PATH ?= venv3
 
 define library_version
@@ -95,8 +89,7 @@ build-libs:
 	$(MAKE) -C lib $(if $(CROSS_COMPILE),CROSS_COMPILE=$(CROSS_COMPILE))
 
 build-py2:
-	echo "$$library_version" > $(BASE_DIR)/$(PACKAGE_NAME)/__version__.py
-	$(PYTHON2) setup.py build $(PY2_BUILD_ARGS)
+	@echo "Python 2 is no longer supported."
 
 build-py3:
 	echo "$$library_version" > $(BASE_DIR)/$(PACKAGE_NAME)/__version__.py
@@ -126,8 +119,6 @@ clean-drivers:
 	$(RM) -r $(MODULE_SRC)/.tmp_versions
 
 clean-py2:
-	$(PYTHON2) setup.py clean $(PY2_BUILD_ARGS)
-	find "$(BASE_DIR)/arista" -name '*.pyc' -delete
 
 clean-py3:
 	$(PYTHON3) setup.py clean $(PY3_BUILD_ARGS)
@@ -148,8 +139,6 @@ distclean: clean
 #
 
 install-py2:
-	$(MKDIR) -p $(PY2_DESTDIR)
-	$(PYTHON2) setup.py install --root=$(PY2_DESTDIR) $(PY_INSTALL_ARGS)
 
 install-py3:
 	$(MKDIR) -p $(PY3_DESTDIR)
@@ -198,7 +187,6 @@ install: install-py install-drivers install-libs install-fs
 #
 
 test-py2:
-	$(PYTHON2) -m pytest $(PYTEST_ARGS)
 
 test-py3:
 	$(PYTHON3) -m pytest $(PYTEST_ARGS)
@@ -206,15 +194,7 @@ test-py3:
 test-py: $(addprefix test-,$(PY_TARGETS))
 
 py3k:
-	# NOTE: the python3 version of pylint does not support the py3k argument.
-	#       Thus we require the python2 version here.
-	# FIXME: make this fatal as soon as possible
-	-which python2 >/dev/null 2>&1 && \
-	python2 -m pylint --py3k \
-	   --jobs=$(PYLINT_JOBS) \
-	   --rcfile=$(PYLINTRC) \
-	   --ignore=$(PY3K_EXCLUDEFILELIST) \
-	   $(PACKAGE_NAME)
+	@echo "Python 2 no longer supported, skipping py3k checks"
 
 pylint:
 	$(ARISTA_PYLINT3_COMMAND) \
@@ -231,11 +211,6 @@ test: test-py pylint
 #
 # dev tools
 #
-
-$(PY2_VENV_PATH):
-	virtualenv $@
-	@echo "source $@/bin/activate"
-	@echo "python setup.py develop"
 
 $(PY3_VENV_PATH):
 	$(PYTHON3) -m venv $@

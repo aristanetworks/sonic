@@ -12,6 +12,7 @@ from ..components.tmp464 import Tmp464
 
 from ..descs.cause import ReloadCauseDesc
 from ..descs.gpio import GpioDesc
+from ..descs.psu import PsuStatusPolicy
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
 from ..descs.xcvr import Osfp, QsfpDD
@@ -101,6 +102,7 @@ class QuartzDd(FixedSystem):
             addrFunc=addrFunc,
             presentGpio=scd.inventory.getGpio("%s_present" % name),
             led=self.cpu.cpld.inventory.getLed('%s' % name),
+            psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS,
             psus=[
                PS2242,
             ],

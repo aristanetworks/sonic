@@ -36,11 +36,11 @@
    spi_prefix(dev_err, _spi, _fmt " (%s:%d)", ##_args, __func__, __LINE__)
 
 static struct spi_controller *scd_spi_get_controller(struct scd_context *ctx,
-                                                     s16 bus)
+                                                     u32 idx)
 {
    struct scd_spi_controller *spi;
    list_for_each_entry(spi, &ctx->spi_controller_list, list){
-      if (spi->controller->bus_num == bus)
+      if (spi->idx == idx)
          return spi->controller;
    }
    return NULL;
@@ -238,8 +238,8 @@ static int scd_spi_transfer_one_message(struct spi_controller *controller,
    return 0;
 }
 
-int scd_spi_controller_add(struct scd_context *ctx, u32 addr, u32 reg_stride,
-                           s16 bus, u16 num_chipselect)
+int scd_spi_controller_add(struct scd_context *ctx, u32 idx, u32 addr, u32 reg_stride,
+                           u16 num_chipselect)
 {
    struct spi_controller *controller;
    struct scd_spi_controller *spi;
@@ -247,7 +247,7 @@ int scd_spi_controller_add(struct scd_context *ctx, u32 addr, u32 reg_stride,
    int err;
 
    dev_dbg(dev, "adding spi controller %d at addr %#x\n",
-           bus, addr);
+           idx, addr);
 
    controller = spi_alloc_master(dev, sizeof(struct scd_spi_controller));
    if (!controller) {
@@ -255,6 +255,7 @@ int scd_spi_controller_add(struct scd_context *ctx, u32 addr, u32 reg_stride,
    }
    spi = spi_controller_get_devdata(controller);
 
+   spi->idx = idx;
    spi->csr_addr = addr;
    spi->reg_stride = reg_stride;
    spi->cmd_fifo_addr = 0x0;
@@ -263,7 +264,7 @@ int scd_spi_controller_add(struct scd_context *ctx, u32 addr, u32 reg_stride,
    spi->ctx = ctx;
    INIT_LIST_HEAD(&spi->list);
 
-   controller->bus_num = bus;
+   controller->bus_num = -1;
    controller->num_chipselect = num_chipselect;
    controller->flags = SPI_CONTROLLER_MUST_TX;
    controller->transfer_one_message = scd_spi_transfer_one_message;
@@ -281,7 +282,7 @@ int scd_spi_controller_add(struct scd_context *ctx, u32 addr, u32 reg_stride,
 
    err = spi_register_controller(controller);
    if (err < 0) {
-      spi_err(spi, "failed to register controller %d\n", bus);
+      spi_err(spi, "failed to register controller %d\n", idx);
       goto fail_controller;
    }
 
@@ -326,37 +327,37 @@ void scd_spi_controller_remove_all(struct scd_context *ctx)
    }
 }
 
-int scd_spi_device_add(struct scd_context *ctx, s16 bus, u16 chip_select,
-                       const char* modalias)
+int scd_spi_device_add(struct scd_context *ctx, u32 idx, u16 chip_select)
 {
    struct spi_controller *controller;
    struct spi_device *device;
    struct spi_board_info info = {{ 0 }};
 
-   dev_dbg(get_scd_dev(ctx),
-           "creating device bus: %d, cs: %u\n",
-           bus, chip_select);
-
-   strscpy(info.modalias, modalias, sizeof(info.modalias));
+   strscpy(info.modalias, "scd", sizeof(info.modalias));
    info.max_speed_hz = 25000000;
    info.chip_select = chip_select;
 
-   controller = scd_spi_get_controller(ctx, bus);
+   controller = scd_spi_get_controller(ctx, idx);
+
    if (!controller) {
-      dev_err(get_scd_dev(ctx), "no controller on bus %d\n", bus);
+      dev_err(get_scd_dev(ctx), "no controller at idx %u\n", idx);
       return -ENODEV;
    }
+
+   dev_dbg(get_scd_dev(ctx),
+           "creating device on controller idx: %d, cs: %u\n",
+           controller->bus_num, chip_select);
 
    device = spi_new_device(controller, &info);
    if (!device) {
       dev_err(get_scd_dev(ctx),
-              "failed to create device bus: %d, cs: %u\n",
-              bus, chip_select);
+              "failed to create device on controller: %d, cs: %u\n",
+              controller->bus_num, chip_select);
       return -ENODEV;
    }
 
    dev_notice(get_scd_dev(ctx),
               "modalias: %s, bus: %d, cs: %u\n",
-              info.modalias, bus, info.chip_select);
+              info.modalias, controller->bus_num, info.chip_select);
    return 0;
 }

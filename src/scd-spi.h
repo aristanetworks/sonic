@@ -28,6 +28,7 @@ struct scd_spi_controller {
    struct spi_controller *controller;
    struct list_head list;
 
+   u32 idx;
    u32 csr_addr;
 
    u32 reg_stride;
@@ -72,10 +73,9 @@ union scd_spi_ctrl {
    } __packed;
 };
 
-extern int scd_spi_controller_add(struct scd_context *ctx, u32 addr, u32 stride,
-                                  s16 bus, u16 num_chipselect);
+extern int scd_spi_controller_add(struct scd_context *ctx, u32 idx, u32 addr, u32 stride,
+                                  u16 num_chipselect);
 extern void scd_spi_controller_remove_all(struct scd_context *ctx);
-extern int scd_spi_device_add(struct scd_context *ctx, s16 bus,
-                              u16 chip_select, const char *modalias);
+extern int scd_spi_device_add(struct scd_context *ctx, u32 idx, u16 chip_select);
 
 #endif /* _LINUX_DRIVER_SCD_SPI_H_ */

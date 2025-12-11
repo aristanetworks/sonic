@@ -430,9 +430,9 @@ static ssize_t parse_new_object_uart(struct scd_context *ctx,
 static ssize_t parse_new_object_spi_controller(struct scd_context *ctx,
                                                char *buf, size_t count)
 {
+   u32 idx;
    u32 addr;
    u32 stride;
-   s16 bus;
    u16 num_chipselect;
    int res;
 
@@ -441,13 +441,13 @@ static ssize_t parse_new_object_spi_controller(struct scd_context *ctx,
    if (!buf)
       return -EINVAL;
 
+   PARSE_INT_OR_RETURN(&buf, tmp, u32, &idx);
    PARSE_ADDR_OR_RETURN(&buf, tmp, u32, &addr, ctx->res_size);
    PARSE_ADDR_OR_RETURN(&buf, tmp, u32, &stride, ctx->res_size);
-   PARSE_INT_OR_RETURN(&buf, tmp, s16, &bus);
    PARSE_INT_OR_RETURN(&buf, tmp, u16, &num_chipselect);
    PARSE_END_OR_RETURN(&buf, tmp);
 
-   res = scd_spi_controller_add(ctx, addr, stride, bus, num_chipselect);
+   res = scd_spi_controller_add(ctx, idx, addr, stride, num_chipselect);
    if (res)
       return res;
 
@@ -457,9 +457,8 @@ static ssize_t parse_new_object_spi_controller(struct scd_context *ctx,
 static ssize_t parse_new_object_spi_device(struct scd_context *ctx, 
                                            char *buf, size_t count)
 {
-   s16 bus;
+   u32 idx;
    u16 chip_select;
-   const char *modalias;
    int res;
 
    const char *tmp;
@@ -467,12 +466,11 @@ static ssize_t parse_new_object_spi_device(struct scd_context *ctx,
    if (!buf)
       return -EINVAL;
 
-   PARSE_INT_OR_RETURN(&buf, tmp, s16, &bus);
+   PARSE_INT_OR_RETURN(&buf, tmp, u32, &idx);
    PARSE_INT_OR_RETURN(&buf, tmp, u16, &chip_select);
-   PARSE_STR_OR_RETURN(&buf, tmp, modalias);
    PARSE_END_OR_RETURN(&buf, tmp);
 
-   res = scd_spi_device_add(ctx, bus, chip_select, modalias);
+   res = scd_spi_device_add(ctx, idx, chip_select);
    if (res)
       return res;
 

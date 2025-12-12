@@ -2,6 +2,8 @@
 import os
 import time
 
+from ..descs.sensor import Position, SensorDesc
+from ..inventory.switchasic import SwitchAsic
 from ..libs.pci import pciRescan
 from ..libs.wait import waitFor
 
@@ -16,6 +18,20 @@ logging = getLogger(__name__)
 
 ASIC_YIELD_TIME = int( os.getenv( 'ASIC_YIELD_TIME', '2' ) )
 
+class SwitchAsicImpl(SwitchAsic):
+   """Inventory object that wraps the SwitchChip component"""
+   def __init__(self, chip):
+      self.chip = chip
+
+   def getId(self):
+      return self.chip.asicId
+
+   def getName(self):
+      return 'asic%d' % self.chip.asicId
+
+   def getModel(self):
+      return self.chip.__class__.__name__
+
 class SwitchChipDriver(PciKernelDriver):
    PASSIVE = True
 
@@ -24,10 +40,16 @@ class SwitchChip(PciComponent):
    DRIVER = SwitchChipDriver
    NUM_DIES = 1
 
-   def __init__(self, addr, dieId=0, rescan=False, pcieResetDelay=500,
+   SENSORS = [
+      SensorDesc(diode=0, name='Asic',
+                 position=Position.OTHER, target=90, overheat=100, critical=105),
+   ]
+
+   def __init__(self, addr, asicId=0, dieId=0, rescan=False, pcieResetDelay=500,
                 powerGpios=None, powerGoodGpios=None,
-                coreResets=None, pcieResets=None, **kwargs):
+                coreResets=None, pcieResets=None, sensors=None, **kwargs):
       super(SwitchChip, self).__init__(addr=addr, **kwargs)
+      self.asicId: int = asicId
       self.dieId : int = dieId
       self.rescan = rescan
       self.pcieResetDelay = pcieResetDelay
@@ -35,6 +57,8 @@ class SwitchChip(PciComponent):
       self.powerGoodGpios = powerGoodGpios or []
       self.coreResets = coreResets or []
       self.pcieResets = pcieResets or []
+      self.thermalDesc = (sensors or self.SENSORS)[0]
+      self.inventory.addSwitchAsic(SwitchAsicImpl(self))
 
    def __str__(self):
       return '%s(addr=%s)' % (self.__class__.__name__, self.addr)

@@ -60,6 +60,8 @@ class DenaliLinecard(DenaliLinecardBase):
          asic = upstream.newComponent(
             desc.cls,
             addr=upstream.addr,
+            asicId=desc.asicId,
+            dieId=desc.dieId,
             rescan=True,
             coreResets=[self.scd.regs.getGpio('je%dReset' % desc.rstIdx)],
             pcieResets=[self.scd.regs.getGpio('je%dPcieReset' % desc.rstIdx)],

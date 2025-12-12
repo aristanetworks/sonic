@@ -40,6 +40,8 @@ class DenaliFabric(DenaliFabricBase):
          asic = upstream.newComponent(
             desc.cls,
             addr=upstream.addr,
+            asicId=desc.asicId,
+            dieId=desc.dieId,
             coreResets=[self.gpio2.getGpio('ramon%dSysReset' % desc.asicId)],
             pcieResets=[self.gpio2.getGpio('ramon%dPcieReset' % desc.asicId)],
          )

@@ -1,5 +1,6 @@
 import pytest
 
+from ...core.asic import SwitchChip
 from ...core.pci import (
    DownstreamPciPort,
    PciBridge,
@@ -48,6 +49,22 @@ def testPciAddrDuplication(platform):
          sysfsPath = c.addr.getSysfsPath()
          assert sysfsPath not in sysfsSet
          sysfsSet.add(sysfsPath)
+
+@pytest.mark.parametrize('platform', getAllSystems(), ids=classname)
+def testSwitchAsicIdDieIdUniqueness(platform):
+   asicIdDieIdPairs = set()
+   # Iterate through all SwitchChip components to catch duplicates
+   # even if they were overwritten in the inventory.
+
+   # For multi-die ASICs (e.g., Jericho3 with NUM_DIES=2), the same asicId
+   # can be used with different dieId values, so we check the (asicId, dieId) tuple.
+   for c in platform.iterComponents(filters=None):
+      if isinstance(c, SwitchChip):
+         pair = (c.asicId, c.dieId)
+         assert pair not in asicIdDieIdPairs, \
+            f"Platform {platform.__class__.__name__} has duplicate " \
+            f"(asicId, dieId) pair {pair}"
+         asicIdDieIdPairs.add(pair)
 
 @pytest.mark.parametrize('platform', getAllSystems(), ids=classname)
 def testCorrectParenting(platform):

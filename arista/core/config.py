@@ -43,6 +43,7 @@ class Config():
          cls.instance_.api_event_use_interrupts = False
          cls.instance_.flash_path = DEFAULT_FLASH_PATH
          cls.instance_.provision_path = DEFAULT_PROVISION_PATH
+         cls.instance_.provision_max_lock_retries = 15
          cls.instance_.tmpfs_path = '/var/run/platform_cache/arista'
          cls.instance_.etc_path = '/etc/sonic'
          cls.instance_.api_rpc_sup = '127.100.1.1'

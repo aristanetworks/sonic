@@ -230,7 +230,8 @@ class DenaliCard(Card):
       self.plx.enableNt(False)
 
    def setupIdentification(self):
-      self.pca.takeOwnership()
+      if not self.pca.takeOwnership():
+         logging.debug('%s: takeOwnership returned false', self)
       self.pca.setup()
       self.eeprom.setup()
 

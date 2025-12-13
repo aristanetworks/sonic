@@ -23,7 +23,6 @@ class LinecardMonitor(PollDaemonFeature):
       self.manifest = ProvisionManifest(self.daemon.platform)
       self.manifest.read(init=True)
 
-      update = False
       for lc in self.daemon.platform.chassis.iterLinecards(presentOnly=False):
          present = lc.slot.getPresence()
          changed = lc.slot.getPresenceChanged()
@@ -32,11 +31,9 @@ class LinecardMonitor(PollDaemonFeature):
          self.curPresence[lc.getSlotId()] = present
 
          if present:
-            if self.manifest.checkLinecardSerial(lc, clearCache=False):
-               update = True
+            self.manifest.checkLinecardSerial(lc, clearCache=False)
 
-      if update:
-         self.manifest.write()
+      super().init()
 
    def handleLinecardChanged(self, lc):
       present = lc.getPresence()
@@ -49,10 +46,6 @@ class LinecardMonitor(PollDaemonFeature):
       return self.manifest.checkLinecardSerial(lc)
 
    def callback(self, elapsed): # pylint: disable=unused-argument
-      update = False
       for lc in self.daemon.platform.chassis.iterLinecards(presentOnly=False):
          if lc.slot.getPresenceChanged():
-            if self.handleLinecardChanged(lc):
-               update = True
-      if update:
-         self.manifest.write()
+            self.handleLinecardChanged(lc)

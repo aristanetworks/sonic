@@ -353,8 +353,15 @@ class StoredData():
             'Base directory for %s file %s not found!' % (self.lifespan, self.name)
       if not os.path.isfile(self.path):
          logging.debug('Creating %s file %s', self.lifespan, self.name)
-      with open(self.path, mode) as tmpFile:
-         tmpFile.write(data)
+      try:
+         with open(self.path, mode) as tmpFile:
+            tmpFile.write(data)
+      except OSError as e:
+         if self.lifespan == 'temporary':
+            # For cache/temporary files, log but don't propagate
+            logging.error("failed to write cache %s: %s", self, e)
+         else:
+            raise
 
    def read(self):
       assert os.path.isfile(self.path), \
@@ -364,7 +371,14 @@ class StoredData():
 
    def clear(self):
       if self.exist():
-         os.remove(self.path)
+         try:
+            os.remove(self.path)
+         except OSError as e:
+            if self.lifespan == 'temporary':
+               # For cache/temporary files, log but don't propagate
+               logging.error("failed to clear cache %s: %s", self, e)
+            else:
+               raise
 
    def readOrClear(self):
       if self.exist():

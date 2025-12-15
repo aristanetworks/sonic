@@ -1,12 +1,18 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import stat
+import shutil
 import tempfile
 from struct import pack, unpack
+try:
+   from unittest import mock
+except ImportError:
+   import mock
 
 from ...tests.testing import unittest
 
-from ..utils import FileResource, MmapResource, ResourceAccessor
+from ..utils import FileResource, MmapResource, ResourceAccessor, StoredData
 
 class ResourceTestBase(object):
    class TestClass(unittest.TestCase):
@@ -118,6 +124,128 @@ class FileResourceTest(ResourceTestBase.TestClass):
 
 class MmapResourceTest(ResourceTestBase.TestClass):
    CLASS_TO_TEST = MmapResource
+
+class StoredDataTest(unittest.TestCase):
+   def setUp(self):
+      self.tempDir = tempfile.mkdtemp(prefix='unittest-arista-storeddata-')
+      self.tempFile = os.path.join(self.tempDir, 'test.txt')
+
+   def tearDown(self):
+      if os.path.exists(self.tempDir):
+         shutil.rmtree(self.tempDir)
+
+   def testWriteReadTemporary(self):
+      """Test basic write and read for temporary files"""
+      sd = StoredData('test.txt', lifespan='temporary',
+                      path=self.tempFile, append=False)
+      sd.write('test data')
+      self.assertEqual(sd.read(), 'test data')
+
+   def testWriteReadPersistent(self):
+      """Test basic write and read for persistent files"""
+      sd = StoredData('test.txt', lifespan='persistent',
+                      path=self.tempFile, append=False)
+      sd.write('persistent data')
+      self.assertEqual(sd.read(), 'persistent data')
+
+   def testClearTemporary(self):
+      """Test clear for temporary files"""
+      sd = StoredData('test.txt', lifespan='temporary',
+                      path=self.tempFile, append=False)
+      sd.write('test data')
+      self.assertTrue(sd.exist())
+      sd.clear()
+      self.assertFalse(sd.exist())
+
+   def testClearPersistent(self):
+      """Test clear for persistent files"""
+      sd = StoredData('test.txt', lifespan='persistent',
+                      path=self.tempFile, append=False)
+      sd.write('test data')
+      self.assertTrue(sd.exist())
+      sd.clear()
+      self.assertFalse(sd.exist())
+
+   def testWriteExceptionTemporary(self):
+      """Test that write exceptions are caught for temporary files"""
+      sd = StoredData('test.txt', lifespan='temporary',
+                      path=self.tempFile, append=False)
+      sd.write('initial data')
+      # Make file read-only to trigger write exception
+      os.chmod(self.tempFile, stat.S_IRUSR)
+      # Should not raise exception for temporary files
+      sd.write('new data')
+      # Restore permissions for cleanup
+      os.chmod(self.tempFile, stat.S_IRUSR | stat.S_IWUSR)
+
+   def testWriteExceptionPersistent(self):
+      """Test that write exceptions propagate for persistent files"""
+      sd = StoredData('test.txt', lifespan='persistent',
+                      path=self.tempFile, append=False)
+      sd.write('initial data')
+      # Make file read-only to trigger write exception
+      os.chmod(self.tempFile, stat.S_IRUSR)
+      # Should raise exception for persistent files
+      with self.assertRaises(OSError):
+         sd.write('new data')
+      # Restore permissions for cleanup
+      os.chmod(self.tempFile, stat.S_IRUSR | stat.S_IWUSR)
+
+   def testClearExceptionTemporary(self):
+      """Test that clear exceptions are caught for temporary files"""
+      sd = StoredData('test.txt', lifespan='temporary',
+                      path=self.tempFile, append=False)
+      sd.write('test data')
+      # Make directory read-only to trigger remove exception
+      os.chmod(self.tempDir, stat.S_IRUSR | stat.S_IXUSR)
+      # Should not raise exception for temporary files
+      sd.clear()
+      # Restore permissions for cleanup
+      os.chmod(self.tempDir, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+
+   def testClearExceptionPersistent(self):
+      """Test that clear exceptions propagate for persistent files"""
+      sd = StoredData('test.txt', lifespan='persistent',
+                      path=self.tempFile, append=False)
+      sd.write('test data')
+      # Make directory read-only to trigger remove exception
+      os.chmod(self.tempDir, stat.S_IRUSR | stat.S_IXUSR)
+      # Should raise exception for persistent files
+      with self.assertRaises(OSError):
+         sd.clear()
+      # Restore permissions for cleanup
+      os.chmod(self.tempDir, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+
+   def testReadOrClearSuccess(self):
+      """Test readOrClear returns data when file is valid"""
+      sd = StoredData('test.txt', lifespan='temporary',
+                      path=self.tempFile, append=False)
+      sd.write('test data')
+      result = sd.readOrClear()
+      self.assertEqual(result, 'test data')
+
+   def testReadOrClearCorrupted(self):
+      """Test readOrClear clears corrupted file and returns None"""
+      sd = StoredData('test.txt', lifespan='temporary',
+                      path=self.tempFile, append=False)
+      # Create a file that will cause read to fail (binary data in text mode)
+      with open(self.tempFile, 'wb') as f:
+         f.write(b'\x80\x81\x82\x83')
+
+      # Mock read to raise an OSError
+      with mock.patch.object(sd, 'read',
+                             side_effect=OSError('Read error')):
+         result = sd.readOrClear()
+         self.assertIsNone(result)
+         # File should be cleared
+         self.assertFalse(sd.exist())
+
+   def testReadOrClearNonExistent(self):
+      """Test readOrClear returns None for non-existent file"""
+      sd = StoredData('test.txt', lifespan='temporary',
+                      path=self.tempFile, append=False)
+      result = sd.readOrClear()
+      self.assertIsNone(result)
 
 if __name__ == '__main__':
    unittest.main()

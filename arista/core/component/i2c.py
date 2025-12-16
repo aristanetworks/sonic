@@ -1,5 +1,6 @@
 
 from .component import Component
+from ..driver.user.i2c import I2cDevDriver
 from ..quirk import Quirk
 
 class I2cRegisterQuirk(Quirk): # pylint: disable=abstract-method
@@ -13,11 +14,14 @@ class I2cRegisterQuirk(Quirk): # pylint: disable=abstract-method
 
 class I2cByteQuirk(I2cRegisterQuirk):
    def run(self, component):
-      component.driver.write_byte_data(self.addr, self.data)
+      component.getUserDriver().write_byte_data(self.addr, self.data)
 
 class I2cBlockQuirk(I2cRegisterQuirk):
    def run(self, component):
-      component.driver.write_bytes([self.addr, len(self.data)] + self.data)
+      component.getUserDriver().write_bytes([self.addr, len(self.data)] + self.data)
 
 class I2cComponent(Component):
-   pass
+   def getUserDriver(self):
+      if isinstance(self.driver, I2cDevDriver):
+         return self.driver
+      return I2cDevDriver(parent=self, addr=self.addr)

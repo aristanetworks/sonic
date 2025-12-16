@@ -1,3 +1,4 @@
+from ..core.component.i2c import I2cByteQuirk
 from ..core.cooling import CoolingConfig, CoolingLogicIncPid
 from ..core.fixed import FixedSystem
 from ..core.hwapi import HwApi
@@ -110,7 +111,10 @@ class QuicksilverBase(FixedSystem):
                     position=Position.OTHER, target=90, overheat=115, critical=125),
          SensorDesc(diode=7, name='TH5 Diode 2',
                     position=Position.OTHER, target=90, overheat=115, critical=125),
-      ] if self.HAS_TH5_EXT_DIODE else []))
+      ] if self.HAS_TH5_EXT_DIODE else []), quirks=[
+         I2cByteQuirk(0x4b, 0x1f, "TH5 Diode Transistor Ideality config"),
+         I2cByteQuirk(0x4c, 0x60, "TH5 Diode Ideality Select config"),
+      ])
 
       if self.getHwApi() >= HwApi(2): # Kona
          scd.newComponent(Tmp75, addr=scd.i2cAddr(13, 0x48), sensors=[

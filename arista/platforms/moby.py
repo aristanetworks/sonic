@@ -1,3 +1,4 @@
+from ..core.component.i2c import I2cByteQuirk
 from ..core.cooling import CoolingConfig
 from ..core.fixed import FixedSystem, FixedChassis
 from ..core.platform import registerPlatform
@@ -121,6 +122,9 @@ class Moby(FixedSystem):
                     position=Position.OTHER, target=105, overheat=115, critical=125),
          SensorDesc(diode=7, name='TH5 Diode 2',
                     position=Position.OTHER, target=105, overheat=115, critical=125),
+      ], quirks=[
+         I2cByteQuirk(0x4b, 0x1f, "TH5 Diode Transistor Ideality config"),
+         I2cByteQuirk(0x4c, 0x60, "TH5 Diode Ideality Select config"),
       ])
 
       scd.addLeds([

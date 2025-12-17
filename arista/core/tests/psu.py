@@ -2,7 +2,7 @@
 from ...tests.testing import unittest, patch
 
 from ...descs.fan import FanDesc, FanPosition
-from ...descs.psu import PsuDesc
+from ...descs.psu import PsuDesc, PsuStatusPolicy
 from ...descs.rail import RailDesc, RailDirection
 from ...descs.sensor import Position, SensorDesc
 
@@ -18,12 +18,22 @@ from .mockinv import (
 )
 
 class MockPmbus(Component):
+   def __init__(self, *args, **kwargs):
+      super(MockPmbus, self).__init__(*args, **kwargs)
+      self.driver = None
    def addTempSensors(self, sensors):
       pass
    def addFans(self, fans):
       pass
    def addRails(self, rails):
       pass
+
+
+class MockPmbusDriver:
+   def __init__(self, statusGood=True):
+      self.statusGood = statusGood
+   def isPmbusStatusGood(self):
+      return self.statusGood
 
 class MockPsuModel(PsuModel):
    PMBUS_CLS = MockPmbus
@@ -89,21 +99,23 @@ class MockPsuSlot(PsuSlot):
    pass
 
 class MockFixedSystem(FixedSystem):
-   def __init__(self, psus, numPsus=2, psuFunc=lambda x: x):
+   def __init__(self, psus, numPsus=2, psuFunc=lambda x: x, psuStatusPolicy=None):
       super(MockFixedSystem, self).__init__()
       self.slots = []
       self.numPsus = numPsus
       for i in incrange(1, numPsus):
-         self.slots.append(self.newComponent(
-            MockPsuSlot,
-            slotId=i,
-            addrFunc=psuFunc,
-            presentGpio=MockGpio(),
-            inputOkGpio=MockGpio(),
-            outputOkGpio=MockGpio(),
-            led=MockLed(),
-            psus=psus,
-         ))
+         kwargs = {
+            'slotId': i,
+            'addrFunc': psuFunc,
+            'presentGpio': MockGpio(),
+            'inputOkGpio': MockGpio(),
+            'outputOkGpio': MockGpio(),
+            'led': MockLed(),
+            'psus': psus,
+         }
+         if psuStatusPolicy is not None:
+            kwargs['psuStatusPolicy'] = psuStatusPolicy
+         self.slots.append(self.newComponent(MockPsuSlot, **kwargs))
 
 @patch('arista.core.psu.PsuPmbusDetect', MockPmbusDetect)
 class TestPsu(unittest.TestCase):
@@ -141,6 +153,84 @@ class TestPsu(unittest.TestCase):
       system.slots[0].presentGpio.value = 1
       self._checkSystem(system)
       self._checkPsu(system, 0, PsuModel2)
+
+
+class TestPsuSlotPmbusStatus(unittest.TestCase):
+   def _createSlot(self, psuStatusPolicy=None):
+      system = MockFixedSystem([PsuModel1],
+                               numPsus=1,
+                               psuStatusPolicy=psuStatusPolicy)
+      return system.slots[0]
+
+   def testDefaultStatusPolicy(self):
+      slot = self._createSlot()
+      self.assertEqual(slot.psuStatusPolicy, PsuStatusPolicy.GPIO_OR_PMBUS_POWER)
+
+   def testCheckPmbusStatusNoPsu(self):
+      slot = self._createSlot()
+      self.assertIsNone(slot.checkPmbusStatus())
+
+   def testCheckPmbusStatusNoDriver(self):
+      slot = self._createSlot()
+      slot.psu = MockPmbus()
+      self.assertIsNone(slot.checkPmbusStatus())
+
+   def testCheckPmbusStatusGood(self):
+      slot = self._createSlot()
+      slot.psu = MockPmbus()
+      slot.psu.driver = MockPmbusDriver(statusGood=True)
+      self.assertTrue(slot.checkPmbusStatus())
+
+   def testCheckPmbusStatusBad(self):
+      slot = self._createSlot()
+      slot.psu = MockPmbus()
+      slot.psu.driver = MockPmbusDriver(statusGood=False)
+      self.assertFalse(slot.checkPmbusStatus())
+
+   def testIsPowerGoodNotPresent(self):
+      slot = self._createSlot()
+      slot.presentGpio.value = 0
+      self.assertFalse(slot.isPowerGood())
+
+   def testIsPowerGoodGpioOrPmbusPowerPolicy(self):
+      slot = self._createSlot()
+      slot.presentGpio.value = 1
+      slot.inputOkGpio.value = 1
+      slot.outputOkGpio.value = 1
+      self.assertTrue(slot.isPowerGood())
+
+   def testIsPowerGoodPmbusStatusPolicyGood(self):
+      slot = self._createSlot(psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS)
+      slot.psu = MockPmbus()
+      slot.psu.driver = MockPmbusDriver(statusGood=True)
+      self.assertTrue(slot.isPowerGood())
+
+   def testIsPowerGoodPmbusStatusPolicyNoFallbackOnFalse(self):
+      slot = self._createSlot(psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS)
+      slot.presentGpio.value = 1
+      slot.inputOkGpio.value = 1
+      slot.outputOkGpio.value = 1
+      slot.psu = MockPmbus()
+      slot.psu.driver = MockPmbusDriver(statusGood=False)
+      self.assertFalse(slot.isPowerGood())
+
+   def testIsPowerGoodPmbusStatusPolicyFallbackOnNone(self):
+      slot = self._createSlot(psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS)
+      slot.presentGpio.value = 1
+      slot.inputOkGpio.value = 1
+      slot.outputOkGpio.value = 1
+      slot.psu = MockPmbus()
+      slot.psu.driver = MockPmbusDriver(statusGood=None)
+      self.assertTrue(slot.isPowerGood())
+
+   def testIsPowerGoodPmbusStatusPolicyNoFallbackOnTrue(self):
+      slot = self._createSlot(psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS)
+      slot.presentGpio.value = 0
+      slot.inputOkGpio.value = 0
+      slot.outputOkGpio.value = 0
+      slot.psu = MockPmbus()
+      slot.psu.driver = MockPmbusDriver(statusGood=True)
+      self.assertTrue(slot.isPowerGood())
 
 if __name__ == '__main__':
    unittest.main()

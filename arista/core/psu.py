@@ -405,20 +405,15 @@ class PsuSlot(SlotComponent):
          return None
 
    def isPowerGood(self):
-      if not self.getPresence():
-         return False
       if self.psuStatusPolicy == PsuStatusPolicy.PMBUS_STATUS:
          pmbusStatus = self.checkPmbusStatus()
-         if pmbusStatus is True:
-            return True
-         if pmbusStatus is None:
-            logging.debug("PSU %d PMBus status unknown, "
-                          "falling back to input and output pins for status",
-                           self.slotId)
-         else:
-            logging.debug("PSU %d PMBus status check failed, "
-                          "falling back to input and output pins for status",
-                          self.slotId)
+         if pmbusStatus is not None:
+            return pmbusStatus
+         logging.debug("PSU %d PMBus status unknown, "
+                       "falling back to input and output pins for status",
+                       self.slotId)
+      if not self.getPresence():
+         return False
       if not self.isInputGood():
          return False
       return self.isOutputGood()

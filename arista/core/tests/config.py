@@ -184,10 +184,23 @@ class DefaultConfigTest(unittest.TestCase):
          with self.subTest(msg=key):
             type_ = DefaultConfig.__annotations__.get(key)
             if isinstance(type_, UnionType):
-               self.assertTrue(type(value) in type_.__args__,
-                               msg=f"Attribute {key} has value with unexpected type."
-                               f" Expected: {type_!r}, Got: {type(value)!r}")
-            else:
-               self.assertTrue(type_ is type(value),
-                               msg=f"Attribute {key} has value with unexpected type."
-                               f" Expected: {type_!r}, Got: {type(value)!r}")
+               if value is None:
+                  self.assertTrue(type(None) in type_.__args__,
+                                  msg=f"Attribute {key} has value None."
+                                  f" Expected type: {type_!r}")
+                  continue
+
+               for t in type_.__args__:
+                  if t is not type(None):
+                     type_ = t
+                     break
+
+            try:
+               convertedValue = type_(value)
+            except (ValueError, TypeError):
+               self.fail(msg=f"Failed to convert {key} value: "
+                           f"{value!r} to {type_!r}")
+
+            self.assertEqual(convertedValue, value,
+                              msg=f"Attribute {key} has unexpected value type."
+                              f" Expected: {type_!r}, Got: {type(value)!r}")

@@ -1,3 +1,4 @@
+from ..core.cooling import CoolingConfig, CoolingLogicIncPid
 from ..core.fixed import FixedSystem
 from ..core.hwapi import HwApi
 from ..core.platform import registerPlatform
@@ -42,6 +43,15 @@ class CitrineBase(FixedSystem):
       (QsfpDD(i, **QSFP_RGB_LED) for i in incrange(1, 16)),
       (Qsfp112(i, **QSFP_RGB_LED) for i in incrange(17, 48)),
       (QsfpDD(i, **QSFP_RGB_LED) for i in incrange(49, 64))
+   )
+
+   COOLING = CoolingConfig(
+      logic=CoolingLogicIncPid,
+      kp=9,
+      ki=0.75,
+      kd=0,
+      negHyst=0,
+      posHyst=0,
    )
 
    def __init__(self):

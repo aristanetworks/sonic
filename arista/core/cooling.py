@@ -68,6 +68,7 @@ class CoolingObject(object):
       self.data = HistoricalData(name)
       self.inv = inv
       self._initialized = False
+      self.zone = None
 
    def __str__(self):
       return '%s(%s)' % (self.__class__.__name__, self.name)
@@ -77,6 +78,9 @@ class CoolingObject(object):
 
    def dump(self):
       return self.data.data
+
+   def assignZone(self, zone):
+      self.zone = zone
 
 class CoolingFanBase(CoolingObject):
    def __init__(self, *args, **kwargs):
@@ -112,6 +116,21 @@ class CoolingFanBase(CoolingObject):
       except Exception: # pylint: disable=broad-except
          logging.exception('%s failed to write speed', self)
          return None
+
+class CoolingPwmBase(CoolingObject):
+   def __init__(self, *args, **kwargs):
+      super().__init__(*args, **kwargs)
+      self.cooling_logic = None
+      self.last_update_time = None
+      self.device_name = None
+
+   @property
+   def pwm(self):
+      return self.data.lastGet
+
+   @pwm.setter
+   def pwm(self, value):
+      return self.data.getValue(monotonicRaw(), value)
 
 class CoolingThermalBase(CoolingObject):
    def __init__(self, *args, **kwargs):
@@ -150,6 +169,16 @@ class ThermalInfo(object):
    def __str__(self):
       kwargs = ', '.join('%s=%s' % (k, str(v)) for k, v in self.__dict__.items())
       return '%s(%s)' % (self.__class__.__name__, kwargs)
+
+class CoolingPwmInfo:
+   def __init__(self, source, pwm, device_name=None):
+      self.source = source
+      self.pwm = pwm
+      self.device_name = device_name
+
+   def __str__(self):
+      return (f'{self.__class__.__name__}(source={self.source}, '
+              f'device_name={self.device_name}, pwm={self.pwm})')
 
 class ThermalInfos(object):
    def __init__(self, targetOffset):
@@ -308,6 +337,7 @@ class CoolingZone(object):
       self.speed = HistoricalData('target')
       self.fans = None
       self.thermals = None
+      self._pwm_infos = None
       self.initialized = False
 
    def __str__(self):
@@ -316,6 +346,13 @@ class CoolingZone(object):
    def load(self, fans=None, thermals=None):
       self.fans = fans or {}
       self.thermals = thermals or {}
+      self._pwm_infos = {}
+
+      # Assign cooling zone to all fans so they can access zone-specific info
+      # Currently ChassisDbFan uses it to determine the cooling logic
+      for obj in list(self.fans.values()):
+         obj.assignZone(self)
+
       self.initialized = True
 
    def update(self):
@@ -344,17 +381,45 @@ class CoolingZone(object):
 
       return lastSpeed
 
-   def run(self, fans=None, thermals=None, update=False):
+   def computeFinalPwm(self, extraPwms):
+      lastSpeed = self.readLastSpeed()
+      desiredSpeed = self.logic.computePwm(lastSpeed)
+
+      if extraPwms:
+         # Log each device PWM individually (similar to ThermalInfo logging)
+         for source, pwm_obj in extraPwms.items():
+            pwmValue = pwm_obj.pwm
+            deviceName = pwm_obj.device_name
+
+            pwmInfo = self._pwm_infos.get(source)
+            if pwmInfo is None:
+               pwmInfo = CoolingPwmInfo(source, pwmValue, deviceName)
+               self._pwm_infos[source] = pwmInfo
+            else:
+               pwmInfo.pwm = pwmValue
+               pwmInfo.device_name = deviceName
+            logging.debug('%s', pwmInfo)
+
+         maxExtraPwm = max(pwm_obj.pwm for pwm_obj in extraPwms.values())
+         logging.debug('%s: max extra PWM from modules: %.3f (from %s)',
+                       self, maxExtraPwm,
+                       {v.device_name: v.pwm for k, v in extraPwms.items()})
+         if maxExtraPwm > desiredSpeed:
+            logging.debug('%s: using extra PWM %.3f instead of computed %.3f',
+                          self, maxExtraPwm, desiredSpeed)
+            desiredSpeed = maxExtraPwm
+
+      logging.debug('%s: fan speed selected is %.3f from %.3f (%+.3f)', self,
+                    desiredSpeed, lastSpeed, desiredSpeed - lastSpeed)
+      return desiredSpeed
+
+   def run(self, fans=None, thermals=None, update=False, extraPwms=None):
       if not self.initialized:
          self.load(fans=fans, thermals=thermals)
       if update:
          self.update()
 
-      lastSpeed = self.readLastSpeed()
-      desiredSpeed = self.logic.computePwm(lastSpeed)
-
-      logging.debug('%s: fan speed selected is %.3f from %.3f (%+.3f)', self,
-                    desiredSpeed, lastSpeed, desiredSpeed - lastSpeed)
+      desiredSpeed = self.computeFinalPwm(extraPwms)
       self.speed.setValue(self.algo.now, desiredSpeed)
 
       # Set new fan speed
@@ -415,7 +480,8 @@ class CoolingAlgorithm(object):
       for zone in self.zones:
          zone.export(path)
 
-   def run(self, elapsed=None, fans=None, thermals=None, update=False):
+   def run(self, elapsed=None, fans=None, thermals=None, update=False,
+           extraPwms=None):
       self.previous = self.now
       self.now = monotonicRaw()
       if self.previous is None:
@@ -424,7 +490,8 @@ class CoolingAlgorithm(object):
 
       logging.debug('%s: running algorithm (elapsed %.4fs)', self, self.elapsed)
       for zone in self.zones:
-         zone.run(fans=fans, thermals=thermals, update=update)
+         zone.run(fans=fans, thermals=thermals, update=update,
+                  extraPwms=extraPwms)
       logging.debug('%s: algorithm took %.4fs to run', self,
                     monotonicRaw() - self.now)
 

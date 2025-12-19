@@ -1,10 +1,14 @@
 
 from functools import cached_property
+import re
+from time import asctime, localtime
 
 from arista.core.asic import getNumPhysicalAsics
+from arista.core.card import Card
 from arista.core.config import Config
 from arista.core.cooling import (
    CoolingFanBase,
+   CoolingPwmBase,
    CoolingThermalBase,
 )
 from arista.core.supervisor import Supervisor
@@ -21,6 +25,13 @@ class DBEntity:
    def get(self, key):
       _, data = self.tbl.hget(self.name, key)
       return data
+
+   def hset(self, *args):
+      if len(args) % 2 != 0:
+         raise ValueError("hset requires an even number of args (field-value pairs)")
+
+      fvs = [(args[i], str(args[i+1])) for i in range(0, len(args), 2)]
+      return self.tbl.set(self.name, fvs)
 
 class DBMultiEntity:
    def __init__(self, tbls, name):
@@ -39,6 +50,8 @@ class DBMultiEntity:
       raise NotImplementedError
 
 class DBHelper(object):
+   TEMPERATURE_INFO_RE = re.compile(r'(TEMPERATURE_INFO_[^|]+)\|(.+)')
+
    def __init__(self, namespace=''):
       self._dbs = {}
       self._tables = {}
@@ -125,11 +138,74 @@ class DBHelper(object):
       )
       return self._get_multi_table_objects(self._chassis_state_db, *tbls)
 
+   def get_all_chassis_module_pwms(self):
+      results = []
+
+      # Get data from all keys of the form "TEMPERATURE_INFO_*|THERMAL_ALGO_RESULT"
+      keys = self._chassis_state_db.keys('TEMPERATURE_INFO_*')
+
+      for key in keys:
+         if m := self.TEMPERATURE_INFO_RE.match(key):
+            table_name = m.group(1)
+            entry_name = m.group(2)
+            if entry_name == 'THERMAL_ALGO_RESULT':
+               tbl = self._get_table(self._chassis_state_db, table_name)
+               dbent = self._get_ent(table_name, tbl, entry_name)
+               results.append((table_name, dbent))
+
+      return results
+
+   def get_chassis_state_table(self, table_name):
+      return self._get_table(self._chassis_state_db, table_name)
+
+class ChassisDbFan(CoolingFanBase):
+
+   def __init__(self, chassis, dbhelper, name='THERMAL_ALGO_RESULT'):
+      super().__init__(name)
+      self._chassis = chassis
+      self._dbhelper = dbhelper
+      self._dbent = None
+      self._table_name = None
+      self.inv = self
+
+   def _get_dbent(self):
+      if self._dbent is None:
+         slot_id = self._chassis.get_my_slot()
+         self._table_name = f'TEMPERATURE_INFO_{slot_id}'
+         table = self._dbhelper.get_chassis_state_table(self._table_name)
+         self._dbent = DBEntity(table, self.name)
+      return self._dbent
+
+   @property
+   def speed(self):
+      last_speed = self.data.lastSet
+      return last_speed if last_speed is not None else 100
+
+   def update(self):
+      pass
+
+   def setSpeed(self, value):
+      dbent = self._get_dbent()
+      timestamp = asctime(localtime())
+      cooling_logic = type(self.zone.logic).__name__ if self.zone else 'Unknown'
+      slot_id = self._chassis.get_my_slot()
+      device_name = f'Linecard {slot_id}'
+
+      dbent.hset(
+         'pwm', str(float(value)),
+         'last_update_time', timestamp,
+         'cooling_logic', cooling_logic,
+         'device_name', device_name,
+      )
+
 class EntitySource:
    def __init__(self):
       self.inv = None
       self.api = None
       self.dbent = None
+
+   def _float_or_none(self, value):
+      return float(value) if value not in ['N/A', None] else None
 
    def register_inv(self, inv):
       if self.inv is None:
@@ -219,8 +295,6 @@ class CoolingPsu(EntitySource):
 class CoolingThermal(CoolingThermalBase, EntitySource):
    # def __init__(self, *args, **kwargs):
    #    super().__init__(*args, **kwargs)
-   def _float_or_none(self, value):
-      return float(value) if value not in ['N/A', None] else None
 
    @property
    def in_overheat_condition(self):
@@ -327,6 +401,19 @@ class CoolingAsicThermal(CoolingThermal):
                            self.dbent.get('maximum_temperature'))
       return True
 
+class CoolingPwm(CoolingPwmBase, EntitySource):
+   def update_from_db(self):
+      data = self.dbent.get_all()
+      pwm = self._float_or_none(data.get('pwm'))
+      if pwm:
+         self.pwm = pwm
+         self.cooling_logic = data.get('cooling_logic')
+         self.last_update_time = data.get('last_update_time')
+         self.device_name = data.get('device_name')
+         return True
+      return False
+
+# pylint: disable=too-many-public-methods
 class CoolingEntityManager(object):
    def __init__(self, chassis):
       self._chassis = chassis
@@ -337,7 +424,9 @@ class CoolingEntityManager(object):
       self._psus = {}
       self._thermals = {}
       self._xcvrs = {}
+      self._pwms = {}
       self._xcvrs_via_api = Config().cooling_xcvrs_via_api
+      self._cached_has_chassisdb_fan = None
       self._cooling_asic_via_db = Config().cooling_asic_via_db or \
             self._chassis.getPlatform().COOLING.asicViaDb
 
@@ -348,6 +437,14 @@ class CoolingEntityManager(object):
          self._dbhelpers[namespace] = db
       return db
 
+   def _has_chassisdb_fan(self):
+      if self._cached_has_chassisdb_fan is None:
+         platform = self._chassis.getPlatform()
+         is_card = isinstance(platform, Card)
+         running_on_lcpu = platform.runningOnLcpu() if is_card else False
+         self._cached_has_chassisdb_fan = is_card and running_on_lcpu
+      return self._cached_has_chassisdb_fan
+
    def _get_entity(self, collection, cls, name):
       ent = collection.get(name)
       if ent is None:
@@ -355,6 +452,14 @@ class CoolingEntityManager(object):
          collection[name] = ent
       self._gc_seen.add(ent)
       return ent
+
+   def _get_chassisdb_fan(self, chassis, name='THERMAL_ALGO_RESULT'):
+      fan = self._fans.get(name)
+      if fan is None:
+         fan = ChassisDbFan(chassis, self._get_dbhelper(), name)
+         self._fans[name] = fan
+      self._gc_seen.add(fan)
+      return fan
 
    def get_asic(self, name):
       return self._get_entity(self._thermals, CoolingAsicThermal, name)
@@ -365,17 +470,27 @@ class CoolingEntityManager(object):
    def get_psu(self, name):
       return self._get_entity(self._psus, CoolingPsu, name)
 
+   def get_pwm(self, name):
+      pwm = self._get_entity(self._pwms, CoolingPwm, name)
+      return pwm
+
    def get_thermal(self, name):
       return self._get_entity(self._thermals, CoolingThermal, name)
 
    def get_xcvr(self, name):
       return self._get_entity(self._thermals, CoolingXcvrThermal, name)
 
+   def get_all_asics(self):
+      return self._asics
+
    def get_all_fans(self):
       return self._fans
 
    def get_all_psus(self):
       return self._psus
+
+   def get_all_pwms(self):
+      return self._pwms
 
    def get_all_thermals(self):
       return self._thermals
@@ -439,6 +554,9 @@ class CoolingEntityManager(object):
       for dbent in self._get_dbhelper().get_all_fans():
          self.get_fan(dbent.name).register_db(dbent)
 
+      if self._has_chassisdb_fan():
+         self._get_chassisdb_fan(chassis)
+
    def update_psus(self, chassis):
       for psu in chassis.get_all_psus():
          self.get_psu(psu.get_name()).register_api(psu)
@@ -492,8 +610,17 @@ class CoolingEntityManager(object):
       else:
          for dbent in self._get_dbhelper().get_all_xcvrs():
             self.get_xcvr(dbent.name).register_db(dbent)
-      # TODO: handle linecard xcvrs
-      #       requires xcvr data to be published in CHASSIS_STATE_DB
+
+   def update_pwms(self, chassis):
+      platform = chassis.getPlatform()
+
+      if not isinstance(platform, Supervisor):
+         return
+
+      pwm_data = self._get_dbhelper().get_all_chassis_module_pwms()
+      for table_name, dbent in pwm_data:
+         pwm = self.get_pwm(table_name)
+         pwm.register_db(dbent)
 
    def update_asics(self, chassis):
       if self._cooling_asic_via_db:
@@ -509,6 +636,7 @@ class CoolingEntityManager(object):
       self.update_thermals(self._chassis)
       self.update_psus(self._chassis)
       self.update_xcvrs(self._chassis)
+      self.update_pwms(self._chassis)
 
    def dump(self):
       objkeys = ['inv', 'api', 'dbent']
@@ -524,7 +652,7 @@ class CoolingEntityManager(object):
 
       self.update()
 
-      for col in [self._fans, self._psus, self._thermals, self._xcvrs]:
+      for col in [self._fans, self._psus, self._thermals, self._xcvrs, self._pwms]:
          todelete = []
          for key, obj in col.items():
             if obj not in self._gc_seen:

@@ -50,6 +50,17 @@ class PsuInfo(ThermalPolicyInfo):
       for psu in self.psus.values():
          psu.update()
 
+@thermal_json_object("pwm_info")
+class PwmInfo(ThermalPolicyInfo):
+   def __init__(self):
+      super().__init__()
+      self.pwms = {}
+
+   def collect(self, chassis):
+      self.pwms = CoolingEntityManager.get(chassis).get_all_pwms()
+      for pwm in self.pwms.values():
+         pwm.update()
+
 @thermal_json_object("control_info")
 class ControlInfo(ThermalPolicyInfo):
    def __init__(self):

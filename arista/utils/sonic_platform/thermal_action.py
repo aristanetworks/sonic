@@ -41,7 +41,12 @@ class SetFanSpeedAllAction(SetFanSpeedAction):
 class ThermalControlAction(ThermalPolicyAction):
    def execute(self, thermal_info_dict):
       algo = thermal_info_dict['control_info'].algo
+
+      pwm_info = thermal_info_dict.get('pwm_info')
+      extraPwms = pwm_info.pwms if pwm_info else None
+
       algo.run(
          fans=thermal_info_dict['fan_info'].fans,
          thermals=thermal_info_dict['thermal_info'].thermals,
+         extraPwms=extraPwms,
       )

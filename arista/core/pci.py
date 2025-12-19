@@ -9,7 +9,10 @@ from .utils import inSimulation
 from ..libs.wait import waitForPath
 
 class PciPortDesc:
-   def __init__(self, device, func, port=0, root=False, quirks=None):
+   def __init__(self, device, func, port=0, domain=0, bus=0, root=False,
+                quirks=None):
+      self.domain = domain
+      self.bus = bus
       self.device = device
       self.func = func
       self.port = port

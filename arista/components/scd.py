@@ -192,6 +192,11 @@ class ScdMdio():
       self.clause = clause
       self.name = name
 
+class ScdSmbusDesc:
+   def __init__(self, master, bus):
+      self.master = master
+      self.bus = bus
+
 class ScdSmbus():
    def __init__(self, scd, bus):
       self.scd = scd

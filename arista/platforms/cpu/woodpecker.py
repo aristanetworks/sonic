@@ -32,13 +32,7 @@ class WoodpeckerCpu(Cpu):
       cpld = port.newComponent(Scd, addr=port.addr)
       self.cpld = cpld
 
-      cpld.addFanGroup(0x9000, 3, self.parent.CHASSIS.FAN_SLOTS,
-                       self.parent.CHASSIS.FAN_COUNT)
-
-      cpld.addFanSlotBlock(
-         slotCount=self.parent.CHASSIS.FAN_SLOTS,
-         fanCount=self.parent.CHASSIS.FAN_COUNT,
-      )
+      self.addFanGroup(self.parent.CHASSIS.FAN_SLOTS, self.parent.CHASSIS.FAN_COUNT)
 
       cpld.addSmbusMasterRange(0x8000, 2, 0x80, 4)
       cpld.newComponent(Max6658, addr=cpld.i2cAddr(0, 0x4c), sensors=[
@@ -63,3 +57,8 @@ class WoodpeckerCpu(Cpu):
 
    def switchDpmAddr(self, addr=0x11, t=3, **kwargs):
       return self.cpld.i2cAddr(5, addr, t=t, **kwargs)
+
+   def addFanGroup(self, slots=3, count=2):
+      self.cpld.addFanGroup(0x9000, slots, slots, count)
+      self.cpld.addFanSlotBlock(slotCount=slots, fanCount=count,
+                                skip=self.parent.CHASSIS.IGNORE_FAN_SLOTS)

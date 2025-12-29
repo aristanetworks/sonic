@@ -507,15 +507,35 @@ class Scd(PciComponent):
    def addFanLed(self, desc):
       return self.inventory.addLed(self.driver.getFanLed(desc))
 
-   def addFanSlotBlock(self, slotCount, fanCount, statusLed=None):
-      for i, slotId in enumerate(incrange(1, slotCount)):
-         self.addFanSlot(i, slotId, fanCount, statusLed=statusLed)
+   def addFanSlotBlock(self, slotCount, fanCount, statusLed=None, skip=()):
+      softwareSlotId = 0
+      for hwSlotIdx in range(slotCount):
+         if hwSlotIdx in skip:
+            continue
+         softwareSlotId += 1
+         hwSlotId = hwSlotIdx + 1
+         self.addFanSlot(
+            idx=hwSlotIdx,
+            slotId=softwareSlotId,
+            fanCount=fanCount,
+            statusLed=statusLed,
+            hwSlotId=hwSlotId
+         )
 
-   def addFanSlot(self, idx, slotId, fanCount, statusLed=None):
-      led = LedDesc(name='fan%d' % slotId,
+   def addFanSlot(self, idx, slotId, fanCount, hwSlotId, statusLed=None):
+      led = LedDesc(name=f'fan{hwSlotId}',
                     colors=[LedColor.GREEN, LedColor.RED, LedColor.OFF])
-      fanDescs = [FanDesc(fanId=idx * fanCount + j, position=list(FanPosition)[j])
-                  for j in incrange(1, fanCount)]
+
+      fanDescs = []
+      fanPositions = list(FanPosition)
+      for j in incrange(1, fanCount):
+         fanId = idx * fanCount + j
+         if slotId != hwSlotId:
+            name = f'fan{(slotId - 1) * fanCount + j}'
+            fanDescs.append(FanDesc(fanId=fanId, name=name,
+                                    position=fanPositions[j]))
+         else:
+            fanDescs.append(FanDesc(fanId=fanId, position=fanPositions[j]))
 
       return self.newComponent(
          FanSlot,

@@ -28,9 +28,11 @@ from .chassis.yuba import Yuba
 from .cpu.puffin import PuffinPrimeCpu
 from .cpu.woodpecker import WoodpeckerCpu
 
+class Yuba2Fans(Yuba):
+   IGNORE_FAN_SLOTS = (1,)
 
 class MarysvilleBase(FixedSystem):
-   CHASSIS = Yuba
+   CHASSIS = Yuba2Fans
    SYSCPLD_REGMAP_CLS = None
    PORTS = PortLayout(
       (Sfp28(i) for i in incrange(1, 48)),

@@ -2,6 +2,11 @@
 MKDIR ?= mkdir
 CP ?= cp
 
+# Cross-compilation support: use architecture-specific tools
+CROSS_COMPILE ?=
+CC ?= $(CROSS_COMPILE)gcc
+STRIP ?= $(CROSS_COMPILE)strip
+
 CFLAGS = -fPIC -std=c99 -Wall -Werror -Wextra
 #CFLAGS += -DDEBUG -g3
 LDFLAGS = -shared
@@ -19,7 +24,7 @@ sfp-eeprom.o: sfp-eeprom.c
 
 $(TARGET): sfp-eeprom.o
 	$(CC) $(LDFLAGS) -o $@ $^
-	strip $@
+	$(STRIP) $@
 
 install::
 	$(MKDIR) -p $(DESTDIR)

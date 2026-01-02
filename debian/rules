@@ -7,14 +7,26 @@ include /usr/share/dpkg/pkg-info.mk
 export INSTALL_MOD_DIR:=extra
 
 KVERSION_SHORT ?=
-ARCH ?= amd64
+ARCH ?= $(DEB_HOST_ARCH)
 MAKE ?= make
+
+# Cross-compilation support for kernel modules
+ifeq ($(DEB_HOST_ARCH),arm64)
+	KARCH := arm64
+	CROSS_COMPILE ?= aarch64-linux-gnu-
+else ifeq ($(DEB_HOST_ARCH),armhf)
+	KARCH := arm
+	CROSS_COMPILE ?= arm-linux-gnueabihf-
+else
+	KARCH :=
+	CROSS_COMPILE :=
+endif
 
 %:
 	dh $@ --with python3,systemd --buildsystem=pybuild
 
 override_dh_auto_build:
-	$(MAKE) build
+	$(MAKE) build KARCH=$(KARCH) CROSS_COMPILE=$(CROSS_COMPILE)
 
 override_dh_auto_install:
 	# Sonic specific behavior to automatically rewrite kernel dependency
@@ -22,7 +34,7 @@ override_dh_auto_install:
 	# debian/kernel is static
 	if [ ! -z "$(KVERSION_SHORT)" ]; then \
 	   echo "Rewriting linux-image dependency in debian/control to $(KVERSION_SHORT)-unsigned"; \
-	   sed -Ei "s/linux-image-.+-$(ARCH).*\$$/linux-image-$(KVERSION_SHORT)-$(ARCH)-unsigned/" debian/control; \
+	   sed -Ei "s/linux-image-.+-amd64.*\$$/linux-image-$(KVERSION_SHORT)-$(ARCH)-unsigned/" debian/control; \
 	fi
 	$(MAKE) install-py3 \
 	   DESTDIR=$(CURDIR)/debian/python3-$(DEB_SOURCE) \

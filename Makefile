@@ -15,6 +15,10 @@ MODULE_SRC     := $(BASE_DIR)/src
 TEST_DIR       := $(BASE_DIR)/tests
 BUILD_DIR      := $(BASE_DIR)/build
 
+# Cross-compilation support
+KARCH          ?=
+CROSS_COMPILE  ?=
+
 # sources
 BIN_SRC        := $(wildcard $(BASE_DIR)/utils/*)
 RULE_SRC       := $(wildcard $(BASE_DIR)/udev/*)
@@ -83,10 +87,12 @@ all:
 #
 
 build-drivers:
-	EXTRA_SYMBOLS=$(EXTRA_SYMBOLS) $(MAKE) -C $(KERNEL_SRC) M=$(MODULE_SRC)
+	EXTRA_SYMBOLS=$(EXTRA_SYMBOLS) $(MAKE) -C $(KERNEL_SRC) M=$(MODULE_SRC) \
+		$(if $(KARCH),ARCH=$(KARCH)) \
+		$(if $(CROSS_COMPILE),CROSS_COMPILE=$(CROSS_COMPILE))
 
 build-libs:
-	$(MAKE) -C lib
+	$(MAKE) -C lib $(if $(CROSS_COMPILE),CROSS_COMPILE=$(CROSS_COMPILE))
 
 build-py2:
 	echo "$$library_version" > $(BASE_DIR)/$(PACKAGE_NAME)/__version__.py

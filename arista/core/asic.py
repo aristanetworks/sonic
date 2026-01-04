@@ -194,3 +194,9 @@ class SwitchChip(PciComponent):
 
       logging.error('%s: timed out waiting for the switch chip', self)
       return False
+
+   def getThermalDesc(self):
+      return self.thermalDesc
+
+def getNumPhysicalAsics(platform):
+   return len(set(a.asicId for a in platform.getAsics()))

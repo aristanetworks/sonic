@@ -44,6 +44,7 @@ class DefaultConfig:
    api_rpc_host: str = '127.0.0.1'
    api_rpc_port: str = '12322'
    api_linecard_reboot_graceful: bool = False
+   cooling_asic_via_db: bool = False
    cooling_data_points: int = 3
    cooling_export_path: Optional[str] = None
    cooling_max_decrease: float = 10.
@@ -62,6 +63,8 @@ class DefaultConfig:
    cooling_xcvrs_via_api: bool = False
    cooling_xcvrs_use_dom_temperature: bool = True
    cooling_override_xcvr_target: Optional[float] = None
+   cooling_asic_override_overheat_threshold: Optional[float] = None
+   cooling_asic_override_critical_threshold: Optional[float] = None
 
 class Config():
    instance_ = None

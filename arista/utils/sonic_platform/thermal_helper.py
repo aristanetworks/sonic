@@ -1,6 +1,7 @@
 
 from functools import cached_property
 
+from arista.core.asic import getNumPhysicalAsics
 from arista.core.config import Config
 from arista.core.cooling import (
    CoolingFanBase,
@@ -38,17 +39,22 @@ class DBMultiEntity:
       raise NotImplementedError
 
 class DBHelper(object):
-   def __init__(self):
+   def __init__(self, namespace=''):
       self._dbs = {}
       self._tables = {}
       self._ents = {}
+      self.namespace = namespace
 
    def _get_db(self, name):
       db = self._dbs.get(name)
       if db is None:
          # pylint: disable=import-error,import-outside-toplevel
-         from swsscommon.swsscommon import DBConnector
-         db = DBConnector(name, 0, True, '')
+         from swsscommon.swsscommon import DBConnector, SonicDBConfig
+         if self.namespace:
+            # For multi-asic, need to load sonic global config manually.
+            if not SonicDBConfig.isGlobalInit():
+               SonicDBConfig.load_sonic_global_db_config()
+         db = DBConnector(name, 0, True, self.namespace)
          self._dbs[name] = db
       return db
 
@@ -87,6 +93,9 @@ class DBHelper(object):
       tbls = [tbl] + [self._get_table(db, o) for o in others]
       return [self._get_ent(primary, tbls, k, cls=DBMultiEntity)
               for k in tbl.getKeys()]
+
+   def get_asic_thermals(self):
+      return self._state_db.hgetall('ASIC_TEMPERATURE_INFO')
 
    def get_all_fans(self):
       return self._get_table_objects(self._state_db, 'FAN_INFO')
@@ -208,6 +217,9 @@ class CoolingPsu(EntitySource):
 class CoolingThermal(CoolingThermalBase, EntitySource):
    # def __init__(self, *args, **kwargs):
    #    super().__init__(*args, **kwargs)
+   def _float_or_none(self, value):
+      return float(value) if value not in ['N/A', None] else None
+
    @property
    def in_overheat_condition(self):
       if not self.temperature or not self.overheat:
@@ -252,9 +264,6 @@ class CoolingXcvrThermal(CoolingThermal):
          return self.overheat + Config().cooling_xcvr_target_offset
       return super().target
 
-   def _float_or_none(self, value):
-      return float(value) if value not in ['N/A', None] else None
-
    def update_thresholds(self, thresholds):
       self.overheat = self._float_or_none(thresholds.get('temphighwarning'))
       self.critical = self._float_or_none(thresholds.get('temphighalarm'))
@@ -285,17 +294,53 @@ class CoolingXcvrThermal(CoolingThermal):
          self._initialized = True
       return True
 
+class CoolingAsicThermal(CoolingThermal):
+   def __init__(self, *args, **kwargs):
+      super().__init__(*args, **kwargs)
+      self.asic = None
+
+   def register_asic(self, asic):
+      self.asic = asic
+
+   @property
+   def target(self):
+      if self.asic is None:
+         return super().target
+      return self.asic.chip.getThermalDesc().target
+
+   def update_from_db(self):
+      if self.asic is None:
+         return False
+      critical_override = Config().cooling_asic_override_critical_threshold
+      overheat_override = Config().cooling_asic_override_overheat_threshold
+      thermalDesc = self.asic.chip.getThermalDesc()
+      self.critical = (critical_override if critical_override is not None
+                       else thermalDesc.critical)
+      self.overheat = (overheat_override if overheat_override is not None
+                       else thermalDesc.overheat)
+      self.temperature = self._float_or_none(
+                           self.dbent.get('maximum_temperature'))
+      return True
+
 class CoolingEntityManager(object):
    def __init__(self, chassis):
       self._chassis = chassis
-      self._dbhelper = DBHelper()
+      self._dbhelpers = {}
       self._gc_seen = set()
       self._gc_count = 0
+      self._asics = {}
       self._fans = {}
       self._psus = {}
       self._thermals = {}
       self._xcvrs = {}
       self._xcvrs_via_api = Config().cooling_xcvrs_via_api
+
+   def _get_dbhelper(self, namespace=''):
+      db = self._dbhelpers.get(namespace)
+      if db is None:
+         db = DBHelper(namespace=namespace)
+         self._dbhelpers[namespace] = db
+      return db
 
    def _get_entity(self, collection, cls, name):
       ent = collection.get(name)
@@ -304,6 +349,9 @@ class CoolingEntityManager(object):
          collection[name] = ent
       self._gc_seen.add(ent)
       return ent
+
+   def get_asic(self, name):
+      return self._get_entity(self._asics, CoolingAsicThermal, name)
 
    def get_fan(self, name):
       return self._get_entity(self._fans, CoolingFan, name)
@@ -316,6 +364,9 @@ class CoolingEntityManager(object):
 
    def get_xcvr(self, name):
       return self._get_entity(self._thermals, CoolingXcvrThermal, name)
+
+   def get_all_asics(self):
+      return self._asics
 
    def get_all_fans(self):
       return self._fans
@@ -342,6 +393,24 @@ class CoolingEntityManager(object):
          if slotid != chassis.get_my_slot():
             yield f'CARD{slotid} ', module
 
+   def _iter_inventory_asics(self, chassis):
+      platform = chassis.getPlatform()
+      asics = platform.getAsics()
+      asicCount = getNumPhysicalAsics(platform)
+      # TODO: We currently do not have J3 based multi-die multiple asics on our
+      #       platforms
+      if asicCount == 1:
+         # To account for single asic systems with multiple dies, which are modelled
+         # as multiple asics in the inventory.
+         asic = asics[0]
+         switch_asics = asic.getInventory().getSwitchAsics()
+         if switch_asics:
+            yield '', list(switch_asics.values())[0]
+      elif asicCount > 1:
+         for asic in asics:
+            for asic_id, switch_asic in asic.getInventory().getSwitchAsics().items():
+               yield f'asic{asic_id}', switch_asic
+
    def _iter_inventory_fans(self, chassis):
       for _, inv in self._iter_inventories(chassis):
          yield from inv.getFans()
@@ -364,13 +433,13 @@ class CoolingEntityManager(object):
          self.get_fan(fan.getName()).register_inv(fan)
       for fan in self._iter_chassis_fans(chassis):
          self.get_fan(fan.get_name()).register_api(fan)
-      for dbent in self._dbhelper.get_all_fans():
+      for dbent in self._get_dbhelper().get_all_fans():
          self.get_fan(dbent.name).register_db(dbent)
 
    def update_psus(self, chassis):
       for psu in chassis.get_all_psus():
          self.get_psu(psu.get_name()).register_api(psu)
-      for dbent in self._dbhelper.get_all_psus():
+      for dbent in self._get_dbhelper().get_all_psus():
          # NOTE: psud normalize psu names, convert to internal naming
          name = dbent.name.replace('PSU ', 'psu')
          self.get_psu(name).register_db(dbent)
@@ -400,12 +469,12 @@ class CoolingEntityManager(object):
       #       we need to introduce inventory namespaces which adds a prefix
       #       for now disable querying database for sensors on chassis
       if not chassis.get_num_modules():
-         for dbent in self._dbhelper.get_all_thermals():
+         for dbent in self._get_dbhelper().get_all_thermals():
             self.get_thermal(dbent.name).register_db(dbent)
 
       for prefix, module in self._iter_chassis_modules(chassis):
          slotid = module.get_slot()
-         for dbent in self._dbhelper.get_all_module_thermals(slotid):
+         for dbent in self._get_dbhelper().get_all_module_thermals(slotid):
             self.get_thermal(f'{prefix}{dbent.name}').register_db(dbent)
 
    def update_xcvrs(self, chassis):
@@ -418,12 +487,20 @@ class CoolingEntityManager(object):
          for sfp in chassis.get_all_sfps():
             self.get_xcvr(sfp.get_name()).register_api(sfp)
       else:
-         for dbent in self._dbhelper.get_all_xcvrs():
+         for dbent in self._get_dbhelper().get_all_xcvrs():
             self.get_xcvr(dbent.name).register_db(dbent)
       # TODO: handle linecard xcvrs
       #       requires xcvr data to be published in CHASSIS_STATE_DB
 
+   def update_asics(self, chassis):
+      if Config().cooling_asic_via_db:
+         for ns, asic in self._iter_inventory_asics(chassis):
+            self.get_asic(ns).register_asic(asic)
+            self.get_asic(ns).register_db(
+               self._get_dbhelper(ns).get_asic_thermals())
+
    def update(self):
+      self.update_asics(self._chassis)
       self.update_fans(self._chassis)
       self.update_thermals(self._chassis)
       self.update_psus(self._chassis)
@@ -431,7 +508,7 @@ class CoolingEntityManager(object):
 
    def dump(self):
       objkeys = ['inv', 'api', 'dbent']
-      for col in [self._fans, self._psus, self._thermals, self._xcvrs]:
+      for col in [self._asics, self._fans, self._psus, self._thermals, self._xcvrs]:
          for obj in col.values():
             attrs = (f'{a}={bool(getattr(obj, a))}' for a in objkeys)
             print(f'{obj.__class__.__name__} "{obj.name}" {" ".join(attrs)}')

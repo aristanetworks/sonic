@@ -31,47 +31,47 @@ SFP_TRICOLOR_LED = {'defaultLed': '%s:rgb:1', 'leds': [
 ]}
 
 class QuicksilverRaaQuirk(Quirk):
+   description = 'Update TH5_Core config'
+
    def __init__(self):
       self.model = [0x03, 0x50, 0x19, 0x00]
       self.rev = [0xa0, 0x0, 0x0, 0x0]
 
-   def __str__(self):
-      return 'Update TH5_Core config'
-
-   def _dmaWrite(self, component, addr, value):
-      component.driver.write_bytes([
+   def _dmaWrite(self, driver, addr, value):
+      driver.write_bytes([
          0xc7,
          addr & 0xff,
          (addr >> 8) & 0xff,
       ])
-      component.driver.write_bytes([
+      driver.write_bytes([
          0xc5,
          value & 0xff,
          (value >> 8) & 0xff,
          (value >> 16) & 0xff,
          (value >> 24) & 0xff,
       ])
-      component.driver.read_bytes([0xc5], 4)
+      driver.read_bytes([0xc5], 4)
 
    def run(self, component):
-      if self.model != component.driver.read_block_data(0x9a) or \
-         self.rev != component.driver.read_block_data(0x9b):
+      driver = component.getUserDriver()
+      if self.model != driver.read_block_data(0x9a) or \
+         self.rev != driver.read_block_data(0x9b):
          return
 
-      component.driver.write_byte_data(0x00, 0x00)
+      driver.write_byte_data(0x00, 0x00)
 
-      uvBefore = component.driver.read_byte_data(0x45)
-      component.driver.write_byte_data(0x45, 0x04)
+      uvBefore = driver.read_byte_data(0x45)
+      driver.write_byte_data(0x45, 0x04)
 
-      self._dmaWrite(component, 0xE0E0, 0x00009B53)
-      self._dmaWrite(component, 0xE0DD, 0xA70907C4)
-      self._dmaWrite(component, 0xE028, 0x00000006)
-      self._dmaWrite(component, 0xEA27, 0xE80E8682)
-      self._dmaWrite(component, 0xEA24, 0x00000660)
-      self._dmaWrite(component, 0xEA30, 0x00000802)
+      self._dmaWrite(driver, 0xE0E0, 0x00009B53)
+      self._dmaWrite(driver, 0xE0DD, 0xA70907C4)
+      self._dmaWrite(driver, 0xE028, 0x00000006)
+      self._dmaWrite(driver, 0xEA27, 0xE80E8682)
+      self._dmaWrite(driver, 0xEA24, 0x00000660)
+      self._dmaWrite(driver, 0xEA30, 0x00000802)
 
-      component.driver.send_byte(0x03)
-      component.driver.write_byte_data(0x45, uvBefore)
+      driver.send_byte(0x03)
+      driver.write_byte_data(0x45, uvBefore)
 
 class QuicksilverBase(FixedSystem):
 

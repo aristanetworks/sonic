@@ -17,6 +17,8 @@ from ..components.dpm.adm1266 import (
 from ..components.lm75 import Tmp75
 from ..components.max31732 import Max31732
 from ..components.phy.screamingeagle import ScreamingEagle
+from ..components.vrm.isl68137 import Isl68223, Isl68226
+from ..components.vrm.raa228228 import Raa228926
 
 from ..descs.gpio import GpioDesc
 from ..descs.led import LedDesc, LedKind
@@ -123,6 +125,34 @@ class CitrineBase(FixedSystem):
                        target=94, overheat=100, critical=105),
             SensorDesc(diode=4, name='D1 Temp diode 1', position=Position.OTHER,
                        target=94, overheat=100, critical=105),
+      ])
+
+      vrmTempParams = {'target': 100, 'overheat': 115, 'critical': 120}
+      scd.newComponent(Raa228926, addr=scd.i2cAddr(5, 0x45), sensors=[
+         SensorDesc(diode=0, name='POS0V75_VDDC_D0', **vrmTempParams),
+         SensorDesc(diode=1, name='POS3V3_OPTICS_A', **vrmTempParams),
+      ])
+      scd.newComponent(Isl68226, addr=scd.i2cAddr(5, 0x4c), sensors=[
+         SensorDesc(diode=0, name='POS1V2_HBM_D0', **vrmTempParams),
+         SensorDesc(diode=1, name='POS0V9_D0', **vrmTempParams),
+         SensorDesc(diode=2, name='POS0V75_D0', **vrmTempParams),
+      ])
+      scd.newComponent(Isl68226, addr=scd.i2cAddr(5, 0x4f), sensors=[
+         SensorDesc(diode=0, name='POS1V2_VAA_PHY', **vrmTempParams),
+         SensorDesc(diode=1, name='POS0V75_VDD_PHY1', **vrmTempParams),
+         SensorDesc(diode=2, name='POS0V75_VDD_PHY2', **vrmTempParams),
+      ])
+      scd.newComponent(Raa228926, addr=scd.i2cAddr(6, 0x45), sensors=[
+         SensorDesc(diode=0, name='POS0V75_VDDC_D1', **vrmTempParams),
+         SensorDesc(diode=1, name='POS3V3_OPTICS_B', **vrmTempParams),
+      ])
+      scd.newComponent(Isl68226, addr=scd.i2cAddr(6, 0x4c), sensors=[
+         SensorDesc(diode=0, name='POS1V2_HBM_D1', **vrmTempParams),
+         SensorDesc(diode=1, name='POS0V9_D1', **vrmTempParams),
+         SensorDesc(diode=2, name='POS0V75_D1', **vrmTempParams),
+      ])
+      scd.newComponent(Isl68223, addr=scd.i2cAddr(6, 0x47), sensors=[
+         SensorDesc(diode=0, name='POS0V8_PBVDD', **vrmTempParams),
       ])
 
       scd.addLeds([

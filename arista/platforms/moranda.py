@@ -9,6 +9,8 @@ from ..components.cpld import SysCpldReloadCauseRegistersV2, SysCpldCause
 from ..components.psu.delta import ECD1502008
 from ..components.scd import Scd
 from ..components.lm75 import Tmp75
+from ..components.vrm.isl68137 import Isl68226
+from ..components.vrm.raa228228 import Raa228926
 
 from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
@@ -42,6 +44,21 @@ class MorandaBase(FixedSystem):
                     position=Position.INLET, target=55, overheat=65, critical=70),
          #SensorDesc(diode=1, name='ASIC',
          #           position=Position.INLET, target=95, overheat=105, critical=115),
+      ])
+
+      vrmTempParams = {'target': 100, 'overheat': 115, 'critical': 120}
+      scd.newComponent(Raa228926, addr=scd.i2cAddr(4, 0x45), sensors=[
+         SensorDesc(diode=0, name='0V8_Core', **vrmTempParams),
+      ])
+      scd.newComponent(Isl68226, addr=scd.i2cAddr(4, 0x54), sensors=[
+         SensorDesc(diode=0, name='3V3_Port_RT', **vrmTempParams),
+         SensorDesc(diode=1, name='0V75_TH5_0', **vrmTempParams),
+         SensorDesc(diode=2, name='0V9_TH5_0', **vrmTempParams),
+      ])
+      scd.newComponent(Isl68226, addr=scd.i2cAddr(4, 0x60), sensors=[
+         SensorDesc(diode=0, name='3V3_Port_LT', **vrmTempParams),
+         SensorDesc(diode=1, name='0V75_TH5_1', **vrmTempParams),
+         SensorDesc(diode=2, name='0V9_TH5_1', **vrmTempParams),
       ])
 
       scd.addLeds([

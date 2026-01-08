@@ -20,21 +20,28 @@ class XcvrKernelDriver(I2cKernelDriver):
 
    def setPortName(self, name):
       portNamePath = os.path.join(self.getSysfsPath(), 'port_name')
-      with open(portNamePath, 'w') as f:
+      with open(portNamePath, 'w', encoding='utf8') as f:
          f.write(name)
 
    def setWriteMax(self, size):
       writeMaxPath = os.path.join(self.getSysfsPath(), 'write_max')
       if os.path.exists(writeMaxPath):
-         with open(writeMaxPath, 'w') as f:
+         with open(writeMaxPath, 'w', encoding='utf8') as f:
             f.write(str(size))
 
    def getWriteMax(self):
       writeMaxPath = os.path.join(self.getSysfsPath(), 'write_max')
       if not os.path.exists(writeMaxPath):
          return 1 # NOTE: previous version of the driver hardcoded 1
-      with open(writeMaxPath) as f:
+      with open(writeMaxPath, encoding='utf8') as f:
          return int(f.read())
+
+   def setBusSpeed(self, speed):
+      busPath = os.path.dirname(os.path.realpath(self.getSysfsPath()))
+      busSpeedPath = os.path.join(busPath, 'bus_speed')
+      if os.path.exists(busSpeedPath):
+         with open(busSpeedPath, 'w', encoding='utf8') as f:
+            f.write(str(speed))
 
 class CmisEepromKernelDriver(XcvrKernelDriver):
    NAME = 'optoe3'

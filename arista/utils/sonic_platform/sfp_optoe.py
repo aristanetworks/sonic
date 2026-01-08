@@ -149,6 +149,9 @@ class SfpOptoe(SfpOptoeBase):
    def get_write_max(self):
       return self._slot.slot.xcvr.driver.getWriteMax()
 
+   def set_bus_speed(self, speed):
+      self._slot.slot.xcvr.driver.setBusSpeed(speed)
+
    def set_power(self, mode):
       raise NotImplementedError
 

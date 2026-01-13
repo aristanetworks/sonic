@@ -1,5 +1,6 @@
 import os
 
+from ..core.config import Config
 from ..core.driver.kernel.i2c import I2cKernelDriver
 from ..core.utils import inSimulation
 
@@ -9,6 +10,8 @@ class XcvrKernelDriver(I2cKernelDriver):
    def __init__(self, portName=None, **kwargs):
       super(XcvrKernelDriver, self).__init__(**kwargs)
       self.portName = portName
+      if Config().xcvr_use_optoe_auto:
+         self.NAME = 'optoe-auto'
 
    def setup(self):
       super(XcvrKernelDriver, self).setup()

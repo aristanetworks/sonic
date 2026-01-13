@@ -34,6 +34,7 @@ class DefaultConfig:
    report_hw_thresholds: bool = False
    watchdog_state_file: str = 'watchdog.json'
    xcvr_lpmode_out: bool = False
+   xcvr_use_optoe_auto: bool = False
    api_use_sfpoptoe: bool = True
    api_sfp_thermal: bool = False
    api_sfp_reset_lpmode: bool = True

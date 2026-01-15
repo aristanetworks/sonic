@@ -9,10 +9,19 @@ from ....core.log import getLogger
 logging = getLogger(__name__)
 
 def doSingleBlackBox(args, blackbox):
+   if args.blackbox_dump_path:
+      return doBlackBoxDump(blackbox, args.blackbox_dump_path)
+
    enable = args.blackbox_enable
    print('setting blackbox logging status to %r' % enable)
    blackbox.setEnabled(enable)
    return 0
+
+def doBlackBoxDump(blackbox, outputPath):
+   if blackbox.enabled():
+      print('Error: Disable blackbox logging before dumping contents')
+      return 1
+   return blackbox.dump(outputPath)
 
 @registerAction(blackboxParser)
 def doBlackBox(ctx, args):

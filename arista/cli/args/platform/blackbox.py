@@ -12,3 +12,5 @@ def blackboxParser(parser):
       help='start blackbox logging')
    parser.add_argument('--disable', action='store_false', dest='blackbox_enable',
       help='stop blackbox logging')
+   parser.add_argument('--dump', dest='blackbox_dump_path', metavar='PATH',
+      help='dump BlackBox FRAM contents to PATH')

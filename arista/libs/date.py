@@ -14,6 +14,13 @@ def strToDatetime(s, fmt=DATE_FORMAT):
 def epochToDatetime(epoch):
    return datetime.datetime.fromtimestamp(epoch)
 
+def datetimeToFileName(dt, fmt=DATE_FORMAT):
+   replace = str.maketrans({'-':'',
+                            ':':'',
+                            ' ':'_'})
+   fileFormat = fmt.translate(replace)
+   return datetimeToStr(dt, fmt=fileFormat)
+
 def redisLastUpdateTimeToMonotonic( redisTime ):
    now_mono = monotonicRaw()
    now_wall = time()

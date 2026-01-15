@@ -49,6 +49,8 @@ class DefaultConfig:
    api_rpc_port: str = '12322'
    api_linecard_reboot_graceful: bool = False
    blackbox_enable: bool = True
+   blackbox_flashrom_path: str = '/usr/bin/flashrom-arista'
+   blackbox_max_logs: int = 10
    cooling_asic_via_db: bool = False
    cooling_data_points: int = 3
    cooling_export_path: Optional[str] = None

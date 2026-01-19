@@ -126,7 +126,7 @@ class QuartzDd(FixedSystem):
       )
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC0)
-      self.je0 = port.newComponent(Jericho2cPlus, addr=port.addr,
+      self.je0 = port.newComponent(Jericho2cPlus, addr=port.addr, asicId=0,
          coreResets=[
             scd.inventory.getReset('switch_chip0_reset'),
          ],
@@ -135,7 +135,7 @@ class QuartzDd(FixedSystem):
          ],
       )
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC1)
-      self.je1 = port.newComponent(Jericho2cPlus, addr=port.addr,
+      self.je1 = port.newComponent(Jericho2cPlus, addr=port.addr, asicId=1,
          coreResets=[
             scd.inventory.getReset('switch_chip1_reset'),
          ],

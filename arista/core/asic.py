@@ -22,11 +22,13 @@ class SwitchChipDriver(PciKernelDriver):
 class SwitchChip(PciComponent):
 
    DRIVER = SwitchChipDriver
+   NUM_DIES = 1
 
-   def __init__(self, addr, rescan=False, pcieResetDelay=500,
+   def __init__(self, addr, dieId=0, rescan=False, pcieResetDelay=500,
                 powerGpios=None, powerGoodGpios=None,
                 coreResets=None, pcieResets=None, **kwargs):
       super(SwitchChip, self).__init__(addr=addr, **kwargs)
+      self.dieId : int = dieId
       self.rescan = rescan
       self.pcieResetDelay = pcieResetDelay
       self.powerGpios = powerGpios or []

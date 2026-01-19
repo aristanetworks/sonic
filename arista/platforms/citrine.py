@@ -166,7 +166,7 @@ class CitrineBase(FixedSystem):
       )
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC0)
-      port.newComponent(Jericho3, addr=port.addr,
+      port.newComponent(Jericho3, addr=port.addr, asicId=0, dieId=0,
          coreResets=[
             scd.inventory.getReset('switch_chip0_reset'),
          ],
@@ -176,7 +176,7 @@ class CitrineBase(FixedSystem):
       )
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC1)
-      port.newComponent(Jericho3, addr=port.addr,
+      port.newComponent(Jericho3, addr=port.addr, asicId=0, dieId=1,
          coreResets=[
             scd.inventory.getReset('switch_chip1_reset'),
          ],

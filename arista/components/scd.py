@@ -4,6 +4,7 @@ import copy
 import os
 
 from collections import OrderedDict, namedtuple
+from dataclasses import dataclass, field
 
 # TODO: use core.component.pci.PciComponent
 from ..core.component import Priority, PciComponent
@@ -197,9 +198,35 @@ class ScdSmbus():
       return self.scd.i2cAddr(self.bus, addr)
 
 
+@dataclass
+class ScdInterruptDesc:
+   addr: int
+   fields: list = field(default_factory=list)
+   mask: int = 0xffffffff
+
+@dataclass
+class ScdXcvrGroup:
+   portStart: int
+   portEnd: int
+   portStep: int = 1
+
+   ctrlAddr: int = None
+   ctrlStride: int = 0x10
+
+   ledAddr: int = None
+   ledStride: int = 0x10
+
+   bus: int = None
+   busStride: int = 1
+
+   isHwLpModeAvail: bool = True
+   isHwModSelAvail: bool = True
+
 class Scd(PciComponent):
    BusTweak = namedtuple('BusTweak', 'addr, t, datr, datw, ed')
-   def __init__(self, addr, registerCls=None, **kwargs):
+   INTERRUPTS = []
+   XCVR_GROUPS = []
+   def __init__(self, addr, registerCls=None, ports=None, **kwargs):
       drivers = [
          KernelDriver(module='scd'),
          ScdKernelDriver(scd=self, addr=addr, registerCls=registerCls),
@@ -228,9 +255,28 @@ class Scd(PciComponent):
       super().__init__(addr=addr, drivers=drivers, **kwargs)
       self.regs = self.drivers['scd-hwmon'].regs
       self.inventory.addProgrammable(ScdProgrammable(self))
+      self._processAttributes(ports)
 
    def __str__(self):
-      return f'{self.__class__.__name__}(addr={self.addr})'
+      return f'{Scd.__name__}(addr={self.addr})'
+
+   def _processAttributes(self, ports=None):
+      if self.INTERRUPTS:
+         self._initInterrupts()
+      if self.XCVR_GROUPS and ports is not None:
+         self.addXcvrGroups(ports)
+
+   def _initInterrupts(self):
+      for num, desc in enumerate(self.INTERRUPTS):
+         intrReg = self.createInterrupt(addr=desc.addr, num=num, mask=desc.mask)
+         for fld in desc.fields:
+            if len(fld) == 3:
+               bit, _, name = fld
+               intrReg.getInterruptBit(name, bit)
+            else:
+               startBit, endBit, name, startIdx = fld
+               for i, bit in enumerate(incrange(startBit, endBit)):
+                  intrReg.getInterruptBit(f'{name}{startIdx + i}', bit)
 
    def setMsiRearmOffset(self, offset):
       self.msiRearmOffset = offset
@@ -361,8 +407,8 @@ class Scd(PciComponent):
    def _addXcvrSlot(self, cls, name, port, bus=None, addr=None, ledAddr=None,
                     ledAddrOffsetFn=lambda x: 0x10, intrRegs=None,
                     intrRegIdxFn=None, intrBitFn=None, **kwargs):
-      intr = None
-      if intrRegs:
+      intr = self.inventory.getInterrupts().get(f'port{port.index}')
+      if intr is None and intrRegs:
          intrReg = intrRegs[intrRegIdxFn(port.index)]
          intr = intrReg.getInterruptBit(name, intrBitFn(port.index))
       presentGpio = None
@@ -500,6 +546,45 @@ class Scd(PciComponent):
             ledAddr += p.leds * ledAddrOffsetFn(p.index)
          if bus is not None:
             bus += busOffset
+
+   def addXcvrGroups(self, ports):
+      for group in self.XCVR_GROUPS:
+         self._addXcvrGroup(ports, group)
+
+   def _addXcvrGroup(self, ports, group):
+      ledAddr = group.ledAddr
+      ledAddrOffsetFn = lambda _: group.ledStride
+
+      for i, portIdx in enumerate(range(group.portStart, group.portEnd + 1,
+                                        group.portStep)):
+         port = ports.getPort(portIdx)
+         if port is None:
+            raise ValueError(f'Port {portIdx} not found in ports layout')
+
+         ctrlAddr = group.ctrlAddr + i * group.ctrlStride if group.ctrlAddr else None
+         bus = group.bus + i * group.busStride if group.bus else None
+         portLedAddr = ledAddr
+         if ledAddr is not None:
+            ledAddr += port.leds * group.ledStride
+
+         if isinstance(port, (QsfpDD, Osfp)):
+            self._addOsfpSlot(port, ctrlAddr, bus=bus, ledAddr=portLedAddr,
+                              ledAddrOffsetFn=ledAddrOffsetFn,
+                              isHwLpModeAvail=group.isHwLpModeAvail,
+                              isHwModSelAvail=group.isHwModSelAvail)
+         elif isinstance(port, Qsfp):
+            self._addQsfpSlot(port, ctrlAddr, bus=bus, ledAddr=portLedAddr,
+                              ledAddrOffsetFn=ledAddrOffsetFn,
+                              isHwLpModeAvail=group.isHwLpModeAvail,
+                              isHwModSelAvail=group.isHwModSelAvail)
+         elif isinstance(port, Sfp):
+            self._addSfpSlot(port, ctrlAddr, bus=bus, ledAddr=portLedAddr,
+                             ledAddrOffsetFn=ledAddrOffsetFn)
+         elif isinstance(port, Rj45):
+            self._addEthernetSlot(port, bus=bus, ledAddr=portLedAddr,
+                                  ledAddrOffsetFn=ledAddrOffsetFn)
+         else:
+            raise ValueError(f'Unsupported xcvr type {type(port)} for SCD')
 
    def addFan(self, desc):
       return self.inventory.addFan(self.driver.getFan(desc))

@@ -15,7 +15,13 @@ from ..components.minke import Minke
 from ..components.pci import EcrcPciQuirk
 from ..components.psu.dcdc import MobyDcDc, MobyDcDcAddr18
 
-from ..components.scd import Scd, ScdCause, ScdReloadCauseRegisters
+from ..components.scd import (
+   Scd,
+   ScdCause,
+   ScdInterruptDesc,
+   ScdReloadCauseRegisters,
+   ScdXcvrGroup,
+)
 from ..components.xcvr import CmisEeprom
 
 from ..descs.led import LedDesc, LedKind
@@ -33,6 +39,21 @@ SFP_TRICOLOR_LED = {'defaultLed': '%s:rgb:1', 'leds': [
    LedDesc(addr=4, name='%s:rgb:1', **LedKind.desc(LedKind.RGB_P3F)),
    LedDesc(addr=8, name='%s:rgb:2', **LedKind.desc(LedKind.RGB_P3F)),
 ]}
+
+class MobyPortScd(Scd):
+   INTERRUPTS = [
+      ScdInterruptDesc(addr=0x3000, fields=[]),
+      ScdInterruptDesc(addr=0x3030, fields=[
+         (0, 15, 'port', 1),
+         (24, 24, 'port', 25),
+      ]),
+   ]
+   XCVR_GROUPS = [
+      ScdXcvrGroup(portStart=1, portEnd=16,
+                   ctrlAddr=0xA000, ledAddr=0x6104, bus=2),
+      ScdXcvrGroup(portStart=25, portEnd=25,
+                   ctrlAddr=0xA100, ledAddr=0x6200, bus=18),
+   ]
 
 class Cartridge:
    def __init__(self, index, eeprom, interrupt, wp):
@@ -199,7 +220,7 @@ class Moby(FixedSystem):
          )
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD1)
-      pscd = port.newComponent(Scd, addr=port.addr)
+      pscd = port.newComponent(MobyPortScd, addr=port.addr, ports=self.PORTS)
       self.pscd = pscd
 
       pscd.ledFlashCtrlAddr = 0x6000
@@ -221,31 +242,6 @@ class Moby(FixedSystem):
          ScdCause(0x27, ScdCause.RAIL, 'PC_PGOOD'),
       ], regmap=ScdReloadCauseRegisters,
          priority=ScdCause.Priority.SECONDARY)
-
-      pintrRegs = [
-         scd.createInterrupt(addr=0x3000, num=0),
-         scd.createInterrupt(addr=0x3030, num=1),
-      ]
-      pscd.addXcvrSlots(
-         ports=self.PORTS.getOsfps(),
-         addr=0xA000,
-         bus=2,
-         ledAddr=0x6104,
-         ledAddrOffsetFn=lambda x: 0x10,
-         intrRegs=pintrRegs,
-         intrRegIdxFn=lambda _: 1,
-         intrBitFn=lambda xcvrId: xcvrId - 1,
-      )
-      pscd.addXcvrSlots(
-         ports=self.PORTS.getQsfps(),
-         addr=0xA100,
-         bus=18,
-         ledAddr=0x6200,
-         ledAddrOffsetFn=lambda x: 0x10,
-         intrRegs=pintrRegs,
-         intrRegIdxFn=lambda _: 1,
-         intrBitFn=lambda xcvrId: xcvrId - 1,
-      )
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC0)
       self.asic = port.newComponent(Tomahawk5, addr=port.addr,

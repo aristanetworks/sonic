@@ -62,7 +62,11 @@ class SfpOptoe(SfpOptoeBase):
       return True
 
    def get_status(self):
-      return self.get_presence() and bool(self.get_transceiver_bulk_status())
+      return self.get_presence() and (self.read_eeprom(0, 1) is not None)
+
+   def get_transceiver_bulk_status(self):
+      api = self.get_xcvr_api()
+      return None if api is None else api.get_transceiver_dom_real_value()
 
    def get_hw_lpmode(self):
       return self._slot.getLowPowerMode()

@@ -7,7 +7,7 @@ from ..core.psu import PsuSlot
 from ..core.types import MdioSpeedV2
 from ..core.utils import incrange
 
-from ..components.scd import Scd
+from ..components.scd import Scd, ScdInterruptDesc, ScdXcvrGroup
 from ..components.asic.dnx.jericho3 import Jericho3
 from ..components.dpm.adm1266 import (
    Adm1266,
@@ -35,6 +35,18 @@ QSFP_RGB_LED = {
       LedDesc(addr=0, name='%s:rgb', **LedKind.desc(LedKind.RGB_8_F)),
    ]
 }
+
+class CitrineScd(Scd):
+   INTERRUPTS = [
+      ScdInterruptDesc(addr=0x3000, fields=[]),
+      ScdInterruptDesc(addr=0x3030, fields=[]),
+      ScdInterruptDesc(addr=0x3060, fields=[(0, 31, 'port', 1)]),
+      ScdInterruptDesc(addr=0x3090, fields=[(0, 31, 'port', 33)]),
+   ]
+   XCVR_GROUPS = [
+      ScdXcvrGroup(portStart=1, portEnd=64,
+                   ctrlAddr=0xA010, ledAddr=0x6100, bus=8),
+   ]
 
 class CitrineBase(FixedSystem):
    CHASSIS = MaunaKea2
@@ -75,7 +87,7 @@ class CitrineBase(FixedSystem):
       ])
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
-      scd = port.newComponent(Scd, addr=port.addr)
+      scd = port.newComponent(CitrineScd, addr=port.addr, ports=self.PORTS)
       self.scd = scd
 
       mdioSpeed = MdioSpeedV2.S5 if self.getHwApi() < HwApi(2) else MdioSpeedV2.S7_5
@@ -161,24 +173,6 @@ class CitrineBase(FixedSystem):
             psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS,
             psus=[],
          )
-
-      intrRegs = [
-         scd.createInterrupt(addr=0x3000, num=0),
-         scd.createInterrupt(addr=0x3030, num=1),
-         scd.createInterrupt(addr=0x3060, num=2),
-         scd.createInterrupt(addr=0x3090, num=3),
-      ]
-
-      scd.addXcvrSlots(
-         ports=self.PORTS.getAllPorts(),
-         addr=0xA010,
-         bus=8,
-         ledAddr=0x6100,
-         ledAddrOffsetFn=lambda x: 0x10,
-         intrRegs=intrRegs,
-         intrRegIdxFn=lambda xcvrId: 2 + ((xcvrId - 1) // 32),
-         intrBitFn=lambda xcvrId: (xcvrId - 1) % 32
-      )
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC0)
       port.newComponent(Jericho3, addr=port.addr, asicId=0, dieId=0,

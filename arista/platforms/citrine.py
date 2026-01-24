@@ -18,6 +18,7 @@ from ..components.max31732 import Max31732
 from ..components.phy.screamingeagle import ScreamingEagle
 
 from ..descs.gpio import GpioDesc
+from ..descs.led import LedDesc, LedKind
 from ..descs.psu import PsuStatusPolicy
 from ..descs.reset import ResetDesc
 from ..descs.xcvr import QsfpDD, Qsfp112
@@ -27,14 +28,20 @@ from .chassis.maunakea import MaunaKea2
 
 from .cpu.redstart import RedstartCpu
 
+QSFP_RGB_LED = {
+   'defaultLed': '%s:rgb',
+   'leds': [
+      LedDesc(addr=0, name='%s:rgb', **LedKind.desc(LedKind.RGB_8_F)),
+   ]
+}
 
 class CitrineBase(FixedSystem):
    CHASSIS = MaunaKea2
 
    PORTS = PortLayout(
-      (QsfpDD(i) for i in incrange(1, 16)),
-      (Qsfp112(i) for i in incrange(17, 48)),
-      (QsfpDD(i) for i in incrange(49, 64))
+      (QsfpDD(i, **QSFP_RGB_LED) for i in incrange(1, 16)),
+      (Qsfp112(i, **QSFP_RGB_LED) for i in incrange(17, 48)),
+      (QsfpDD(i, **QSFP_RGB_LED) for i in incrange(49, 64))
    )
 
    def __init__(self):
@@ -76,6 +83,7 @@ class CitrineBase(FixedSystem):
       scd.createWatchdog()
       scd.setMsiRearmOffset(0x180)
       scd.addSmbusMasterRange(0x8000, 9, 0x80)
+      scd.ledFlashCtrlAddr = 0x6000
 
       scd.newComponent(Tmp75, addr=scd.i2cAddr(0, 0x48), sensors=[
             SensorDesc(diode=0, name='Management Card', position=Position.INLET,
@@ -96,11 +104,11 @@ class CitrineBase(FixedSystem):
       ])
 
       scd.addLeds([
-         (0x6050, 'status'),
-         (0x6060, 'fan_status'),
-         (0x6070, 'psu_status'),
-         (0x6090, 'beacon'),
-         (0x60A0, 'scm'),
+         LedDesc(name='status', addr=0x6050, **LedKind.desc(LedKind.RGB_8_F)),
+         LedDesc(name='fan_status', addr=0x6060, **LedKind.desc(LedKind.RGB_8_F)),
+         LedDesc(name='psu_status', addr=0x6070, **LedKind.desc(LedKind.RGB_8_F)),
+         LedDesc(name='beacon', addr=0x6090, **LedKind.desc(LedKind.RGB_8_F)),
+         LedDesc(name='scm', addr=0x60A0, **LedKind.desc(LedKind.RGB_8_F)),
       ])
 
       scd.addResets([

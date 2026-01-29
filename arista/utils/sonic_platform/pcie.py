@@ -1,13 +1,16 @@
 
 try:
    from arista.core.supervisor import Supervisor
-   from arista.core.pci import PciPort
+   from arista.core.pci import PciNotReady, PciPort
+   from arista.core.log import getLogger
    from arista.libs.pci import PciIds
    from sonic_platform_base.sonic_pcie.pcie_base import PcieBase
    from sonic_platform_base.sonic_pcie.pcie_common import PcieUtil
    from .platform import Platform
 except ImportError as e:
    raise ImportError("%s - required module not found" % e)
+
+logging = getLogger(__name__)
 
 class Pcie(PcieUtil):
    def __init__(self, path):
@@ -30,8 +33,8 @@ class Pcie(PcieUtil):
       if isinstance(platform, Supervisor):
          chassis = platform.getChassis()
          chassis.loadAll()
-         skus.extend(lc for lc in chassis.iterLinecards() if lc.poweredOn())
-         skus.extend(fc for fc in chassis.iterFabrics() if fc.poweredOn())
+         skus.extend(lc for lc in chassis.iterLinecards() if lc.isReady())
+         skus.extend(fc for fc in chassis.iterFabrics() if fc.isReady())
 
       for sku in skus:
          for component in sku.iterComponents(filters=None, recursive=True):
@@ -83,9 +86,12 @@ class Pcie(PcieUtil):
          return super().get_pcie_device()
       data = []
       for port in self.iterPciPorts():
-         info = self.getPciPortInfo(port)
-         if info:
-            data.append(info)
+         try:
+            info = self.getPciPortInfo(port)
+            if info:
+               data.append(info)
+         except PciNotReady:
+            logging.debug('PCIe port %s raised PciNotReady', port)
       return data
 
    def get_pcie_check(self):

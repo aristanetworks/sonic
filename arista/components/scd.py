@@ -305,7 +305,9 @@ class ScdBlackBox(SpiComponent):
 
    @simulateWith(simSetEnabled)
    def setEnabled(self, enable):
-      return bool(self.ctrl.bbEnabled(value=enable))
+      if self.enabled() == enable:
+         return
+      self.ctrl.bbEnabled(value=enable)
 
 @dataclass
 class ScdInterruptDesc:

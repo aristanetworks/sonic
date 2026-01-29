@@ -48,6 +48,7 @@ class DefaultConfig:
    api_rpc_host: str = '127.0.0.1'
    api_rpc_port: str = '12322'
    api_linecard_reboot_graceful: bool = False
+   blackbox_enable: bool = True
    cooling_asic_via_db: bool = False
    cooling_data_points: int = 3
    cooling_export_path: Optional[str] = None

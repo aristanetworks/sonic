@@ -1,19 +1,22 @@
 from tempfile import NamedTemporaryFile
-from types import UnionType
+from typing import Optional, Union, get_origin, get_args
 import yaml
 
 from ..config import Config, DefaultConfig
 from ...tests.testing import unittest, patch
 
+# Pytest 9.0+ is recommended.
+# While older versions are compatible, they do not support subTest.
+
 class MockDefaultConfig:
    testStr: str = "test"
-   strOrNone: str | None = None
+   strOrNone: Optional[str] = None
    testInt: int = 15
-   intOrNone: int | None = None
+   intOrNone: Optional[int] = None
    testFloat: float = 1.5
-   floatOrNone: float | None = None
+   floatOrNone: Optional[float] = None
    testBool: bool = False
-   boolOrNone: bool | None = None
+   boolOrNone: Optional[bool] = None
 
 defaultTestConfig = {
    "testStr":  "/etc/sonic123",
@@ -159,10 +162,10 @@ class ConfigTest(unittest.TestCase):
 
 class DefaultConfigTest(unittest.TestCase):
    def testSingleAnnotations(self):
-      for key, value in DefaultConfig.__annotations__.items():
+      for key, type_ in DefaultConfig.__annotations__.items():
          with self.subTest(msg=key):
-            if isinstance(value, UnionType):
-               types = [k for k in value.__args__ if k is not type(None)]
+            if get_origin(type_) is Union:
+               types = [k for k in get_args(type_) if k is not type(None)]
                self.assertEqual(len(types), 1,
                                  msg=f"DefaultConfig attribute {key} has too "
                                  f"many types besides None {len(types)} > 1")
@@ -183,14 +186,14 @@ class DefaultConfigTest(unittest.TestCase):
 
          with self.subTest(msg=key):
             type_ = DefaultConfig.__annotations__.get(key)
-            if isinstance(type_, UnionType):
+            if get_origin(type_) is Union:
                if value is None:
-                  self.assertTrue(type(None) in type_.__args__,
+                  self.assertTrue(type(None) in get_args(type_),
                                   msg=f"Attribute {key} has value None."
                                   f" Expected type: {type_!r}")
                   continue
 
-               for t in type_.__args__:
+               for t in get_args(type_):
                   if t is not type(None):
                      type_ = t
                      break

@@ -1,6 +1,6 @@
 import os
 import shutil
-from types import UnionType
+from typing import Optional, Union, get_origin
 import yaml
 
 from .log import getLogger
@@ -45,23 +45,23 @@ class DefaultConfig:
    api_rpc_port: str = '12322'
    api_linecard_reboot_graceful: bool = False
    cooling_data_points: int = 3
-   cooling_export_path: str | None = None
+   cooling_export_path: Optional[str] = None
    cooling_max_decrease: float = 10.
    cooling_max_increase: float = 25.
-   cooling_min_speed: float | None = None
+   cooling_min_speed: Optional[float] = None
    cooling_loop_interval: int = 10
-   cooling_target_offset: float | None = None
+   cooling_target_offset: Optional[float] = None
    cooling_target_factor: float = 0.8
    cooling_xcvr_target_offset: float = -10.
    cooling_gc_count: int = 15
-   cooling_hysteresis_negative: float | None = None
-   cooling_hysteresis_positive: float | None = None
-   cooling_kp: float | None = None
-   cooling_ki: float | None = None
-   cooling_kd: float | None = None
+   cooling_hysteresis_negative: Optional[float] = None
+   cooling_hysteresis_positive: Optional[float] = None
+   cooling_kp: Optional[float] = None
+   cooling_ki: Optional[float] = None
+   cooling_kd: Optional[float] = None
    cooling_xcvrs_via_api: bool = False
    cooling_xcvrs_use_dom_temperature: bool = True
-   cooling_override_xcvr_target: float | None = None
+   cooling_override_xcvr_target: Optional[float] = None
 
 class Config():
    instance_ = None
@@ -175,7 +175,7 @@ class Config():
       self.types = DefaultConfig.__annotations__.copy() # pylint: disable=attribute-defined-outside-init
       for key, value in self.types.items():
          type_ = value
-         if isinstance(value, UnionType):
+         if get_origin(value) is Union:
             for i in value.__args__:
                if i is not type(None):
                   type_ = i

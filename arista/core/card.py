@@ -92,6 +92,9 @@ class Card(Sku):
    def isDetected(self):
       return bool(self.SID) or bool(self.SKU)
 
+   def isReady(self):
+      return self.getPresence() and self.poweredOn()
+
    def detach(self):
       pass
 

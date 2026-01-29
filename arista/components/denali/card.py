@@ -235,6 +235,11 @@ class DenaliCard(Card):
       self.pca.setup()
       self.eeprom.setup()
 
+   def isReady(self):
+      if not super().isReady():
+         return False
+      return self.plx and self.plx.smbusPing()
+
 class DenaliCardSlot(CardSlot):
 
    CARD_CLS = None

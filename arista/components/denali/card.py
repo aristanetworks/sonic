@@ -49,6 +49,9 @@ class DenaliCard(Card):
       name = 'sup%d' % slotId if slotId != 0 else 'lcpu'
       return self.plx.pci.portByName(name)
 
+   def getAsics(self):
+      return self.asics
+
    def createGpio1(self):
       self.gpio1 = None
 

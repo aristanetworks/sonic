@@ -67,6 +67,17 @@ def testSwitchAsicIdDieIdUniqueness(platform):
          asicIdDieIdPairs.add(pair)
 
 @pytest.mark.parametrize('platform', getAllSystems(), ids=classname)
+def testGetAsics(platform):
+   asics = platform.getAsics()
+   assert isinstance(asics, list)
+   for asic in asics:
+      assert isinstance(asic, SwitchChip)
+   asicsFromIter = [c for c in platform.iterComponents(filters=None)
+                    if isinstance(c, SwitchChip)]
+   assert len(asics) == len(asicsFromIter)
+   assert set(asics) == set(asicsFromIter)
+
+@pytest.mark.parametrize('platform', getAllSystems(), ids=classname)
 def testCorrectParenting(platform):
    for c in platform.iterComponents(filters=None):
       assert c in c.parent.components

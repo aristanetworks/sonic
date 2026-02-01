@@ -1,3 +1,4 @@
+from .asic import SwitchChip
 from .component import Priority
 from .inventory import Inventory
 from .metainventory import MetaInventory
@@ -27,6 +28,10 @@ class FixedSystem(Sku):
 
    def getCookies(self):
       return self.cpu.cookies
+
+   def getAsics(self):
+      return [c for c in self.iterComponents(filters=None)
+              if isinstance(c, SwitchChip)]
 
 class FixedChassis(object):
    FAN_SLOTS = None

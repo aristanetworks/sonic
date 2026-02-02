@@ -92,6 +92,8 @@ class Pcie(PcieUtil):
                data.append(info)
          except PciNotReady:
             logging.debug('PCIe port %s raised PciNotReady', port)
+         except OSError:
+            logging.debug('PCie port %s raised OSError', port)
       return data
 
    def get_pcie_check(self):

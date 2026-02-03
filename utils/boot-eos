@@ -7,7 +7,7 @@ import os
 import re
 import shutil
 import subprocess
-import urllib
+import urllib.request
 import zipfile
 
 
@@ -16,8 +16,8 @@ sonicMount = "/host"
 def verifySWI(swiPath):
    zf = zipfile.ZipFile(swiPath, 'r')
    reVer = re.compile(r'.*SWI_VERSION=.*(\d+)\.(\d+)\.(\d+).*')
-   for str in zf.read("version").splitlines():
-      m = reVer.match(str)
+   for line in zf.read("version").splitlines():
+      m = reVer.match(str(line))
       if m:
          if int(m.group(1)) >= 4 and int(m.group(2)) >= 19 and int(m.group(3)) >= 0:
             return ""
@@ -61,7 +61,7 @@ def deleteFiles(files):
       os.remove(file)
 
 def queryYesNo(question, default="yes"):
-   """Ask a yes/no question via raw_input() and return their answer.
+   """Ask a yes/no question via input() and return their answer.
 
    "question" is a string that is presented to the user.
    "default" is the presumed answer if the user just hits <Enter>.
@@ -83,7 +83,7 @@ def queryYesNo(question, default="yes"):
 
    while True:
       print(question + prompt)
-      choice = raw_input().lower()
+      choice = input().lower()
       if default is not None and choice == '':
          return valid[default]
       elif choice in valid:
@@ -127,7 +127,7 @@ def main():
    if args.swi.startswith(('http://', 'https://', 'ftp://')):
       swi_path = "/tmp/EOS.swi"
       try:
-         urllib.urlretrieve(args.swi, swi_path)
+         urllib.request.urlretrieve(args.swi, swi_path)
       except IOError as e:
          exit("Cannot download SWI '{}'. Error: '{}'. Exiting.".format(
             args.swi, e))
@@ -170,7 +170,7 @@ def main():
    # 7) download startup-config
    if args.config:
       try:
-         urllib.urlretrieve(args.config, startupConfig)
+         urllib.request.urlretrieve(args.config, startupConfig)
       except Exception as e:
          exit("Cannot download startup-config '{}'. Error: '{}'. Exiting.".format(
             args.config, e))

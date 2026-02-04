@@ -161,7 +161,10 @@ class CoolingThermalBase(CoolingObject):
 
    @temperature.setter
    def temperature(self, value):
-      return self.data.getValue(monotonicRaw(), value)
+      return self.setTemperatureWithTimestamp(value=value)
+
+   def setTemperatureWithTimestamp(self, *, value, timestamp=None):
+      return self.data.getValue(timestamp or monotonicRaw(), value)
 
    @property
    def target(self):

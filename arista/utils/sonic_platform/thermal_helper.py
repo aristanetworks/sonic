@@ -11,7 +11,11 @@ from arista.core.cooling import (
    CoolingPwmBase,
    CoolingThermalBase,
 )
+from arista.core.log import getLogger
 from arista.core.supervisor import Supervisor
+from arista.libs.date import redisLastUpdateTimeToMonotonic
+
+logging = getLogger(__name__)
 
 class DBEntity:
    def __init__(self, tbl, name):
@@ -328,6 +332,11 @@ class CoolingThermal(CoolingThermalBase, EntitySource):
       return True
 
 class CoolingXcvrThermal(CoolingThermal):
+   def __init__(self, *args, **kwargs):
+      super().__init__(*args, **kwargs)
+      self._initialized = False
+      self.previous_last_update_time = None
+
    @property
    def target(self):
       if Config().cooling_override_xcvr_target is not None:
@@ -357,11 +366,33 @@ class CoolingXcvrThermal(CoolingThermal):
          data = self.dbent.get_all(i)
          temperature = self._float_or_none(data.get('temperature'))
          if temperature is not None:
-            # NOTE: this is a load-bearing assignment - the underlying setter will
-            # record a timestamp and the value into a HistoricalData, so we should
-            # only do the assignment if we know the temperature is valid (see
-            # BUG1874730)
-            self.temperature = temperature
+            timestamp = None
+            last_update_time = data.get('last_update_time')
+            if last_update_time:
+               if last_update_time == self.previous_last_update_time:
+                  logging.debug(
+                     '%s: Ignoring unchanged xcvr temperature timestamp "%s"',
+                     self.name, last_update_time
+                  )
+                  break
+               try:
+                  timestamp = redisLastUpdateTimeToMonotonic( last_update_time )
+               except ValueError:
+                  logging.debug(
+                     '%s: Ignoring invalid xcvr temperature timestamp "%s"',
+                     self.name, last_update_time
+                  )
+               logging.debug(
+                  '%s: Using xcvr temperature %.1f (last updated at %s)',
+                  self.name, temperature, last_update_time
+               )
+            else:
+               logging.debug(
+                  '%s: No last_update_time in database, using temperature %.1f',
+                  self.name, temperature
+               )
+            self.setTemperatureWithTimestamp(value=temperature, timestamp=timestamp)
+            self.previous_last_update_time = last_update_time
             break
 
       if not self.valid():

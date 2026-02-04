@@ -259,6 +259,12 @@ class CoolingThermalBaseTest(unittest.TestCase):
       self.assertEqual(thermal.config['kd'], config.kd)
       self.assertEqual(thermal.config['zone'], config.defaultZone)
 
+   def testSetTemperatureUsesProvidedTimestamp(self):
+      thermal = CoolingMockThermal('temp1')
+      thermal.setTemperatureWithTimestamp(value=42.5, timestamp=1234.5)
+      self.assertEqual(thermal.temperature, 42.5)
+      self.assertEqual(thermal.data.get[-1], (1234.5, 42.5))
+
 class CoolingAlgorithmTest(unittest.TestCase):
 
    def _getPlatform(self, fans=None, thermals=None):

@@ -12,7 +12,7 @@ ConditionKernelCommandLine=sonic.mode=supervisor
 Restart=always
 RestartSec=60
 
-ExecStart=/usr/bin/arista -l /var/log/arista-monitor.log --logfile-verbosity '.*/IO' daemon --feature linecard_monitor
+ExecStart=/usr/bin/arista -l /var/log/arista-monitor.log --logfile-verbosity '.*/DEBUG' daemon --feature linecard_monitor
 
 [Install]
 RequiredBy=platform-arista.target

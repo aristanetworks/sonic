@@ -58,6 +58,9 @@ class PsuSlotImpl(PsuSlotInv):
       self.slot = slot
       self.psu = None
 
+   def getGenId(self):
+      return self.slot.getGenId()
+
    def getId(self):
       return self.slot.slotId
 
@@ -66,6 +69,9 @@ class PsuSlotImpl(PsuSlotInv):
 
    def getPresence(self):
       return self.slot.getPresence()
+
+   def getPresenceCached(self):
+      return self.slot.getPresenceCached()
 
    def getStatus(self):
       return self.slot.isPowerGood()
@@ -79,11 +85,20 @@ class PsuSlotImpl(PsuSlotInv):
       # TODO: in the future handle PSU hotswap with potentially a different model
       return self.psu
 
+   def getLoadedPsu(self):
+      return self.psu
+
    def insertPsu(self, psu):
       if self.psu is not None:
          logging.debug("%s overriding already loaded psu with %s", self.getName(),
                        self.psu)
       self.psu = PsuImpl(self, self.slot.model, psu)
+
+   def removePsu(self):
+      self.psu = None
+
+   def reloadPsu(self):
+      self.slot.setup()
 
 class PsuIdent:
    def __init__(self, partName=None, aristaName=None, airflow=None, metadata=None):
@@ -247,6 +262,7 @@ class PsuSlot(SlotComponent):
       self.psuSlot = self.inventory.addPsuSlot(PsuSlotImpl(self))
       self.psuInv = None
       self.psu = None
+      self.genIdCacheStore = JsonStoredData('psu_slot_%d_status.json' % self.slotId)
       self.load(cacheOnly=True) # no IO in the constructor
 
    def genDiag(self, ctx):
@@ -298,6 +314,26 @@ class PsuSlot(SlotComponent):
       identifier = PsuIdent(**data['identifier'])
       return getPsuManager().psuForIdentifier(clsname, identifier)
 
+   def _getGenIdCache(self):
+      cache = self.genIdCacheStore
+      return cache.readOrClear()
+
+   def getGenId(self):
+      cacheContent = self._getGenIdCache()
+      return cacheContent.get('genId') if cacheContent else None
+
+   def _setGenId(self, genId):
+      cache = self.genIdCacheStore
+      cache.write({
+         'genId': genId,
+      }, mode='w+')
+
+   def _updateGenIdCache(self):
+      currentGenId = self.getGenId()
+      genId = (currentGenId + 1) if currentGenId is not None else 0
+      if not inSimulation():
+         self._setGenId(genId)
+
    def logPsuInformation(self):
       logging.debug("PSU %d name: %s", self.slotId, self.model.identifier.aristaName)
       for key, value in self.model.identifier.metadata.items():
@@ -317,6 +353,7 @@ class PsuSlot(SlotComponent):
 
       self.model = self.autodetectPsuModel()
       if self.model is None:
+         self.clearCache()
          logging.error("PSU %d unknown, discovery failed", self.slotId)
          return None
 
@@ -345,14 +382,24 @@ class PsuSlot(SlotComponent):
       self.components = self.components[:-1]
       return psu
 
-   def load(self, useCache=True, cacheOnly=False):
-      if not useCache:
-         self.clearCache()
+   def removePsu(self):
+      if self.psu:
+         self.psu.clean()
+         self.psu = None
+         self._updateGenIdCache()
+      self.psuSlot.removePsu()
 
+   def load(self, useCache=True, cacheOnly=False):
       if not cacheOnly and not self.getPresence():
          logging.debug("PSU %d is not inserted", self.slotId)
+         self.removePsu()
          self.clearCache()
          return
+
+      if not useCache and self.psu:
+         logging.debug("PSU %d already exists, reloading", self.slotId)
+         self.removePsu()
+         self.clearCache()
 
       if not self.loadPsuModel(useCache=useCache, cacheOnly=cacheOnly):
          return
@@ -373,6 +420,9 @@ class PsuSlot(SlotComponent):
       if self.presentGpio is True:
          return True
       return self.presentGpio.isActive()
+
+   def getPresenceCached(self):
+      return self.getCacheStore().exist()
 
    def _getGpioActiveOr(self, gpio):
       if gpio is None:
@@ -420,3 +470,4 @@ class PsuSlot(SlotComponent):
          # has already been computed.
          self.psu.setup()
          self.psu.finish()
+         self._updateGenIdCache()

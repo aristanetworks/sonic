@@ -17,18 +17,24 @@ class Psu(PsuBase):
       PsuBase.__init__(self)
       self._slot = slot
       self._psu = None
+      self._genId = None
       self._compute_psu()
 
    def _compute_psu(self):
       old = self._psu
-      if self._psu is None:
+      newGenId = self.get_generation_id()
+      if newGenId != self._genId:
+         self._slot.slot.load(cacheOnly=True)
          self._psu = self._slot.getPsu()
-      else:
-         # TODO: handle PSU hotswap
-         pass
-      if self._psu != old:
+         self._genId = newGenId
+
+      if self._psu != old and self._psu:
          self._fan_list = [Fan(self, f) for f in self._psu.getFans()]
          self._thermal_list = [Thermal(i + 1, t) for i, t in enumerate(self._psu.getTemps())]
+
+   def get_all_fans(self):
+      self._compute_psu()
+      return self._fan_list
 
    @property
    def psu(self):
@@ -48,6 +54,9 @@ class Psu(PsuBase):
          return None
       rails = self.psu.psu.getInventory().getRails()
       return rails[0] if rails else None
+
+   def get_generation_id(self):
+      return self._slot.getGenId()
 
    def get_id(self):
       return self._slot.getId()
@@ -72,7 +81,9 @@ class Psu(PsuBase):
       return self._slot.getStatus()
 
    def get_presence(self):
-      return self._slot.getPresence()
+      if not self._slot.getPresence():
+         return False
+      return self.psu is not None
 
    def get_position_in_parent(self):
       return self._slot.getId()

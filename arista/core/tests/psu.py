@@ -96,7 +96,8 @@ class MockPmbusDetect(object):
       return True
 
 class MockPsuSlot(PsuSlot):
-   pass
+   def mockPsuDaemonCallback(self):
+      self.psuSlot.reloadPsu()
 
 class MockFixedSystem(FixedSystem):
    def __init__(self, psus, numPsus=2, psuFunc=lambda x: x, psuStatusPolicy=None):
@@ -128,8 +129,12 @@ class TestPsu(unittest.TestCase):
 
    def _checkPsu(self, system, psuId, model):
       slot = system.slots[psuId]
-      self.assertIsNotNone(slot.model)
-      self.assertIsInstance(slot.model, model)
+      if model:
+         self.assertIsNotNone(slot.psuSlot.psu)
+         self.assertIsNotNone(slot.model)
+         self.assertIsInstance(slot.model, model)
+      else:
+         self.assertIsNone(slot.psuSlot.psu)
 
    def testBasicNoPsu(self):
       system = MockFixedSystem([PsuModel1, PsuModel2])
@@ -154,6 +159,25 @@ class TestPsu(unittest.TestCase):
       self._checkSystem(system)
       self._checkPsu(system, 0, PsuModel2)
 
+   def testPsuHotswapDetected(self):
+      detection = [{ 'id': 'VENDOR1', 'model': 'MODEL1-0' }]
+      def psuFunc(_):
+         return detection[0]
+      system = MockFixedSystem([PsuModel1, PsuModel3], psuFunc=psuFunc)
+      system.slots[0].presentGpio.value = 1
+      self._checkSystem(system)
+      self._checkPsu(system, 0, PsuModel1)
+
+      # Remove PSU
+      system.slots[0].presentGpio.value = 0
+      system.slots[0].mockPsuDaemonCallback()
+      self._checkPsu(system, 0, None)
+
+      # Insert different PSU
+      detection[0] = { 'id': 'VENDOR2', 'model': 'MODEL-F' }
+      system.slots[0].presentGpio.value = 1
+      system.slots[0].mockPsuDaemonCallback()
+      self._checkPsu(system, 0, PsuModel3)
 
 class TestPsuSlotPmbusStatus(unittest.TestCase):
    def _createSlot(self, psuStatusPolicy=None):

@@ -7,6 +7,9 @@ class PsuSlot(InventoryInterface):
    def getId(self):
       raise NotImplementedError
 
+   def getGenId(self):
+      raise NotImplementedError
+
    @diagmethod('name')
    def getName(self):
       raise NotImplementedError
@@ -15,12 +18,22 @@ class PsuSlot(InventoryInterface):
    def getPresence(self):
       raise NotImplementedError
 
+   @diagmethod('presentCached')
+   def getPresenceCached(self):
+      raise NotImplementedError
+
    @diagmethod('status', io=True)
    def getStatus(self):
       raise NotImplementedError
 
    @diagmethod('psu', diag=True)
    def getPsu(self):
+      raise NotImplementedError
+
+   def getLoadedPsu(self):
+      raise NotImplementedError
+
+   def reloadPsu(self):
       raise NotImplementedError
 
    @diagmethod('led', diag=True)

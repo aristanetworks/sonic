@@ -79,6 +79,6 @@ class PuffinPrimeCpu(Cpu):
       pass
 
    def addFanGroup(self, slots=3, count=2):
-      self.cpld.addFanGroup(0x9000, slots, slots, count)
+      self.cpld.addFanGroup(0x9000, 3, slots, count)
       self.cpld.addFanSlotBlock(slotCount=slots, fanCount=count,
                                 skip=self.parent.CHASSIS.IGNORE_FAN_SLOTS)

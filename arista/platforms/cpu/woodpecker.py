@@ -59,6 +59,6 @@ class WoodpeckerCpu(Cpu):
       return self.cpld.i2cAddr(5, addr, t=t, **kwargs)
 
    def addFanGroup(self, slots=3, count=2):
-      self.cpld.addFanGroup(0x9000, slots, slots, count)
+      self.cpld.addFanGroup(0x9000, 3, slots, count)
       self.cpld.addFanSlotBlock(slotCount=slots, fanCount=count,
                                 skip=self.parent.CHASSIS.IGNORE_FAN_SLOTS)

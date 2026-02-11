@@ -105,7 +105,7 @@ class Wolverine(DenaliLinecard):
       blackboxController.newComponent(
          ScdBlackBox,
          addr=blackboxController.spiAddr(cs=1),
-         ctrl=BlackBoxRegisterMap(self.scd.driver, offset=0x1400)
+         ctrl=BlackBoxRegisterMap(self.scd.driver)
       )
 
       for intId in incrange(0, 6):

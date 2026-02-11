@@ -69,7 +69,7 @@ class SprucefishCpu(Cpu):
       blackboxController.newComponent(
          ScdBlackBox,
          addr=blackboxController.spiAddr(cs=1),
-         ctrl=BlackBoxRegisterMap(cpld.driver, offset=0x1400)
+         ctrl=BlackBoxRegisterMap(cpld.driver)
       )
 
       # TODO: add led and interrupt logic for SFP port

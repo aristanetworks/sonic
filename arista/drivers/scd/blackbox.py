@@ -96,7 +96,7 @@ class ScdBlackBoxImpl(BlackBoxImpl):
       return self.component.driver.dump(outputPath)
 
    def decoder(self):
-      return ScdBlackBoxDecoder()
+      return ScdBlackBoxDecoder(self.component.bufSplit)
 
    def erase(self):
       return self.component.driver.erase()

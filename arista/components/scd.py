@@ -271,16 +271,22 @@ class ScdSpiController(SpiController):
       return self.spiAddrCache_[cs]
 
 class BlackBoxRegisterMap(RegisterMap):
-   LOGGER_CTRL = Register(0x0,
-      RegBitField(28, 'bbVersion'),
-      RegBitField(0, 'bbEnabled', ro=False),
-   )
+   def __init__(self, parent, logger=0x1400, cmd=None):
+      super().__init__(parent)
+      self._updateAttributes(Register(logger,
+         RegBitField(28, 'bbVersion'),
+         RegBitField(0, 'bbEnabled', ro=False),
+      ))
+      if cmd is not None:
+         self._updateAttributes(Register(cmd, name='cmd', ro=False))
 
 class ScdBlackBox(SpiComponent):
    DRIVER = ScdBlackBoxDriver
+   BB_POWER_ON_SUPPORT = 2
 
-   def __init__(self, **kwargs):
+   def __init__(self, bufSplit=0, **kwargs):
       super().__init__(**kwargs)
+      self.bufSplit = bufSplit
       self.inventory.addBlackBox(self.driver.getBlackBox(self))
 
    def regs(self):
@@ -303,11 +309,30 @@ class ScdBlackBox(SpiComponent):
    def simSetEnabled(self, enable):
       return bool(enable)
 
+   def armPowerOn(self, enable):
+      assert self.bufSplit, "Invalid blackbox configuration"
+      msb = self.bufSplit >> 8
+      lsb = self.bufSplit & 0xff
+      logging.debug("blackbox: arming power on")
+      self.ctrl.cmd(0x80000006)
+      self.ctrl.cmd(2)
+      self.ctrl.cmd(msb)
+      self.ctrl.cmd(lsb)
+      self.ctrl.cmd(0x80000000 | (int(enable) << 7))
+
    @simulateWith(simSetEnabled)
    def setEnabled(self, enable):
-      if self.enabled() == enable:
+      if enable and self.enabled():
          return
-      self.ctrl.bbEnabled(value=enable)
+      arm = self.version() >= self.BB_POWER_ON_SUPPORT
+      if enable:
+         if arm:
+            self.armPowerOn(True)
+         self.ctrl.bbEnabled(value=True)
+      else:
+         self.ctrl.bbEnabled(value=False)
+         if arm:
+            self.armPowerOn(False)
 
 @dataclass
 class ScdInterruptDesc:

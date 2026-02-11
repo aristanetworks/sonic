@@ -58,7 +58,8 @@ class ShearwaterCpu(Cpu):
       bbCtrl.newComponent(
          ScdBlackBox,
          addr=bbCtrl.spiAddr(cs=1),
-         ctrl=BlackBoxRegisterMap(cpld.driver, offset=0x1400)
+         ctrl=BlackBoxRegisterMap(cpld.driver, cmd=0x1100),
+         bufSplit=0x6000,
       )
 
       self.fanboard = self.parent.CHASSIS.addFanboard(cpld, cpld.getSmbus(7))

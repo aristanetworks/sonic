@@ -82,7 +82,7 @@ class SteamerLaneBase(FixedSystem):
          addr=0xA010,
          bus=8,
          ledAddr=0x6100,
-         ledAddrOffsetFn=lambda x: 0x20,
+         ledAddrOffsetFn=lambda x: 0x10,
          intrRegs=intrRegs,
          intrRegIdxFn=lambda xcvrId: xcvrId // 33 + 1,
          intrBitFn=lambda xcvrId: (xcvrId - 1) % 32,
@@ -91,10 +91,12 @@ class SteamerLaneBase(FixedSystem):
       scd.addXcvrSlots(
          ports=self.PORTS.getQsfps(),
          addr=0xA410,
-         bus=7,
+         bus=6,
          ledAddr=0x6900,
          ledAddrOffsetFn=lambda x: 0x40,
-         # no interrupts
+         intrRegs=intrRegs,
+         intrRegIdxFn=lambda _: 0,
+         intrBitFn=lambda xcvrId: xcvrId - 65 + 9,
       )
 
       scd.addResets([

@@ -2,6 +2,8 @@
 Description=Arista early platform initialization
 After=rc-local.service
 Before=opennsl-modules.service
+Before=swss.service
+Before=swss@.service
 PartOf=platform-arista.target
 
 [Service]

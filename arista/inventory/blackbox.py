@@ -23,3 +23,6 @@ class BlackBoxImpl(InventoryInterface):
 
    def dump(self, outputPath):
       raise NotImplementedError
+
+   def erase(self):
+      raise NotImplementedError

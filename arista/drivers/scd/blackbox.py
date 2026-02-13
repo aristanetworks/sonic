@@ -98,12 +98,18 @@ class ScdBlackBoxImpl(BlackBoxImpl):
    def decoder(self):
       return ScdBlackBoxDecoder()
 
+   def erase(self):
+      return self.component.driver.erase()
+
 class ScdBlackBoxDriver(SpidevDriver):
    def getBlackBox(self, component):
       return ScdBlackBoxImpl(component)
 
    def dump(self, outputPath):
       return self._runFlashromCmd(op='-r', outputPath=outputPath)
+
+   def erase(self):
+      return self._runFlashromCmd(op='-E')
 
    def _runFlashromCmd(self, op, outputPath=None):
       devPath = self.getDevPath()

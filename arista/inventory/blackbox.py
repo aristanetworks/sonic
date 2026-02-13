@@ -18,5 +18,8 @@ class BlackBoxImpl(InventoryInterface):
    def setEnabled(self, enabled):
       raise NotImplementedError
 
+   def decoder(self):
+      raise NotImplementedError
+
    def dump(self, outputPath):
       raise NotImplementedError

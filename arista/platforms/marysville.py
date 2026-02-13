@@ -194,8 +194,8 @@ class MarysvillPrimeSysCpldRegisters(RegisterMap):
    )
 
 @registerPlatform()
-class MarsvillePrime(MarysvilleBase):
-   SID = ['MarsvillePrime']
+class MarysvillePrime(MarysvilleBase):
+   SID = ['MarysvillePrime']
    SKU = ['DCS-7050SX3-48YC8C']
    CPU_CLS = PuffinPrimeCpu
    SYSCPLD_REGMAP_CLS = MarysvillPrimeSysCpldRegisters

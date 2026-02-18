@@ -181,7 +181,7 @@ class StoredDataTest(unittest.TestCase):
    def testWriteExceptionPersistent(self):
       """Test that write exceptions propagate for persistent files"""
       sd = StoredData('test.txt', lifespan='persistent',
-                      path=self.tempFile, append=False)
+                      path=self.tempFile, append=True)
       sd.write('initial data')
       # Make file read-only to trigger write exception
       os.chmod(self.tempFile, stat.S_IRUSR)

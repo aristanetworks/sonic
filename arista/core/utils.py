@@ -5,6 +5,7 @@ import mmap
 import os
 import re
 import time
+import tempfile
 
 from datetime import datetime
 from functools import wraps
@@ -353,9 +354,26 @@ class StoredData():
             'Base directory for %s file %s not found!' % (self.lifespan, self.name)
       if not os.path.isfile(self.path):
          logging.debug('Creating %s file %s', self.lifespan, self.name)
+         append = False
+      else:
+         append = 'a' in mode
       try:
-         with open(self.path, mode) as tmpFile:
-            tmpFile.write(data)
+         if append:
+            with open(self.path, mode) as f:
+               f.write(data)
+               f.flush()
+         else:
+            # Create a temp file and write to it first before moving (atomic)
+            tmpFileName = None
+            dirName = os.path.dirname(self.path)
+            with tempfile.NamedTemporaryFile(mode, dir=dirName, delete=False) as\
+                  tmpFile:
+               tmpFile.write(data)
+               tmpFile.flush()
+               tmpFileName = tmpFile.name
+
+            # Move the temp file to the right location now for atomic creation
+            os.replace(tmpFileName, self.path)
       except OSError as e:
          if self.lifespan == 'temporary':
             # For cache/temporary files, log but don't propagate

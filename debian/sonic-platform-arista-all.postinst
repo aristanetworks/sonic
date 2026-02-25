@@ -31,6 +31,16 @@ for svc in $svcs; do
     systemctl enable "$svc"
 done
 
+# Enable and start the firmware upgrade service immediately before starting
+# other Arista services.
+if [ -f /var/lib/dpkg/info/arista-fwutil.list ]; then
+    svcs="$(grep /lib/systemd/system/platform-arista \
+        /var/lib/dpkg/info/arista-fwutil.list  | sed 's/.*\///')"
+    for svc in $svcs; do
+        systemctl enable "$svc"
+    done
+fi
+
 systemctl start --no-block platform-arista.target
 
 exit 0

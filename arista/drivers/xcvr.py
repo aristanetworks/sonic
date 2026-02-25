@@ -11,7 +11,7 @@ class XcvrKernelDriver(I2cKernelDriver):
       super(XcvrKernelDriver, self).__init__(**kwargs)
       self.portName = portName
       if Config().xcvr_use_optoe_auto:
-         self.NAME = 'optoe-auto'
+         self.name = 'optoe-auto'
 
    def setup(self):
       super(XcvrKernelDriver, self).setup()

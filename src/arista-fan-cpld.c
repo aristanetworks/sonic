@@ -64,7 +64,7 @@
 #define FAN_ID_MASK    0x3F
 #define FAN_ID_UNKNOWN (FAN_ID_MASK + 1)
 
-#define IS_LR_CPLD(Cpld) ((Cpld)->fans_per_slot == 2)
+#define IS_LR_CPLD(Cpld) ((Cpld)->fans_per_slot == 2 || (Cpld)->info->left_right)
 
 #define FAN_OUTER 0
 #define FAN_INNER 1
@@ -92,6 +92,7 @@ enum cpld_type {
    PALI2_CPLD = 0,
    MINKE_CPLD = 1,
    RUNDLE_CPLD = 2,
+   PHYSTY_CPLD = 3,
 };
 
 struct fan_id {
@@ -189,6 +190,12 @@ static const struct fan_id rundle_fan_ids[] = {
    [FAN_ID_UNKNOWN] = { "Unknown",         2 },
 };
 
+static const struct fan_id physty_fan_ids[] = {
+   [0b001000]       = { "FAN-00171-BLUE",  2 },
+   [0b001001]       = { "FAN-00171-BLUE",  2 },
+   [FAN_ID_UNKNOWN] = { "Unknown",         2 },
+};
+
 static const struct cpld_info cpld_infos[] = {
    [PALI2_CPLD] = {
       .name = "pali2",
@@ -249,6 +256,26 @@ static const struct cpld_info cpld_infos[] = {
       .id_chng_reg = 0xB0,
       .pres_chng_reg = 0xB1,
       .ok_chng_reg = 0xB2,
+   },
+   [PHYSTY_CPLD] = {
+      .name = "physty",
+      .slot_count = 3,
+      .fan_count = 3,
+      .tach_hz = 100000,
+      .left_right = true,
+      .pwm_min = 0x00,
+      .fan_ids = physty_fan_ids,
+      .id_base_reg = 0x60,
+      .present_reg = 0x70,
+      .ok_reg = 0x71,
+      .blue_led_reg = 0x73,
+      .amber_led_reg = 0x74,
+      .green_led_reg = 0x75,
+      .red_led_reg = 0x76,
+      .int_reg = 0x77,
+      .id_chng_reg = 0x78,
+      .pres_chng_reg = 0x80,
+      .ok_chng_reg = 0x82,
    },
 };
 
@@ -1258,6 +1285,7 @@ static const struct i2c_device_id cpld_id[] = {
    { "pali2_cpld", PALI2_CPLD },
    { "minke_cpld", MINKE_CPLD },
    { "rundle_cpld", RUNDLE_CPLD },
+   { "physty_cpld", PHYSTY_CPLD },
    {}
 };
 

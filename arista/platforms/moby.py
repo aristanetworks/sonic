@@ -67,7 +67,7 @@ class PaladinConnector(XcvrSlot):
 
 class PaladinHd(XcvrDesc):
    LANES = 48
-   SPEED = 100
+   SPEED = 100000
 
 class MobyChassis(FixedChassis):
    FAN_SLOTS = 3

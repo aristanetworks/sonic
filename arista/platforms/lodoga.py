@@ -3,6 +3,7 @@ from ..core.fixed import FixedSystem
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
 from ..core.psu import PsuSlot
+from ..core.quirk import RegMapSetQuirk
 from ..core.register import (
    Register,
    RegisterMap,
@@ -58,14 +59,21 @@ class LodogaPrimeCpldRegisters(RegisterMap):
       RegBitField(0, 'scdConfDone'),
    )
    PWR_CYC_EN = Register(0x11,
+      RegBitField(6, 'powerCycleOnRailFault', ro=False),
       RegBitField(2, 'powerCycleOnCrc', ro=False),
    )
    RT_FAULT_0 = Register(0x46,
       RegBitField(2, 'scdCrcError'),
    )
 
+class LodogaPrimeRailFaultPwrCycleEnaQuirk(RegMapSetQuirk):
+   description = 'enable RAIL_FAULT_PWR_CYCLE_EN'
+   REG_NAME = 'powerCycleOnRailFault'
+   REG_VALUE = True
+
 class LodogaBase(FixedSystem):
    LODOGA_QUIRKS = []
+   LODOGA_SYSCPLD_QUIRKS = []
 
    PORTS = PortLayout(
       (Qsfp28(i, leds=4) for i in incrange(1, 32)),
@@ -76,6 +84,7 @@ class LodogaBase(FixedSystem):
       super().__init__()
 
       cpu = self.newComponent(cpuCls, registerCls=syscpldRegisters,
+                              sysCpldQuirks=self.LODOGA_SYSCPLD_QUIRKS,
                               quirks=self.LODOGA_QUIRKS)
       self.cpu = cpu
       self.syscpld = cpu.syscpld
@@ -176,7 +185,6 @@ class Lodoga(LodogaBase):
    SID = ['Lodoga', 'LodogaSsd']
    SKU = ['DCS-7050CX3-32S', 'DCS-7050CX3-32S-SSD']
    PSU_CLS = [DPS495CB, DS495SPE]
-   LODOGA_QUIRKS = []
 
    class SmBusAddresses(object):
       TS  = 9
@@ -219,6 +227,7 @@ class LodogaPrime(LodogaBase):
    CHASSIS = LodogaPrimeChassis
    PSU_CLS = [DPS500AB, CSU500DP, Pwr581]
    COOLING = CoolingConfig(minSpeed=15)
+   LODOGA_SYSCPLD_QUIRKS = [LodogaPrimeRailFaultPwrCycleEnaQuirk()]
 
    class SmBusAddresses(object):
       TS  = 0

@@ -21,7 +21,8 @@ class PuffinPrimeCpu(Cpu):
    PCI_PORT_ASIC0 = PciPortDesc(0x01, 3)
    PCI_PORT_SCD0 = PciPortDesc(0x01, 2)
 
-   def __init__(self, registerCls=SysCpldCommonRegistersV2, **kwargs):
+   def __init__(self, registerCls=SysCpldCommonRegistersV2,
+                sysCpldQuirks=None, **kwargs):
       super().__init__(**kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
@@ -72,7 +73,8 @@ class PuffinPrimeCpu(Cpu):
 
       self.syscpld = cpld.newComponent(PuffinPrimeSysCpld,
                                        addr=cpld.i2cAddr(4, 0x23),
-                                       registerCls=registerCls)
+                                       registerCls=registerCls,
+                                       quirks=sysCpldQuirks or [])
       self.syscpld.addPowerCycle()
 
    def addScdComponents(self, scd, hwmonBus=0):

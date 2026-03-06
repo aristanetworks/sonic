@@ -4,9 +4,48 @@ import time
 from ..core.log import getLogger
 from ..core.utils import inSimulation
 from ..core.types import PciAddr
+from ..libs.fs import readFileContent
 from ..libs.wait import waitFor
 
 logging = getLogger(__name__)
+
+PCI_DEVICES_PATH = '/sys/bus/pci/devices'
+
+def parsePciBdf(name):
+   """Convert a PCI sysfs directory name into (domain, bus, device, function).
+
+   The name follows the form "DDDD:BB:DD.F" where domain/bus/device are hex
+   and function is decimal (e.g. "0000:ff:0b.3" -> (0x0, 0xff, 0xb, 3)).
+   """
+   domainBus, devFunc = name.rsplit(':', 1)
+   domain, bus = domainBus.split(':')
+   device, func = devFunc.split('.')
+   return (int(domain, 16), int(bus, 16), int(device, 16), int(func))
+
+def findPciDevice(vendorId, deviceId):
+   """Return the PciAddr of the first PCI device matching vendorId/deviceId.
+
+   Walks /sys/bus/pci/devices and matches against each device's `vendor` and
+   `device` sysfs files. Raises LookupError if no device matches.
+   """
+   try:
+      entries = os.listdir(PCI_DEVICES_PATH)
+   except OSError as e:
+      raise LookupError('cannot list %s: %s' % (PCI_DEVICES_PATH, e)) from e
+
+   for name in entries:
+      devPath = os.path.join(PCI_DEVICES_PATH, name)
+      try:
+         vid = int(readFileContent(os.path.join(devPath, 'vendor')), 16)
+         did = int(readFileContent(os.path.join(devPath, 'device')), 16)
+      except (OSError, ValueError):
+         continue
+      if vid == vendorId and did == deviceId:
+         domain, bus, device, func = parsePciBdf(name)
+         return PciAddr(domain=domain, bus=bus, device=device, func=func)
+
+   raise LookupError('no PCI device matches vendor=0x%04x device=0x%04x' %
+                     (vendorId, deviceId))
 
 def pciRescan():
    logging.info('triggering kernel pci rescan')

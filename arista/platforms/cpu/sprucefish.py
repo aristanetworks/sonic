@@ -10,6 +10,7 @@ from ...components.pci import CompletionTimeoutPciQuirk
 
 from ...descs.sensor import SensorDesc, Position
 from ...descs.xcvr import Sfp
+from ...drivers.scd.nmi import ScdNmiPchConfig
 
 class CpldSeuRegisterMap(RegisterMap):
    SCD_CTRL = Register(0x2300,
@@ -36,6 +37,15 @@ class SprucefishCpu(Cpu):
       port = self.pciRoot.rootPort(bus=0xff, device=0x0b, func=3)
       cpld = port.newComponent(Scd, addr=port.addr)
       self.cpld = cpld
+      cpld.setNmiConfig(ScdNmiPchConfig(
+         pciVendorId=0x8086,  # PCI_VENDOR_ID_INTEL
+         pciDeviceId=0x8c54,  # Broadwell-DE PCH LPC
+         gpioBaseOffset=0x48,
+         gpioBaseMask=0xf80,
+         gpioBit=5,
+         gpiNmiEn=0x28,
+         gpiNmiSts=0x2a,
+      ))
 
       cpld.createPowerCycle()
       cpld.addSeuReporter(CpldSeuRegisterMap)

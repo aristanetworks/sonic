@@ -150,6 +150,9 @@ class ScdKernelDriver(PciKernelDriver):
    def finish(self):
       logging.debug('applying scd configuration')
       path = self.addr.getSysfsPath()
+      # Configure NMI before triggering init
+      if self.scd.nmiConfig is not None:
+         self.scd.nmiConfig.setup(self.scd)
       if Config().lock_scd_conf:
          utils.writeConfig(path, {'init_trigger': '1'})
       super(ScdKernelDriver, self).finish()

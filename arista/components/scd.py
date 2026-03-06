@@ -251,6 +251,7 @@ class Scd(PciComponent):
       self.mdioMasters = {}
       self.mdios = []
       self.msiRearmOffset = None
+      self.nmiConfig = None
       self.uartPorts = {}
       super().__init__(addr=addr, drivers=drivers, **kwargs)
       self.regs = self.drivers['scd-hwmon'].regs
@@ -280,6 +281,9 @@ class Scd(PciComponent):
 
    def setMsiRearmOffset(self, offset):
       self.msiRearmOffset = offset
+
+   def setNmiConfig(self, nmiConfig):
+      self.nmiConfig = nmiConfig
 
    def createPowerCycle(self, reg=0x7000, wr=0xDEAD):
       powerCycle = ScdPowerCycle(self, reg=reg, wr=wr)

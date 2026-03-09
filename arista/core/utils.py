@@ -346,7 +346,8 @@ class StoredData():
       return os.path.isfile(self.path)
 
    def writable(self):
-      return os.access(self.path, os.W_OK)
+      p = self.path if os.path.exists(self.path) else os.path.dirname(self.path)
+      return os.access(p, os.W_OK)
 
    def write(self, data, mode=None):
       mode = mode or self.mode

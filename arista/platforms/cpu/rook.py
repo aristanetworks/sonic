@@ -6,10 +6,12 @@ from ...core.utils import incrange
 from ...components.cpu.intel.coretemp import Coretemp
 from ...components.cpu.intel.pch import PchTemp
 from ...components.cpu.rook import (
-   RookCpldRegisters,
    LaFanCpld,
+   RookCpldPowerCycleOnScFaultQuirk,
+   RookCpldRegisters,
    RookStatusLeds,
    RookSysCpld,
+   RookSysCpldRegisters,
 )
 from ...components.dpm.ucd import Ucd90160, UcdGpi, UcdPriority
 from ...components.lm73 import Lm73
@@ -28,7 +30,7 @@ class RookCpu(Cpu):
    PCI_PORT_SCD0 = PciPortDesc(0x1c, 0)
 
    def __init__(self, mgmtBus=15, fanCpldCls=LaFanCpld, hasLmSensor=True,
-                hasCpuLeds=True, cpldRegisterCls=RookCpldRegisters,
+                hasCpuLeds=True, cpldRegisterCls=RookSysCpldRegisters,
                 sysCpldQuirks=None, **kwargs):
       super(RookCpu, self).__init__(**kwargs)
 
@@ -50,7 +52,8 @@ class RookCpu(Cpu):
       ])
 
       port = self.pciRoot.rootPort(bus=0xff, device=0x0b, func=3)
-      cpld = port.newComponent(Scd, addr=port.addr)
+      cpld = port.newComponent(Scd, addr=port.addr, registerCls=RookCpldRegisters,
+                               quirks=[RookCpldPowerCycleOnScFaultQuirk()])
       self.cpld = cpld
 
       cpld.addSmbusMasterRange(0x8000, 4, 0x80, 4)

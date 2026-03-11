@@ -17,6 +17,9 @@ class DescTest(unittest.TestCase):
    def testFanDesc(self):
       self._testAttributes(FanDesc, fanId=1, extra='blah')
 
+   def testFanDescWithNamespace(self):
+      self._testAttributes(FanDesc, fanId=1, namespaceFn = lambda: 1)
+
    def testLedDesc(self):
       self._testAttributes(LedDesc, name='led', colors=[ 'blue', 'red' ],
                            extra='blah')

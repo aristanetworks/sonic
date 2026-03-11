@@ -33,6 +33,11 @@ class FanDesc(HwDesc):
       values['namespaceId'] = f'{self.namespaceFn()}/' if self.namespaceFn else ''
       self.name = self.fmt % values
 
+   def __diag__(self, ctx):
+      res = super().__diag__(ctx)
+      del res['namespaceFn']
+      return res
+
 class FanSlotDesc(HwDesc):
 
    OID_FIELD = 'slotId'

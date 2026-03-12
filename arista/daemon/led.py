@@ -39,9 +39,26 @@ class StatusLedFeature(PollDaemonFeature):
       return LedColor.GREEN
 
    def getAllPsusStatus(self, platform, led):
+      # RED if any present PSU has a fault OR
+      # RED if fewer than MIN_REQUIRED_PSUS are functional
+      # GREEN if at least MIN_REQUIRED_PSUS are present and healthy
+      if isinstance(platform, Supervisor):
+         chassis = platform.getChassis()
+         minRequired = chassis.MIN_REQUIRED_PSUS
+      else:
+         minRequired = platform.CHASSIS.MIN_REQUIRED_PSUS
+
+      goodCount = 0
       for psuSlot in platform.getInventory().getPsuSlots():
-         if psuSlot.getPresence() and not psuSlot.getStatus():
-            return LedColor.RED
+         if psuSlot.getPresence():
+            if psuSlot.getStatus():
+               goodCount += 1
+            else:
+               return LedColor.RED
+
+      if goodCount < minRequired:
+         return LedColor.RED
+
       return LedColor.GREEN
 
    def getAllLinecardsStatus(self, platform, led):

@@ -12,3 +12,4 @@ class NorthFace(DenaliChassis):
    NUM_FABRICS = 6
    NUM_FANS = 48
    NUM_PSUS = 12
+   MIN_REQUIRED_PSUS = 6

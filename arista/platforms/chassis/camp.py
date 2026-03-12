@@ -12,3 +12,4 @@ class Camp(DenaliChassis):
    NUM_FABRICS = 6
    NUM_FANS = 24
    NUM_PSUS = 8
+   MIN_REQUIRED_PSUS = 4

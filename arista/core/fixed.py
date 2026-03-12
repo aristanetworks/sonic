@@ -34,3 +34,4 @@ class FixedChassis(object):
    PSU_SLOTS = None
    HEIGHT_RU = None
    IGNORE_FAN_SLOTS = ()
+   MIN_REQUIRED_PSUS = 1

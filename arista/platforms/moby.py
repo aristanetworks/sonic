@@ -120,9 +120,9 @@ class Moby(FixedSystem):
          SensorDesc(diode=3, name='Inlet Ambiant Air',
                     position=Position.OTHER, target=85, overheat=95, critical=105),
          SensorDesc(diode=6, name='TH5 Diode 1',
-                    position=Position.OTHER, target=105, overheat=115, critical=125),
+                    position=Position.OTHER, target=90, overheat=115, critical=125),
          SensorDesc(diode=7, name='TH5 Diode 2',
-                    position=Position.OTHER, target=105, overheat=115, critical=125),
+                    position=Position.OTHER, target=90, overheat=115, critical=125),
       ], quirks=[
          I2cByteQuirk(0x4b, 0x1f, "TH5 Diode Transistor Ideality config"),
          I2cByteQuirk(0x4c, 0x60, "TH5 Diode Ideality Select config"),

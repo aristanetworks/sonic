@@ -463,6 +463,10 @@ class Ucd90320(Ucd):
       value = (reg[11] << 24) | (reg[10] << 16) | (reg[9] << 8) | reg[8]
       return paged, ftype, page, value, days, msecs
 
+class Ucd9090(Ucd):
+   PAGE_COUNT = 11
+   pass
+
 class Ucd9090A(Ucd):
    PAGE_COUNT = 11
    pass

@@ -751,9 +751,9 @@ class Scd(PciComponent):
       }
 
    def addMdioMasterRange(self, base, count, spacing=0x40, busCount=1,
-                          speed=MdioSpeed.S2_5):
+                          speed=MdioSpeed.S2_5, indexStart=0):
       addrs = range(base, base + count * spacing, spacing)
-      for i, addr in enumerate(addrs, 0):
+      for i, addr in enumerate(addrs, indexStart):
          self.addMdioMaster(addr, i, busCount, speed=speed)
 
    def addMdio(self, master, portAddr, bus=0, devAddr=1, clause=MdioClause.C45):

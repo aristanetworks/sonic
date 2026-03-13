@@ -79,8 +79,8 @@ class Upperlake(FixedSystem):
       ])
 
       scd.addGpios([
-         GpioDesc("psu1_present", 0x5000, 0, ro=True),
-         GpioDesc("psu2_present", 0x5000, 1, ro=True),
+         GpioDesc("psu1_present", 0x5000, 1, ro=True),
+         GpioDesc("psu2_present", 0x5000, 0, ro=True),
       ])
 
       self.syscpld.addGpios([

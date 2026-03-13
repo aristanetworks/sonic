@@ -6,7 +6,7 @@ from ...core.psu import PsuModel, PsuIdent
 from . import PmbusPsu
 from .helper import psuDescHelper, Position
 
-class MobyDcDc(PsuModel):
+class PmbusIBCBase(PsuModel):
    CAPACITY = 1000
    AUTODETECT_PMBUS = False
 
@@ -25,5 +25,13 @@ class MobyDcDc(PsuModel):
       outputMaxVoltage=13.39
    )
 
-class MobyDcDcAddr18(MobyDcDc):
+class MobyDcDc(PmbusIBCBase):
+   pass
+
+class MobyDcDcAddr18(PmbusIBCBase):
    PMBUS_ADDR = 0x12
+
+def createPmbusIBC(addr=0x10):
+   class PmbusIBC(PmbusIBCBase):
+      PMBUS_ADDR = addr
+   return PmbusIBC

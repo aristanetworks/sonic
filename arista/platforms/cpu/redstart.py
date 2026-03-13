@@ -22,6 +22,8 @@ class RedstartCpu(Cpu):
    PCI_PORT_ASIC1 = PciPortDesc(0x1, 3, quirks=[EcrcPciQuirk()])
    PCI_PORT_SCD0 = PciPortDesc(0x2, 5)
    PCI_PORT_SCD1 = PciPortDesc(0x2, 3)
+   PCI_PORT_SCD2 = PciPortDesc(0x2, 4)
+   PCI_PORT_SCD3 = PciPortDesc(0x2, 6)
 
    SMBUS_SC = 6
    SMBUS_POL = 7
@@ -50,9 +52,11 @@ class RedstartCpu(Cpu):
       ])
 
 
-      self.fanboard = self.parent.CHASSIS.addFanboard(cpld, cpld.getSmbus(9))
+      self.fanboard = self.parent.CHASSIS.addFanboard(cpld,
+                                                      cpld.getSmbus(self.SMBUS_FC))
 
-      self.syscpld = cpld.newComponent(RedstartSysCpld, addr=cpld.i2cAddr(6, 0x23))
+      self.syscpld = cpld.newComponent(RedstartSysCpld,
+                                       addr=cpld.i2cAddr(self.SMBUS_SC, 0x23))
 
       cpld.addReloadCauseProvider(causes=[
          ScdCause(0x01, ScdCause.OVERTEMP),

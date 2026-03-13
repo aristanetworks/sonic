@@ -5,7 +5,7 @@ from ..core.fixed import FixedSystem, FixedChassis
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
 from ..core.psu import PsuSlot
-from ..core.xcvr import EthernetImpl, EthernetSlotImpl, XcvrSlot
+from ..core.xcvr import Cartridge, BackplaneConnector
 from ..core.utils import incrange
 
 from ..components.asic.xgs.tomahawk5 import Tomahawk5
@@ -56,37 +56,6 @@ class MobyPortScd(Scd):
       ScdXcvrGroup(portStart=25, portEnd=25,
                    ctrlAddr=0xA100, ledAddr=0x6200, bus=18),
    ]
-
-class Cartridge:
-   def __init__(self, index, eeprom, interrupt, wp):
-      self.index = index
-      self.eeprom = eeprom
-      self.interrupt = interrupt
-      self.wp = wp
-
-   def getPresence(self):
-      return not self.interrupt.asserted()
-
-class BackplaneImpl(EthernetImpl):
-   def __init__(self, eeprom, slot):
-      super().__init__(slot)
-      self.addr = eeprom.addr
-
-   def getType(self):
-      return 'backplane'
-
-class PaladinConnector(XcvrSlot):
-   def __init__(self, *args, cartridge=None, **kwargs):
-      super().__init__(*args, **kwargs)
-      self.slotInv = self.inventory.addEthernetSlot(EthernetSlotImpl(self))
-      self.xcvrInv = self.inventory.addEthernet(BackplaneImpl(cartridge.eeprom,
-                                                              self.slotInv))
-      self.xcvr = cartridge.eeprom
-      self.cartridge = cartridge
-      self.leds = []
-
-   def getPresence(self):
-      return self.cartridge.getPresence()
 
 class PaladinHd(XcvrDesc):
    LANES = 48
@@ -199,7 +168,7 @@ class Moby(FixedSystem):
       # integration with xcvrd
       self.backplane = [
          scd.newComponent(
-            PaladinConnector,
+            BackplaneConnector,
             name=f'back{i}',
             slotId=17 + i,
             cartridge=self.cartridges[-(1 + i // 2)],

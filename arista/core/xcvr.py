@@ -81,6 +81,14 @@ class OsfpImpl(OsfpInv):
    def getI2cAddr(self):
       return self.addr
 
+class BackplaneImpl(EthernetImpl):
+   def __init__(self, eeprom, slot):
+      super().__init__(slot)
+      self.addr = eeprom.addr
+
+   def getType(self):
+      return 'backplane'
+
 class EthernetSlotImpl(EthernetSlotInv):
    def __init__(self, slot):
       self.slot = slot
@@ -479,3 +487,26 @@ class OsfpSlot(XcvrSlot):
       if not self.modSel:
          raise NotImplementedError
       return self.modSel.setActive(value)
+
+class Cartridge:
+   def __init__(self, index, eeprom, interrupt, wp):
+      self.index = index
+      self.eeprom = eeprom
+      self.interrupt = interrupt
+      self.wp = wp
+
+   def getPresence(self):
+      return not self.interrupt.asserted()
+
+class BackplaneConnector(XcvrSlot):
+   def __init__(self, *args, cartridge=None, **kwargs):
+      super().__init__(*args, **kwargs)
+      self.slotInv = self.inventory.addEthernetSlot(EthernetSlotImpl(self))
+      self.xcvrInv = self.inventory.addEthernet(BackplaneImpl(cartridge.eeprom,
+                                                              self.slotInv))
+      self.xcvr = cartridge.eeprom
+      self.cartridge = cartridge
+      self.leds = []
+
+   def getPresence(self):
+      return self.cartridge.getPresence()

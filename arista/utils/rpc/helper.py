@@ -1,11 +1,8 @@
 from enum import Enum
 
-try:
-   from arista.core.config import Config
-   from arista.core.supervisor import Supervisor
-   from arista.utils.rpc.client import RpcClient
-except ImportError as e:
-   raise ImportError("%s - Required module not found" % e)
+from arista.core.config import Config
+from arista.core.supervisor import Supervisor
+from arista.utils.rpc.client import RpcClient
 
 _globalRpcClient = None
 

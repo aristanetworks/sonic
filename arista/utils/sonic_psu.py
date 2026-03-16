@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from .sonic_utils import getInventory
 
 from .. import platforms # pylint: disable=unused-import

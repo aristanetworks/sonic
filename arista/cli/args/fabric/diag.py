@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 from .. import registerParser
 from ..diag import addDiagCommonParser
 from ..fabric import fabricParser

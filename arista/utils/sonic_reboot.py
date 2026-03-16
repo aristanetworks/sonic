@@ -6,8 +6,6 @@ a powercycle, so the exact operations are abstracted by the other files, this si
 calls the function to perform the powercycle.
 """
 
-from __future__ import print_function
-
 import traceback
 
 from arista.core.log import LoggerError, getLogger, setupLogging

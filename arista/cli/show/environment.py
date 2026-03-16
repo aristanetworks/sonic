@@ -1,6 +1,4 @@
 
-from __future__ import print_function
-
 from ...core.diag import DiagContext
 
 from . import Renderer, Table, Col

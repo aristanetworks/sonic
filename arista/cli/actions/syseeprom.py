@@ -1,6 +1,4 @@
 
-from __future__ import absolute_import, division, print_function
-
 from . import registerAction
 from ..args.syseeprom import syseepromParser
 from ...core.platform import getSysEepromData

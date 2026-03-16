@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from ...tests.testing import unittest, patch
 from ...core import utils
 from ...core.fabric import Fabric

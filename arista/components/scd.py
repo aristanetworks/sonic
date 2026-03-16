@@ -1,6 +1,3 @@
-# pylint: disable=too-many-lines
-from __future__ import print_function, with_statement
-
 import copy
 import datetime
 import os

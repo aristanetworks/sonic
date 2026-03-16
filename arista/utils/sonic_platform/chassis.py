@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import division, print_function
-
 try:
    from sonic_platform_base.chassis_base import ChassisBase
    from sonic_platform_base.sfp_base import SfpBase

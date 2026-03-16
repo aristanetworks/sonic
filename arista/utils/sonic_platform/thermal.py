@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
-
 try:
    from arista.libs.python import monotonicRaw
    from sonic_platform_base.thermal_base import ThermalBase

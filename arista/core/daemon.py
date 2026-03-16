@@ -1,12 +1,5 @@
 
-from __future__ import absolute_import, division, print_function
-
-try:
-   import asyncio
-except ImportError:
-   # This file shouldn't be packaged for python2 but just in case
-   print('This feature only works in python3')
-   raise
+import asyncio
 
 from .log import getLogger
 

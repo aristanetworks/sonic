@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 from ...tests.testing import unittest
 
 from ..diag import DiagContext

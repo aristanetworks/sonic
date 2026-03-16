@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import print_function, with_statement
-
 import argparse
 import tempfile
 import time

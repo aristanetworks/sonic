@@ -1,9 +1,4 @@
-try:
-   import asyncio
-except ImportError:
-   print('This feature only works in python3')
-   raise
-
+import asyncio
 import json
 
 from ...core.log import getLogger

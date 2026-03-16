@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
-
 try:
    from arista.core.config import Config
    from arista.utils.sonic_platform.thermal_action import *

@@ -1,6 +1,4 @@
 
-from __future__ import absolute_import, division, print_function
-
 from ...core.card import Card, CardSlot
 from ...core.config import Config
 from ...core.domain import PowerDomain

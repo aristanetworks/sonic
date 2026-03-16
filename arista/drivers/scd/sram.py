@@ -1,5 +1,3 @@
-from __future__ import division
-
 class SramContent(object):
    def __init__(self, size=255, dataSize=4):
       self.dataSize_ = dataSize

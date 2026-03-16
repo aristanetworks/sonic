@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
-
 try:
    from sonic_platform_base.psu_base import PsuBase
 except ImportError as e:

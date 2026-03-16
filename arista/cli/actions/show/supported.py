@@ -1,6 +1,4 @@
 
-from __future__ import print_function
-
 from ....core.fabric import Fabric
 from ....core.fixed import FixedSystem
 from ....core.linecard import Linecard

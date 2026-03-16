@@ -1,6 +1,4 @@
 
-from __future__ import print_function
-
 def getKey(data, key, default="N/A"):
    try:
       for member in key.split('.'):

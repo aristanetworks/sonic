@@ -1,6 +1,4 @@
 
-from __future__ import absolute_import, division, print_function
-
 from . import registerParser
 from .common import addPriorityArgs
 from .default import defaultPlatformParser

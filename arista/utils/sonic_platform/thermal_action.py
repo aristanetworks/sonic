@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
-
 try:
    from sonic_platform_base.sonic_thermal_control.thermal_action_base \
       import ThermalPolicyActionBase

@@ -1,6 +1,4 @@
 
-from __future__ import print_function
-
 from ...core.cause import getReloadCauseManager, getLinecardReloadCauseManager
 
 from . import Renderer

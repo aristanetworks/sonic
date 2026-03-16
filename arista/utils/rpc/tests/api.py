@@ -1,9 +1,4 @@
-try:
-   import asyncio
-except ImportError:
-   print('This feature only works in python3')
-   raise
-
+import asyncio
 import os
 from tempfile import TemporaryDirectory
 

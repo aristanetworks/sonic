@@ -1,11 +1,6 @@
 """Implements classes for defining the JSON-RPC API."""
 
-try:
-   import asyncio
-except ImportError:
-   print('This feature only works in python3')
-   raise
-
+import asyncio
 from datetime import datetime, timezone
 import json
 

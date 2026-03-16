@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from ...tests.testing import unittest, patch
 from ...tests.logging import getLogger
 

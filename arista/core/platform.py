@@ -239,7 +239,7 @@ def getPlatforms():
 
 def loadPlatforms():
    with timeit('Loading platform definitions'):
-      from .. import platforms as _
+      from .. import platforms as _  # pylint: disable=cyclic-import
    logging.debug('Loaded %d platforms', len(manager.platforms))
 
 def registerPlatform():

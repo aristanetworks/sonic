@@ -19,6 +19,7 @@ class FanBoardBase:
    FAN_COUNT = 0
 
    FAN_CPLD_CLS = None
+   IDPROM_CLS = At24C32
 
    def __init__(self, parent, bus):
       self.parent = parent
@@ -27,9 +28,10 @@ class FanBoardBase:
       self.cpld = self.create_cpld()
       self.temp = self.create_temp()
       self.slots = self.create_fan_slots()
+      self.dpm = self.create_dpm() # pylint: disable=assignment-from-none
 
    def create_eeprom(self):
-      return self.parent.newComponent(At24C32, addr=self.bus.i2cAddr(0x50))
+      return self.parent.newComponent(self.IDPROM_CLS, addr=self.bus.i2cAddr(0x50))
 
    def create_cpld(self):
       return self.parent.newComponent(self.FAN_CPLD_CLS, addr=self.bus.i2cAddr(0x60))
@@ -59,6 +61,9 @@ class FanBoardBase:
          ) for slotId in incrange(1, self.FAN_SLOTS)
       ]
 
+   def create_dpm(self):
+      return None
+
 class MinkeFanCpld(I2cComponent):
    DRIVER = MinkeFanCpldKernelDriver
    PRIORITY = Priority.COOLING
@@ -69,3 +74,4 @@ class Minke(FanBoardBase):
    FAN_COUNT = 6
 
    FAN_CPLD_CLS = MinkeFanCpld
+   IDPROM_CLS = At24C32

@@ -1,10 +1,13 @@
 import time
 
 from arista.core.config import Config
+from arista.utils import sonic_luxtera_reset
 from arista.utils.sonic_platform.thermal import SfpThermal
 from sonic_platform_base.sonic_xcvr.sfp_optoe_base import SfpOptoeBase
 
 EEPROM_PATH = '/sys/class/i2c-adapter/i2c-{0}/{0}-{1:04x}/eeprom'
+
+globalLuxteraReset = sonic_luxtera_reset.GlobalLuxteraReset()
 
 # XXX: Temporary class while sfp refactor is in progress. Once refactor is done
 # this class should replace the existing Sfp class.
@@ -28,6 +31,7 @@ class SfpOptoe(SfpOptoeBase):
       self._sfp_type = None
       if not slot.getName().startswith('rj45') and Config().api_sfp_thermal:
          self._thermal_list.append(SfpThermal(self))
+      self.luxteraResetSm = globalLuxteraReset.getResetSm(self)
 
    @property
    def sfp_type(self):
@@ -56,7 +60,13 @@ class SfpOptoe(SfpOptoeBase):
       return self.index
 
    def get_presence(self):
-      return self._slot.getPresence()
+      presence = self._slot.getPresence()
+      if Config().xcvr_enable_luxtera_workaround:
+         # Run workaround for luxtera modules which require an extra reset
+         # after host_tx becomes ready. Non-affected modules are unaffected
+         # by this function call.
+         presence = self.luxteraResetSm.maybeRunResetSm(presence)
+      return presence
 
    def is_replaceable(self):
       return True

@@ -39,17 +39,6 @@ class ThermalInfo(ThermalPolicyInfo):
       for thermal in self.thermals.values():
          thermal.update()
 
-@thermal_json_object("asic_info")
-class AsicInfo(ThermalPolicyInfo):
-   def __init__(self):
-      super().__init__()
-      self.asics = {}
-
-   def collect(self, chassis):
-      self.asics = CoolingEntityManager.get(chassis).get_all_asics()
-      for asic in self.asics.values():
-         asic.update()
-
 @thermal_json_object("psu_info")
 class PsuInfo(ThermalPolicyInfo):
    def __init__(self):

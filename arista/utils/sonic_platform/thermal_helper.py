@@ -299,6 +299,9 @@ class CoolingAsicThermal(CoolingThermal):
       super().__init__(*args, **kwargs)
       self.asic = None
 
+   def _float_or_none(self, value):
+      return None if value in ['0', 'N/A', None] else (float(value) or None)
+
    def register_asic(self, asic):
       self.asic = asic
 
@@ -328,7 +331,6 @@ class CoolingEntityManager(object):
       self._dbhelpers = {}
       self._gc_seen = set()
       self._gc_count = 0
-      self._asics = {}
       self._fans = {}
       self._psus = {}
       self._thermals = {}
@@ -351,7 +353,7 @@ class CoolingEntityManager(object):
       return ent
 
    def get_asic(self, name):
-      return self._get_entity(self._asics, CoolingAsicThermal, name)
+      return self._get_entity(self._thermals, CoolingAsicThermal, name)
 
    def get_fan(self, name):
       return self._get_entity(self._fans, CoolingFan, name)
@@ -364,9 +366,6 @@ class CoolingEntityManager(object):
 
    def get_xcvr(self, name):
       return self._get_entity(self._thermals, CoolingXcvrThermal, name)
-
-   def get_all_asics(self):
-      return self._asics
 
    def get_all_fans(self):
       return self._fans
@@ -495,8 +494,9 @@ class CoolingEntityManager(object):
    def update_asics(self, chassis):
       if Config().cooling_asic_via_db:
          for ns, asic in self._iter_inventory_asics(chassis):
-            self.get_asic(ns).register_asic(asic)
-            self.get_asic(ns).register_db(
+            name = ns if ns else 'asic'
+            self.get_asic(name).register_asic(asic)
+            self.get_asic(name).register_db(
                self._get_dbhelper(ns).get_asic_thermals())
 
    def update(self):
@@ -508,7 +508,7 @@ class CoolingEntityManager(object):
 
    def dump(self):
       objkeys = ['inv', 'api', 'dbent']
-      for col in [self._asics, self._fans, self._psus, self._thermals, self._xcvrs]:
+      for col in [self._fans, self._psus, self._thermals, self._xcvrs]:
          for obj in col.values():
             attrs = (f'{a}={bool(getattr(obj, a))}' for a in objkeys)
             print(f'{obj.__class__.__name__} "{obj.name}" {" ".join(attrs)}')

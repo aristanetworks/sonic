@@ -17,12 +17,18 @@ from ..components.scd import Scd
 from ..components.vrm.raa228228 import Raa228926
 
 from ..descs.gpio import GpioDesc
+from ..descs.led import LedDesc, LedKind
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
 from ..descs.xcvr import Osfp, QsfpDD, Sfp
 
 from .chassis.maunakea import MaunaKea2
 from .cpu.shearwater import ShearwaterCpu
+
+SFP_TRICOLOR_LED = {'defaultLed': '%s:rgb:1', 'leds': [
+   LedDesc(addr=4, name='%s:rgb:1', **LedKind.desc(LedKind.RGB_P3F)),
+   LedDesc(addr=8, name='%s:rgb:2', **LedKind.desc(LedKind.RGB_P3F)),
+]}
 
 class QuicksilverRaaQuirk(Quirk):
    def __init__(self):
@@ -71,8 +77,6 @@ class QuicksilverBase(FixedSystem):
 
    CHASSIS = MaunaKea2
    CPU_CLS = ShearwaterCpu
-   LED_FP_TRICOLOR = True
-
    HAS_TH5_EXT_DIODE = True
 
    COOLING = CoolingConfig(
@@ -156,8 +160,8 @@ class QuicksilverBase(FixedSystem):
          ports=self.PORTS.getOsfps(),
          addr=0xA000,
          bus=24,
-         ledAddr=0x6104,
-         ledAddrOffsetFn=lambda x: 0x10,
+         ledAddr=0x6100,
+         ledAddrOffsetFn=lambda x: 0x8,
          intrRegs=intrRegs,
          intrRegIdxFn=lambda xcvrId: xcvrId // 33 + 1,
          intrBitFn=lambda xcvrId: (xcvrId - 1) % 32,
@@ -243,7 +247,7 @@ class QuicksilverDd(QuicksilverBase):
    SKU = ['DCS-7060X6-64DE']
 
    PORTS = PortLayout(
-      (QsfpDD(i) for i in incrange(1, 64)),
+      (QsfpDD(i, **SFP_TRICOLOR_LED) for i in incrange(1, 64)),
       (Sfp(i) for i in incrange(65, 66)),
    )
 
@@ -256,6 +260,6 @@ class QuicksilverP(QuicksilverBase):
    SKU = ['DCS-7060X6-64PE']
 
    PORTS = PortLayout(
-      (Osfp(i) for i in incrange(1, 64)),
+      (Osfp(i, **SFP_TRICOLOR_LED) for i in incrange(1, 64)),
       (Sfp(i) for i in incrange(65, 66)),
    )

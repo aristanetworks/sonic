@@ -3,7 +3,7 @@ import re
 
 from ..descs.led import LedColor
 
-from .sonic_utils import getInventory, parsePortConfig, getPlatform
+from .sonic_utils import getInventory, parsePortConfig
 
 try:
    from sonic_led import led_control_base # pylint: disable=F0401
@@ -48,10 +48,8 @@ class LedControlSysfs(LedControlCommon):
    LED_COLOR_OFF = 0
    LED_COLOR_GREEN = 1
    LED_COLOR_AMBER = 3
-   LED_PMW_SET = 7
 
    def __init__(self):
-      self.tricolor = getPlatform().LED_FP_TRICOLOR
       LedControlCommon.__init__(self)
       self.portSysfsMapping = defaultdict(list)
       for xcvrSlot in self.inventory.getXcvrSlots().values():
@@ -59,9 +57,6 @@ class LedControlSysfs(LedControlCommon):
             ledName = led.getName()
             port = int(re.search(r'(rj45_|.?sfp)(\d+)', ledName).group(2))
             self.portSysfsMapping[port].append(self.LED_SYSFS_PATH.format(ledName))
-
-      if self.tricolor:
-         self._setIntfColor(self.portMapping.get("Ethernet0"), 0, self.LED_PMW_SET)
 
    def _setIntfColor(self, port, idx, color):
       xcvrSlot = self.inventory.getXcvrSlots()[port.portNum]
@@ -85,7 +80,6 @@ class LedControlSysfs(LedControlCommon):
          led.setColor(LedColor.OFF)
 
    def _setIntfColorLegacy(self, port, idx, color):
-      color = color + 10 if self.tricolor else color
       portList = self.portSysfsMapping[port.portNum]
       if not portList:
          return

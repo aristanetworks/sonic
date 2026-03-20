@@ -9,7 +9,7 @@ from ..descs.xcvr import Osfp, QsfpDD, Sfp
 
 from .cpu.redstart import RedstartCpu
 
-from .quicksilver import QuicksilverBase
+from .quicksilver import QuicksilverBase, SFP_TRICOLOR_LED
 
 class QuicksilverRedstartBase(QuicksilverBase):
    SKU = []
@@ -29,7 +29,7 @@ class QuicksilverRedstartP(QuicksilverRedstartBase):
    ]
 
    PORTS = PortLayout(
-      (Osfp(i) for i in incrange(1, 64)),
+      (Osfp(i, **SFP_TRICOLOR_LED) for i in incrange(1, 64)),
       (Sfp(i) for i in incrange(65, 66)),
    )
 
@@ -43,7 +43,7 @@ class QuicksilverRedstartDd(QuicksilverRedstartBase):
    ]
 
    PORTS = PortLayout(
-      (QsfpDD(i) for i in incrange(1, 64)),
+      (QsfpDD(i, **SFP_TRICOLOR_LED) for i in incrange(1, 64)),
       (Sfp(i) for i in incrange(65, 66)),
    )
 

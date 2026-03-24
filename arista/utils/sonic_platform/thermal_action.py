@@ -39,12 +39,19 @@ class SetFanSpeedAllAction(SetFanSpeedAction):
 
 @thermal_json_object("thermal_control.control")
 class ThermalControlAction(ThermalPolicyAction):
+   def __init__(self):
+      self.thermal_policy_config = None
+
+   def load_from_json(self, json_obj):
+      self.thermal_policy_config = json_obj
+
    def execute(self, thermal_info_dict):
       algo = thermal_info_dict['control_info'].algo
 
       pwm_info = thermal_info_dict.get('pwm_info')
       extraPwms = pwm_info.pwms if pwm_info else None
 
+      algo.load(policyConfig=self.thermal_policy_config)
       algo.run(
          fans=thermal_info_dict['fan_info'].fans,
          thermals=thermal_info_dict['thermal_info'].thermals,

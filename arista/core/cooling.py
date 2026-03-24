@@ -7,6 +7,7 @@ from ..libs.python import monotonicRaw
 
 from .config import Config
 from .log import getLogger
+from .thermal_policy_config import ThermalPolicyConfig
 from .utils import inSimulation
 
 logging = getLogger(__name__)
@@ -64,10 +65,11 @@ class HistoricalData(object):
 class CoolingObject(object):
    def __init__(self, name, inv=None):
       super().__init__()
+      self.config = None
+      self.configInitialized = False
       self.name = name
       self.data = HistoricalData(name)
       self.inv = inv
-      self._initialized = False
       self.zone = None
 
    def __str__(self):
@@ -81,6 +83,9 @@ class CoolingObject(object):
 
    def assignZone(self, zone):
       self.zone = zone
+
+   def loadConfig(self, config):
+      pass
 
 class CoolingFanBase(CoolingObject):
    def __init__(self, *args, **kwargs):
@@ -116,6 +121,12 @@ class CoolingFanBase(CoolingObject):
       except Exception: # pylint: disable=broad-except
          logging.exception('%s failed to write speed', self)
          return None
+
+   def loadConfig(self, config):
+      if not self.configInitialized:
+         self.config = config.thermalPolicyConfig.getFanConfig(self.name)
+         self.assignZone(self.config['zone'])
+         self.configInitialized = True
 
 class CoolingPwmBase(CoolingObject):
    def __init__(self, *args, **kwargs):
@@ -156,6 +167,15 @@ class CoolingThermalBase(CoolingObject):
       return self.temperature is not None and \
              self.overheat is not None and \
              self.critical is not None
+
+   def loadConfig(self, config):
+      if not self.configInitialized:
+         self.config = config.thermalPolicyConfig.getThermalConfig(self.name)
+         self.assignZone(self.config['zone'])
+         logging.debug('%s: kp=%s ki=%s kd=%s zone=%s',
+                       self.name, self.config['kp'], self.config['ki'],
+                       self.config['kd'], self.zone)
+         self.configInitialized = True
 
 class ThermalInfo(object):
    def __init__(self, thermal, value, target, overheat):
@@ -280,12 +300,14 @@ class CoolingLogicIncPid(CoolingLogic):
       minVal = target - self.config.negHyst
       maxVal = target + self.config.posHyst
 
+      kp, ki, kd = thermal.config['kp'], thermal.config['ki'], thermal.config['kd']
+
       pwmDelta = 0
       if temperature < minVal or temperature > maxVal:
-         pwmDelta = self.config.kp * (temperature - lastTemperature) + \
-                    self.config.ki * (temperature - target) + \
-                    self.config.kd * (temperature - 2 * lastTemperature +
-                                      llastTemperature)
+         pwmDelta = kp * (temperature - lastTemperature) + \
+                    ki * (temperature - target) + \
+                    kd * (temperature - 2 * lastTemperature +
+                          llastTemperature)
 
       logging.debug('%s temperature=%f target=%f pwmDelta=%f',
                     thermal, temperature, target, pwmDelta)
@@ -309,11 +331,18 @@ class CoolingConfig:
    kd: float = 10
    negHyst: float = 1
    posHyst: float = 1
+   profile: str = 'default'
+   thermalPolicyConfig: ThermalPolicyConfig = None
+   defaultZone: str = 'default'
    asicViaDb: bool = False
+
+   def loadPolicyConfig(self, policyConfig):
+      self.thermalPolicyConfig = ThermalPolicyConfig(self, policyConfig)
 
    def update(self):
       for kgc, kcc in [
             ('cooling_min_speed', 'minSpeed'),
+            ('cooling_profile', 'profile'),
             ('cooling_target_offset', 'targetOffset'),
             ('cooling_kp', 'kp'),
             ('cooling_ki', 'ki'),
@@ -344,15 +373,9 @@ class CoolingZone(object):
       return '%s(%s)' % (self.__class__.__name__, self.name)
 
    def load(self, fans=None, thermals=None):
+      self._pwm_infos = {}
       self.fans = fans or {}
       self.thermals = thermals or {}
-      self._pwm_infos = {}
-
-      # Assign cooling zone to all fans so they can access zone-specific info
-      # Currently ChassisDbFan uses it to determine the cooling logic
-      for obj in list(self.fans.values()):
-         obj.assignZone(self)
-
       self.initialized = True
 
    def update(self):
@@ -453,31 +476,33 @@ class CoolingAlgorithm(object):
       self.previous = None
       self.now = None
       self.elapsed = None
-      self.zones = []
-      self.load()
+      self.initialized = False
+      self.zones = {}
 
    def __str__(self):
       return '%s()' % self.__class__.__name__
 
-   def load(self):
-      self.config = copy.deepcopy(self.platform.COOLING)
-      self.config.update()
-      logging.debug('%s: with config %s', self, self.config)
+   def loadZones(self):
+      zones = self.config.thermalPolicyConfig.getZoneLogicMap()
+      for zoneName, logic in zones.items():
+         logicCls = self.LOGICS.get(logic, CoolingLogicLegacy)
+         zone = CoolingZone(self, zoneName, logicCls)
+         logging.debug('%s: creating zone %s with logic %s', self, zone, logic)
+         self.zones[zoneName] = zone
 
-      logicCls = self.config.logic
-      if not issubclass(logicCls, CoolingLogic):
-         logicCls = self.LOGICS[self.config.logic]
-
-      # NOTE: for now only one zone
-      zone = CoolingZone(self, 'System', logicCls)
-      logging.debug('%s: creating zone %s', self, zone)
-
-      self.zones.append(zone)
+   def load(self, policyConfig=None):
+      if not self.initialized:
+         self.initialized = True
+         self.config = copy.deepcopy(self.platform.COOLING)
+         self.config.update()
+         self.config.loadPolicyConfig(policyConfig)
+         logging.debug('%s: with config %s', self, self.config)
+         self.loadZones()
 
    def export(self, path):
       if inSimulation():
          return
-      for zone in self.zones:
+      for zone in self.zones.values():
          zone.export(path)
 
    def run(self, elapsed=None, fans=None, thermals=None, update=False,
@@ -487,10 +512,21 @@ class CoolingAlgorithm(object):
       if self.previous is None:
          self.previous = self.now - self.INTERVAL
       self.elapsed = elapsed or self.now - self.previous
-
       logging.debug('%s: running algorithm (elapsed %.4fs)', self, self.elapsed)
-      for zone in self.zones:
-         zone.run(fans=fans, thermals=thermals, update=update,
+      fans = fans or {}
+      thermals = thermals or {}
+      for thermal in thermals.values():
+         thermal.loadConfig(self.config)
+      for fan in fans.values():
+         fan.loadConfig(self.config)
+
+      for zoneName, zone in self.zones.items():
+         zoneFans = {n: f for n, f in fans.items() if f.zone == zoneName}
+         zoneThermals = {n: t for n, t in thermals.items()
+                        if t.zone == zoneName}
+         zone.run(fans=zoneFans,
+                  thermals=zoneThermals,
+                  update=update,
                   extraPwms=extraPwms)
       logging.debug('%s: algorithm took %.4fs to run', self,
                     monotonicRaw() - self.now)

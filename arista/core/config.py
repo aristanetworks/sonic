@@ -51,6 +51,7 @@ class DefaultConfig:
    cooling_max_increase: float = 25.
    cooling_min_speed: Optional[float] = None
    cooling_loop_interval: int = 10
+   cooling_profile: str = 'default'
    cooling_target_offset: Optional[float] = None
    cooling_target_factor: float = 0.8
    cooling_xcvr_target_offset: float = -10.

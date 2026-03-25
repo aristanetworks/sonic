@@ -250,9 +250,10 @@ static void scd_smbus_master_leave(struct scd_smbus_master *master,
 
 static int scd_smbus_master_wait(struct scd_smbus *bus, u16 addr)
 {
-   const int delay_per_byte[4] = { 110, 35, 14, 14 };
+   const int delay_per_byte[4] = { 95, 25, 10, 10 };
    struct scd_smbus_master *master = bus->master;
    union smbus_ctrl_status_reg cs;
+   int byte_delay = delay_per_byte[bus->speed];
    unsigned long start;
 
    start = jiffies;
@@ -260,15 +261,13 @@ static int scd_smbus_master_wait(struct scd_smbus *bus, u16 addr)
    cs = smbus_master_read_cs(master);
 
    while (!cs.fe) {
-      int nrq;
-      unsigned long timeo;
-
-      /* reset timeo */
-      nrq = cs.nrq;
-      timeo = jiffies + msecs_to_jiffies(100);
+      int nrq = cs.nrq;
+      unsigned long timeo = jiffies + msecs_to_jiffies(100);
+      int base_delay = nrq > 0 ? nrq * byte_delay : byte_delay;
+      int delay = max(base_delay / 4, byte_delay);
 
       do {
-         int fsz, delay;
+         int fsz;
 
          fsz = scd_smbus_cs_fsz(cs);
          if (fsz > 0 && cs.nrs >= fsz) {
@@ -279,7 +278,7 @@ static int scd_smbus_master_wait(struct scd_smbus *bus, u16 addr)
             return -EOVERFLOW;
          }
 
-         if (jiffies > timeo) {
+         if (time_after(jiffies, timeo)) {
             master_err(master,
                        "cs " CS_FMT " timed out after %ums bus=%d addr=%#02x\n",
                        CS_ARGS(cs), jiffies_to_msecs(jiffies - start),
@@ -287,12 +286,12 @@ static int scd_smbus_master_wait(struct scd_smbus *bus, u16 addr)
             return -ETIMEDOUT;
          }
 
-         delay = (nrq + 1) * delay_per_byte[cs.sp];
          master_dbg(master, "delay=%dus\n", delay);
-
-         usleep_range(delay, 2 * delay);
+         usleep_range(delay, delay + 20);
 
          cs = smbus_master_read_cs(master);
+
+         delay = min(delay * 2, base_delay);
 
       } while (!cs.fe && nrq == cs.nrq);
    }
@@ -333,6 +332,12 @@ static int scd_smbus_master_xfer(struct i2c_adapter *adap,
    err = scd_smbus_master_enter(bus->master, 1, &cs);
    if (err)
       goto out;
+
+   if (bus->master->speed_source == SCD_SMBUS_SPEED_SOURCE_CS &&
+       cs.sp != bus->speed) {
+      cs.sp = bus->speed;
+      smbus_master_write_cs(bus->master, cs);
+   }
 
    req.reg = 0;
    req.ss = ss;
@@ -517,38 +522,49 @@ out:
 }
 
 static size_t scd_smbus_speed_get(struct scd_smbus *bus) {
-   union smbus_speed_reg sp = smbus_master_read_sp(bus->master);
-   return (sp.reg >> (bus->id * 2)) & 0x3;
+   if (bus->master->speed_source == SCD_SMBUS_SPEED_SOURCE_SP) {
+      union smbus_speed_reg sp = smbus_master_read_sp(bus->master);
+      bus->speed = (sp.reg >> (bus->id * 2)) & 0x3;
+   }
+   return bus->speed;
 }
 
 static size_t scd_smbus_speed_get_human(struct scd_smbus *bus) {
     return ((size_t[]){100000, 400000, 1000000, 0})[scd_smbus_speed_get(bus)];
 }
 
-static void scd_smbus_speed_set(struct scd_smbus *bus, u32 speed) {
-   union smbus_speed_reg sp = smbus_master_read_sp(bus->master);
-   u32 offset = bus->id * 2;
-   sp.reg = (~(0x3 << offset) & sp.reg) | ((speed & 0x3) << offset);
-   smbus_master_lock(bus->master);
-   smbus_master_write_sp(bus->master, sp);
-   smbus_master_unlock(bus->master);
+static int scd_smbus_speed_set(struct scd_smbus *bus, u32 speed) {
+   if (bus->master->speed_source == SCD_SMBUS_SPEED_SOURCE_NONE)
+       return -EOPNOTSUPP;
+
+   bus->speed = speed;
+
+   if (bus->master->speed_source == SCD_SMBUS_SPEED_SOURCE_SP) {
+      union smbus_speed_reg sp = smbus_master_read_sp(bus->master);
+      u32 offset = bus->id * 2;
+      sp.reg = (~(0x3 << offset) & sp.reg) | ((speed & 0x3) << offset);
+      smbus_master_lock(bus->master);
+      smbus_master_write_sp(bus->master, sp);
+      smbus_master_unlock(bus->master);
+   }
+
+   return 0;
 }
 
 static int scd_smbus_speed_set_human(struct scd_smbus *bus, size_t speed) {
-   u32 value = 0;
+   enum scd_smbus_speed value = SCD_SMBUS_SPEED_100KHZ;
 
    if (speed == 100000) {
-      value = 0;
+      value = SCD_SMBUS_SPEED_100KHZ;
    } else if (speed == 400000) {
-      value = 1;
+      value = SCD_SMBUS_SPEED_400KHZ;
    } else if (speed == 1000000) {
-      value = 2;
+      value = SCD_SMBUS_SPEED_1MHZ;
    } else {
       return -EINVAL;
    }
 
-   scd_smbus_speed_set(bus, value);
-   return 0;
+   return scd_smbus_speed_set(bus, value);
 }
 
 static ssize_t scd_bus_speed_show(struct device *dev,
@@ -605,6 +621,9 @@ static int scd_smbus_bus_add(struct scd_smbus_master *master, int id)
    bus->master = master;
    bus->id = id;
    INIT_LIST_HEAD(&bus->params);
+
+   scd_smbus_speed_get(bus);
+
    bus->adap.owner = THIS_MODULE;
    bus->adap.class = 0;
    bus->adap.algo = &scd_smbus_algorithm;
@@ -706,17 +725,24 @@ int scd_smbus_master_add(struct scd_context *ctx, u32 addr, u32 id, u32 bus_coun
    master->max_retries = smbus_master_max_retries;
    INIT_LIST_HEAD(&master->bus_list);
 
+   smbus_master_reset(master);
+
+   cs = smbus_master_read_cs(master);
+   master_dbg(master, "@%#x version %d", addr, cs.ver);
+
+   if (cs.ver >= 3)
+      master->speed_source = SCD_SMBUS_SPEED_SOURCE_SP;
+   else if (cs.ver == 2)
+      master->speed_source = SCD_SMBUS_SPEED_SOURCE_CS;
+   else
+      master->speed_source = SCD_SMBUS_SPEED_SOURCE_NONE;
+
    for (i = 0; i < bus_count; ++i) {
       err = scd_smbus_bus_add(master, i);
       if (err) {
          goto fail_bus;
       }
    }
-
-   smbus_master_reset(master);
-
-   cs = smbus_master_read_cs(master);
-   master_dbg(master, "@%#x version %d", addr, cs.ver);
 
    list_add_tail(&master->list, &ctx->smbus_master_list);
 

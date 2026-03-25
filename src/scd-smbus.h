@@ -31,6 +31,19 @@ struct scd_context;
 #define MASTER_DEFAULT_BUS_COUNT 8
 #define MASTER_DEFAULT_MAX_RETRIES 6
 
+enum scd_smbus_speed_source {
+   SCD_SMBUS_SPEED_SOURCE_NONE,
+   SCD_SMBUS_SPEED_SOURCE_CS,
+   SCD_SMBUS_SPEED_SOURCE_SP,
+};
+
+enum scd_smbus_speed {
+   SCD_SMBUS_SPEED_100KHZ,
+   SCD_SMBUS_SPEED_400KHZ,
+   SCD_SMBUS_SPEED_1MHZ,
+   SCD_SMBUS_SPEED_RESERVED,
+};
+
 struct scd_smbus_master {
    struct scd_context *ctx;
    struct list_head list;
@@ -44,6 +57,8 @@ struct scd_smbus_master {
    struct list_head bus_list;
 
    int max_retries;
+
+   enum scd_smbus_speed_source speed_source;
 };
 
 struct bus_params {
@@ -60,6 +75,7 @@ struct scd_smbus {
    struct list_head list;
 
    u32 id;
+   enum scd_smbus_speed speed;
    struct list_head params;
 
    struct i2c_adapter adap;

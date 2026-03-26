@@ -2,7 +2,7 @@ import enum
 import os
 
 from ..core.driver import Driver
-from ..core.register import RegBitField, RegisterMap, Register
+from ..core.register import RegBitField, RegBitRange, RegisterMap, Register
 from ..core.utils import FileResource, FileWaiter
 
 from ..libs.wait import waitFor
@@ -48,6 +48,9 @@ class PcieCapability(RegisterMap):
       RegBitField(4, 'disabled', ro=False)
    )
    LINK_STATUS = PciRegister16(0x12)
+   DEV_CTL2 = PciRegister16(0x28,
+      RegBitRange(0, 3, 'completionTimeoutValue', ro=False)
+   )
 
 class AerCapability(RegisterMap):
    ERR_CAP = PciRegister32(0x18,

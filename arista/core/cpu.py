@@ -12,8 +12,10 @@ class Cpu(Sku):
 
    def getPciPort(self, desc):
       if desc.root:
-         return self.pciRoot.rootPort(domain=desc.domain, bus=desc.bus,
+         port = self.pciRoot.rootPort(domain=desc.domain, bus=desc.bus,
                                       device=desc.device, func=desc.func)
+         desc.maybeAddQuirks(port)
+         return port
       bridge = self.pciRoot.pciBridge(domain=desc.domain, bus=desc.bus,
                                       device=desc.device, func=desc.func)
       desc.maybeAddQuirks(bridge.upstream)

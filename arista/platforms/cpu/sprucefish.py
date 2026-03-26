@@ -1,11 +1,12 @@
 from ...core.cpu import Cpu
-from ...core.pci import PciRoot
+from ...core.pci import PciPortDesc, PciRoot
 from ...core.register import Register, RegisterMap, RegBitField
 
 from ...components.cpu.intel.coretemp import Coretemp
 from ...components.scd import Scd
 from ...components.eeprom import At24C512
 from ...components.max6658 import Max6658
+from ...components.pci import CompletionTimeoutPciQuirk
 
 from ...descs.sensor import SensorDesc, Position
 from ...descs.xcvr import Sfp
@@ -19,6 +20,13 @@ class CpldSeuRegisterMap(RegisterMap):
 class SprucefishCpu(Cpu):
 
    PLATFORM = 'sprucefish'
+
+   PCI_PORT_PCISWITCH = PciPortDesc(
+      device=0x3,
+      func=0,
+      root=True,
+      quirks=[CompletionTimeoutPciQuirk()]
+   )
 
    def __init__(self, **kwargs):
       super(SprucefishCpu, self).__init__(**kwargs)

@@ -14,7 +14,7 @@ from ..components.lm75 import Tmp75
 from ..components.max6581 import Max6581
 from ..components.minke import Minke
 from ..components.pci import EcrcPciQuirk
-from ..components.psu.dcdc import MobyDcDc, MobyDcDcAddr18
+from ..components.psu.dcdc import createPmbusIBC
 
 from ..components.scd import (
    Scd,
@@ -207,8 +207,8 @@ class Moby(FixedSystem):
       ]
 
       for psuId, psuClasses in [
-         (1, [MobyDcDc]),
-         (2, [MobyDcDcAddr18])
+         (1, [createPmbusIBC(addr=0x10)]),
+         (2, [createPmbusIBC(addr=0x12)]),
       ]:
          addrFunc=lambda addr: scd.i2cAddr(16, addr, t=3, datr=2, datw=3)
          self.scd.newComponent(

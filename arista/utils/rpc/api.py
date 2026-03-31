@@ -175,6 +175,34 @@ class RpcSupervisorApi(RpcApi):
       self.tasks.append(asyncio.create_task(self._doSelfReboot()))
       return {'status': True, 'detail': 'Reboot started'}
 
+   @registerMethod
+   async def linecardProvision(self, slot):
+      """Trigger provisioning on the linecard identified by slot."""
+      args = [slot, 'setup', '--lcpu', '--on', '--powerCycleIfOn',
+              '--provision=static']
+      result = await self._runAristaLinecard(*args)
+      if result['status']:
+         manifest = ProvisionManifest(self.platform)
+         try:
+            await manifest.setLinecardProvisionStarted(slot)
+         except LockBusyError:
+            logging.warning(
+               '%s: Lock busy while updating provision status for slot %d',
+               self, slot)
+      return result
+
+   @registerMethod
+   async def linecardProvisionStatusGet(self, slot):
+      """Return the provision status for the linecard identified by slot."""
+      manifest = ProvisionManifest(self.platform)
+      try:
+         return await manifest.getLinecardProvisionStatus(slot)
+      except LockBusyError:
+         logging.warning(
+            '%s: Lock busy while getting provision status for slot %d',
+            self, slot)
+         return 'unknown'
+
    @registerLinecardToSupMethod
    async def linecardStatusLedColorGet(self, lc):
       return lc.getInventory().getLed('status').getColor()

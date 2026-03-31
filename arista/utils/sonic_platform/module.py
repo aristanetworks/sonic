@@ -53,6 +53,9 @@ class Module(ModuleBase):
          return self._sku.slot.getFault()
       return False
 
+   def _get_provision_status(self):
+      return None
+
    def get_presence(self):
       return self._sku.getPresence()
 
@@ -95,12 +98,15 @@ class Module(ModuleBase):
       return self._sku.getSlotId()
 
    def get_oper_status(self):
+      # pylint: disable=too-many-return-statements
       # TODO: Implement the following modes
       #  - MODULE_STATUS_POWERED_DOWN
       if self._get_fault():
          return self.MODULE_STATUS_FAULT
       if not self.get_presence():
          return self.MODULE_STATUS_EMPTY
+      if status := self._get_provision_status():
+         return status
       if not self._sku.poweredOn():
          return self.MODULE_STATUS_OFFLINE
       if not self.get_status():
@@ -223,6 +229,20 @@ class LinecardModule(Module):
                                                          powerCycleIfOn=True)
       return setupResult['status']
 
+   def provision_module(self):
+      setupResult = self._get_rpc_client().linecardProvision(self._sku.getSlotId())
+      return setupResult['status']
+
+   def _get_provision_status(self):
+      provisionStatus = self._get_rpc_client().linecardProvisionStatusGet(
+         self._sku.getSlotId())
+
+      if provisionStatus == 'unprovisioned':
+         return self.MODULE_STATUS_PROVISION_READY
+      if provisionStatus == 'pending':
+         return self.MODULE_STATUS_PROVISION_PENDING
+      return None
+
 class LinecardSelfModule(LinecardModule):
    RPC_CLIENT_SOURCE = RpcClientSource.FROM_LINECARD
 
@@ -237,6 +257,9 @@ class LinecardSelfModule(LinecardModule):
       time.sleep(1)
       result = self._get_rpc_client().linecardSelfPowerCycle()
       return result['status']
+
+   def _get_provision_status(self):
+      return None
 
 class LinecardSupervisorModule(SupervisorModule):
    RPC_CLIENT_SOURCE = RpcClientSource.FROM_LINECARD

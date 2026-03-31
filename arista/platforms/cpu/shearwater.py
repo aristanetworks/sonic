@@ -47,7 +47,6 @@ class ShearwaterCpu(Cpu):
 
       # TODO: cleanup syscpld declaration accross platforms
       self.syscpld = cpld.newComponent(ShearwaterSysCpld, addr=cpld.i2cAddr(4, 0x23))
-      self.syscpld.addPowerCycle()
 
       cpld.addReloadCauseProvider(causes=[
          ScdCause(0x01, ScdCause.OVERTEMP),

@@ -100,7 +100,6 @@ class SkylarkCpu(Cpu):
       self.syscpld = cpld.newComponent(SkylarkSysCpld,
                                        addr=cpld.i2cAddr(4, 0x23),
                                        registerCls=registerCls)
-      self.syscpld.addPowerCycle()
 
    def addScdComponents(self, scd, hwmonBus=0):
       pass

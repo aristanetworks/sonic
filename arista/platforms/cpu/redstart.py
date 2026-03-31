@@ -53,7 +53,6 @@ class RedstartCpu(Cpu):
       self.fanboard = self.parent.CHASSIS.addFanboard(cpld, cpld.getSmbus(9))
 
       self.syscpld = cpld.newComponent(RedstartSysCpld, addr=cpld.i2cAddr(6, 0x23))
-      self.syscpld.addPowerCycle()
 
       cpld.addReloadCauseProvider(causes=[
          ScdCause(0x01, ScdCause.OVERTEMP),

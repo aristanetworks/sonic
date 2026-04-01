@@ -1,6 +1,6 @@
 from ...core.component.i2c import Component
 from ...core.cpu import Cpu
-from ...core.pci import PciRoot
+from ...core.pci import PciPortDesc, PciRoot
 from ...core.register import Register, RegisterMap, RegBitField
 from ...core.utils import getCmdlineDict
 
@@ -8,6 +8,7 @@ from ...components.cookie import SonicReloadCauseCookieComponent
 from ...components.cpu.amd.k10temp import K10Temp
 from ...components.cpu.amd.sbtsi import SbTsi
 from ...components.dpm.adm1266 import Adm1266, AdmCauseOneHot, AdmGpio, AdmPdio
+from ...components.pci import CompletionTimeoutPciQuirk
 from ...components.rpc import LinecardRpcClient
 from ...components.scd import Scd
 
@@ -27,6 +28,13 @@ class HedgehogCpuCpld(RegisterMap):
 class HedgehogCpu(Cpu):
 
    PLATFORM = 'hedgehog'
+
+   PCI_PORT_PCISWITCH = PciPortDesc(
+      device=0x3,
+      func=1,
+      root=True,
+      quirks=[CompletionTimeoutPciQuirk()]
+   )
 
    def __init__(self, **kwargs):
       super(HedgehogCpu, self).__init__(**kwargs)
@@ -64,7 +72,7 @@ class HedgehogCpu(Cpu):
 
    def createCardSlot(self, cls, card):
       slotId = int(getCmdlineDict().get('slot_id', 0))
-      pci = self.pciRoot.rootPort(device=0x03, func=1)
+      pci = self.getPciPort(self.PCI_PORT_PCISWITCH)
       bus = FakeI2cBus()
       self.slot = cls(self, slotId, pci, bus, card=card)
       return self.slot

@@ -2,16 +2,19 @@ from ..core.cooling import CoolingConfig, CoolingLogicIncPid
 from ..core.fixed import FixedSystem
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
+from ..core.psu import PsuSlot
 from ..core.utils import incrange
 
 from ..components.asic.xgs.tomahawk6 import Tomahawk6
 from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdMon
+from ..components.psu.ecb import createPmbusECB, Tps16890
 from ..components.scd import Scd
 from ..components.tmp401 import Tmp431
 from ..components.vrm.ibc import Pwr689
 
 from ..descs.cause import ReloadCauseDesc
 from ..descs.led import LedDesc, LedKind
+from ..descs.psu import PsuStatusPolicy
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
 from ..descs.xcvr import Osfp1600, Qsfp28
@@ -81,7 +84,16 @@ class SteamerLaneBase(FixedSystem):
 
       pwrBus = self.cpu.getSmbus(self.cpu.SMBUS_PWR)
 
-      # TODO: Add ECBs
+      for psuId, addr in enumerate([0x52, 0x53, 0x54, 0x55], 1):
+         self.cpu.syscpld.newComponent(
+            PsuSlot,
+            slotId=psuId,
+            addrFunc=pwrBus.i2cAddr,
+            presentGpio=True,
+            psus=[createPmbusECB(Tps16890, senseRes=1330, addr=addr)],
+            forcePsuLoad=True,
+            psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS,
+         )
 
       for addr in range(0x10, 0x18):
          self.cpu.syscpld.newComponent(Pwr689, addr=pwrBus.i2cAddr(addr), sensors=[

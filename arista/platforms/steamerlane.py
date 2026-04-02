@@ -8,6 +8,7 @@ from ..components.asic.xgs.tomahawk6 import Tomahawk6
 from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdMon
 from ..components.scd import Scd
 from ..components.tmp401 import Tmp431
+from ..components.vrm.ibc import Pwr689
 
 from ..descs.cause import ReloadCauseDesc
 from ..descs.led import LedDesc, LedKind
@@ -50,17 +51,17 @@ class SteamerLaneBase(FixedSystem):
       # in a dedicated method. If the BMC takes ownership of those it would
       # make things easier to not load them from the CPU
 
-      bus = self.cpu.getSmbus(self.cpu.SMBUS_FC)
+      #bus = self.cpu.getSmbus(self.cpu.SMBUS_FC)
       # TODO: add necessary components
       # 0x23 SYSCPLD
       # 0x08 POWER_CYCLER
       # 0x50 CPU_IDPROM
       # 0x74 IO EXPANDER
 
-      bus = self.cpu.getSmbus(self.cpu.SMBUS_POL)
+      polBus = self.cpu.getSmbus(self.cpu.SMBUS_POL)
 
       self.cpu.cpld.newComponent(
-         Ucd90320, addr=bus.i2cAddr(0x11),
+         Ucd90320, addr=polBus.i2cAddr(0x11),
          causes=[
             UcdMon(1, ReloadCauseDesc.POWERLOSS, "Busbar"),
             UcdMon(2, ReloadCauseDesc.POWERLOSS, "ECB output"),
@@ -76,7 +77,20 @@ class SteamerLaneBase(FixedSystem):
             UcdGpi(27, ReloadCauseDesc.RAIL, "TH6"),
             UcdGpi(32, ReloadCauseDesc.POWERLOSS, "ECB enable"),
       ])
-      self.cpu.cpld.newComponent(Ucd90320,addr=bus.i2cAddr(0x13))
+      self.cpu.cpld.newComponent(Ucd90320,addr=polBus.i2cAddr(0x13))
+
+      pwrBus = self.cpu.getSmbus(self.cpu.SMBUS_PWR)
+
+      # TODO: Add ECBs
+
+      for addr in range(0x10, 0x18):
+         self.cpu.syscpld.newComponent(Pwr689, addr=pwrBus.i2cAddr(addr), sensors=[
+            SensorDesc(diode=0, name='IBC 0x%02x' % addr,
+                       position=Position.OTHER, target=100, overheat=105,
+                       critical=110),
+         ])
+
+      # TODO: add VRMs
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       self.scd = scd = port.newComponent(Scd, addr=port.addr)
@@ -101,10 +115,6 @@ class SteamerLaneBase(FixedSystem):
          SensorDesc(diode=1, name='TH6 diode 2',
                     position=Position.INLET, target=100, overheat=105, critical=110),
       ])
-
-      # TODO: add Psus and ECBs
-
-      # TODO: add VRMs
 
       intrRegs = [
          scd.createInterrupt(addr=0x3000, num=0),

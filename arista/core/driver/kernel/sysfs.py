@@ -124,15 +124,15 @@ class SysfsEntryIntLinear(SysfsEntry):
       return str(self._linearConversion(int(value), self.toRange, self.fromRange))
 
 class SysfsEntryFloat(SysfsEntry):
-   def __init__(self, parent, name, scale=1000., **kwargs):
+   def __init__(self, parent, name, scale=0.001, **kwargs):
       super(SysfsEntryFloat, self).__init__(parent, name, **kwargs)
       self.scale = scale
 
    def _readConversion(self, value):
-      return float(value) / self.scale
+      return float(value) * self.scale
 
    def _writeConversion(self, value):
-      return str(int(value * self.scale))
+      return str(int(value / self.scale))
 
 class SysfsEntryBool(SysfsEntry):
    def _readConversion(self, value):
@@ -227,14 +227,14 @@ class GenericSysfs(object):
 
 class GenericSysfsImpl(GenericSysfs):
 
-   SCALE_FACTOR = 1000.
+   SCALE_FACTOR = 0.001
    RATED = False
 
    def __init__(self, driver, desc, prefix=None, **kwargs):
       self.prefix = prefix or '%s%s' % (self.SYSFS_PREFIX, desc.__getoid__())
       self.driver = driver
       self.desc = desc
-      s = self.SCALE_FACTOR
+      s = self.SCALE_FACTOR * desc.scale
       r = 'rated_' if self.RATED else ''
       p = self.prefix
       self.label = SysfsEntry(self, 'label', prefix=p)
@@ -775,7 +775,7 @@ class PowerSysfsImpl(LabelSysfsImpl):
    DESC_CLS = PowerDesc
    DESC_NAME = 'powers'
    SYSFS_PREFIX = 'power'
-   SCALE_FACTOR = 1000000. # uW
+   SCALE_FACTOR = 0.000001 # uW
    LABEL_PREFIX = 'p'
    RATED = True
 
@@ -791,7 +791,7 @@ class RailSysfsRawImpl(Rail):
       self.voltage = SysfsEntryFloat(self, 'in%d_input' % self.railId)
       self.current = SysfsEntryFloat(self, 'curr%d_input' % self.railId)
       self.power = SysfsEntryFloat(self, 'power%d_input' % self.railId,
-                                   scale=1000000.)
+                                   scale=0.000001)
 
    def _tryComputeDiv(self, dividend, divisor):
       if not dividend.exists() or not divisor.exists():
@@ -837,6 +837,7 @@ class RailSysfsImpl(Rail):
          voltId=desc.railId,
          name=desc.name,
          direction=desc.direction,
+         scale=desc.voltageScale,
          overrides={
             'rated_max': getattr(desc, 'maxVoltage', None),
             'rated_min': getattr(desc, 'minVoltage', None),
@@ -847,14 +848,16 @@ class RailSysfsImpl(Rail):
       return desc.current or CurrentDesc(
          currId=desc.railId,
          name=desc.name,
-         direction=desc.direction
+         direction=desc.direction,
+         scale=desc.currentScale,
       )
 
    def _getPowerDesc(self, desc):
       return desc.power or PowerDesc(
          powerId=desc.railId,
          name=desc.name,
-         direction=desc.direction
+         direction=desc.direction,
+         scale=desc.powerScale,
       )
 
    def _tryComputeDiv(self, dividend, divisor):

@@ -95,7 +95,9 @@ class DBHelper(object):
               for k in tbl.getKeys()]
 
    def get_asic_thermals(self):
-      return self._state_db.hgetall('ASIC_TEMPERATURE_INFO')
+      name = 'ASIC_TEMPERATURE_INFO'
+      tbl = self._get_table(self._state_db, name)
+      return self._get_ent(name, tbl, '')
 
    def get_all_fans(self):
       return self._get_table_objects(self._state_db, 'FAN_INFO')

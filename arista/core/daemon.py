@@ -46,13 +46,13 @@ class PollDaemonFeature(DaemonFeature):
       while True:
          now = self.daemon.loop.time()
          try:
-            self.callback(now - last)
+            await self.callback(now - last)
          except Exception:  # pylint: disable=broad-except
             logging.debug('%s raised exception', self.NAME, exc_info=True)
          last = now
          await asyncio.sleep(self.INTERVAL)
 
-   def callback(self, elapsed):
+   async def callback(self, elapsed):
       raise NotImplementedError
 
 class OneShotFeature(DaemonFeature):

@@ -88,7 +88,7 @@ class StatusLedFeature(PollDaemonFeature):
       policy = ledPolicies.get(name)
       return policy
 
-   def callback(self, elapsed):
+   async def callback(self, elapsed):
       inventory = self.daemon.platform.getInventory()
 
       for led in inventory.getLeds().values():

@@ -13,7 +13,7 @@ class RtcSyncFeature(PollDaemonFeature):
    INTERVAL = 10 * 60
    DELAY = 60
 
-   def callback(self, elapsed):
+   async def callback(self, elapsed):
       for rtc in self.daemon.platform.getInventory().getRtcs():
          try:
             logging.debug('%s: updating %s rtc', self, rtc.getName())

@@ -24,7 +24,7 @@ class SeuDaemonFeature(PollDaemonFeature):
          else:
             logging.info('%s: powercycle on SEU already disabled', component)
 
-   def callback(self, elapsed):
+   async def callback(self, elapsed):
       for reporter in self.daemon.platform.getInventory().getSeuReporters():
          component = reporter.getComponent()
          detected = self.seuDetected.get(component)

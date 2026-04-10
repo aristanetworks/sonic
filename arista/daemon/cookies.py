@@ -29,7 +29,7 @@ class CookiesFeature(PollDaemonFeature):
       cookies.loadCookieFile()
       super().init()
 
-   def callback(self, elapsed):
+   async def callback(self, elapsed):
       platform = self.daemon.platform
       cookies = platform.getCookies()
 

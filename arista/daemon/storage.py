@@ -195,7 +195,7 @@ class StorageDaemonFeature(PollDaemonFeature):
       for device in self.devices:
          logging.debug('%s: monitoring disk %s', self, device)
 
-   def callback(self, elapsed):
+   async def callback(self, elapsed):
       for device in self.devices:
          if device.exists():
             device.report()

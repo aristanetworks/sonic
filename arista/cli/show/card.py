@@ -16,11 +16,13 @@ class ShowCardStatus(Renderer):
    def getData(self, show):
       data = []
       for card, metadata in show.inventories:
+         eeprom = tryGet(card.slot.getEeprom, {})
          tmp = {
             'name': str(card),
             'slotId': card.getSlotId(),
-            'sku': card.slot.getEeprom().get('SKU'),
-            'sid': card.slot.getEeprom().get('SID'),
+            'sku': eeprom.get('SKU', 'Unknown'),
+            'sid': eeprom.get('SID', 'Unknown'),
+            'fault': tryGet(card.slot.getFault, 'None'),
             'present': tryGet(card.getPresence, False),
             'on': bool(tryGet(card.poweredOn, False)),
          }

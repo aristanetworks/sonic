@@ -12,6 +12,9 @@ from ....core.linecard import LCpuCtx
 logging = getLogger(__name__)
 
 def setupLinecard(linecard, args, lcpu):
+   if fault := linecard.slot.getFault():
+      logging.warning('Not setting up linecard due to fault: %s', fault)
+
    if args.early or not args.late:
       linecard.setupStandby(Priority.defaultFilter)
    if args.late or not args.early:

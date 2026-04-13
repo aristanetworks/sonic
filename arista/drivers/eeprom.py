@@ -21,7 +21,7 @@ class EepromKernelDriver(I2cKernelDriver):
       super(EepromKernelDriver, self).setup()
       if not inSimulation():
          waitFor(lambda: os.path.exists(self.eepromPath()),
-                 description="eeprom sysfs entry")
+                 timeout=30, description="eeprom sysfs entry")
 
 class At24KernelDriver(EepromKernelDriver):
    MODULE = 'at24'

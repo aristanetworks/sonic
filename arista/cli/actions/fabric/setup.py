@@ -9,6 +9,8 @@ from ....core.log import getLogger
 logging = getLogger(__name__)
 
 def setupFabric(fabric, args):
+   if fault := fabric.slot.getFault():
+      logging.warning('Not setting up fabric card due to fault: %s', fault)
    if args.early or not args.late:
       fabric.setup(Priority.defaultFilter)
    if args.late or not args.early:

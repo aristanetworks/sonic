@@ -50,6 +50,11 @@ class Module(ModuleBase):
    def _get_eeprom(self):
       return self._eeprom
 
+   def _get_fault(self):
+      if self._sku.slot:
+         return self._sku.slot.getFault()
+      return False
+
    def get_presence(self):
       return self._sku.getPresence()
 
@@ -94,8 +99,8 @@ class Module(ModuleBase):
    def get_oper_status(self):
       # TODO: Implement the following modes
       #  - MODULE_STATUS_POWERED_DOWN
-      #  - MODULE_STATUS_PRESENT
-      #  - MODULE_STATUS_FAULT
+      if self._get_fault():
+         return self.MODULE_STATUS_FAULT
       if not self.get_presence():
          return self.MODULE_STATUS_EMPTY
       if not self._sku.poweredOn():

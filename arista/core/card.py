@@ -1,16 +1,26 @@
 
+from enum import Enum, auto
 import gc
 
 from .component import Priority
 from .component.slot import SlotComponent
-from .exception import UnknownPlatformError
+from .exception import CardArbitrationError, UnknownPlatformError
 from .inventory import Inventory
 from .log import getLogger
 from .metainventory import MetaInventory
 from .platform import getPlatformCls
 from .sku import Sku
+from .utils import StoredData
 
 logging = getLogger(__name__)
+
+class CardSlotFault(Enum):
+   ARBITRATION_FAILED = auto()
+   UNKNOWN = auto()
+
+   @classmethod
+   def from_str(cls, val):
+      return cls.__members__.get(val, cls.UNKNOWN)
 
 class Card(Sku):
 
@@ -93,7 +103,7 @@ class Card(Sku):
       return bool(self.SID) or bool(self.SKU)
 
    def isReady(self):
-      return self.getPresence() and self.poweredOn()
+      return not self.slot.getFault() and self.getPresence() and self.poweredOn()
 
    def detach(self):
       pass
@@ -110,12 +120,16 @@ class CardSlot(SlotComponent):
       self.parent = parent
       self.card = None
       self.pci = None
+      self.fault = None
 
    def __str__(self):
       return f'{self.__class__.__name__}(slotId={self.slotId})'
 
    def getEeprom(self):
       raise NotImplementedError
+
+   def getFault(self):
+      return self.fault
 
    def disablePciPort(self):
       self.pci.disable()
@@ -128,7 +142,7 @@ class CardSlot(SlotComponent):
       self.card = None
       gc.collect()
 
-   def loadCard(self, card=None, **kwargs):
+   def _loadCard(self, card=None, **kwargs):
       if card is None:
          assert self.card, "No default card definition loaded"
          if not self.getPresence():
@@ -157,6 +171,22 @@ class CardSlot(SlotComponent):
 
       self.card = card
       self.card.refresh()
+
+   def loadCard(self, card=None, **kwargs):
+      fault = StoredData(f"card{self.slotId}_fault", append=False)
+      if fault.exist():
+         self.fault = CardSlotFault.from_str(fault.read())
+         return
+      try:
+         self._loadCard(card, **kwargs)
+      except CardArbitrationError:
+         self.fault = CardSlotFault.ARBITRATION_FAILED
+         fault.write(str(self.fault))
+         raise
+      except Exception: # pylint: disable=broad-except
+         self.fault = CardSlotFault.UNKNOWN
+         fault.write(str(self.fault))
+         raise
 
    def genDiag(self, ctx):
       data = super(CardSlot, self).genDiag(ctx)

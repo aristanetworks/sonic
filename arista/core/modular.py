@@ -71,16 +71,22 @@ class Modular(Sku):
       for slot in self.active.linecardSlots[:self.NUM_LINECARDS]:
          if slotIds is not None and slot.slotId not in slotIds:
             continue
-         logging.debug('Loading linecard slot %d', slot.slotId)
-         standbyOnly = Config().linecard_standby_only
-         slot.loadCard(standbyOnly=standbyOnly)
+         try:
+            logging.debug('Loading linecard slot %d', slot.slotId)
+            standbyOnly = Config().linecard_standby_only
+            slot.loadCard(standbyOnly=standbyOnly)
+         except Exception as ex: # pylint: disable=broad-except
+            logging.error('Failed to load linecard slot %d: %s', slot.slotId, ex)
 
    def loadFabrics(self, slotIds=None):
       for slot in self.active.fabricSlots[:self.NUM_FABRICS]:
          if slotIds is not None and slot.slotId not in slotIds:
             continue
-         logging.debug('Loading fabric slot %d', slot.slotId)
-         slot.loadCard()
+         try:
+            logging.debug('Loading fabric slot %d', slot.slotId)
+            slot.loadCard()
+         except Exception as ex: # pylint: disable=broad-except
+            logging.error('Failed to load fabric slot %d: %s', slot.slotId, ex)
 
    def loadPsus(self, slotIds=None):
       for slot in self.active.psuSlots[:self.NUM_PSUS]:

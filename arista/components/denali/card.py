@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 from ...core.card import Card, CardSlot
 from ...core.config import Config
 from ...core.domain import PowerDomain
+from ...core.exception import CardArbitrationError
 from ...core.fabric import Fabric
 from ...core.linecard import Linecard
 from ...core.log import getLogger
@@ -39,7 +40,9 @@ class DenaliCard(Card):
 
    def getEeprom(self):
       try:
-         return self.eeprom.prefdl()
+         if not self.slot.getFault():
+            return self.eeprom.prefdl()
+         return {}
       except Exception: # pylint: disable=broad-except
          logging.debug("%s: failed to read eeprom", self)
          return {}
@@ -115,7 +118,7 @@ class DenaliCard(Card):
    def loadStandbyDomain(self):
       self.standbyCommon()
       self.standbyDomain()
-      if self.isDetected():
+      if self.isDetected() and not self.slot.getFault():
          self.controlDomain()
 
    def loadMainDomain(self):
@@ -209,6 +212,8 @@ class DenaliCard(Card):
    def poweredOn(self):
       if self.runningOnLcpu():
          return True
+      if self.slot.getFault():
+         return False
       if self.gpio1 is None:
          # Linecard is likely unsupported or not loaded
          return False
@@ -233,7 +238,8 @@ class DenaliCard(Card):
       self.plx.enableNt(False)
 
    def setupIdentification(self):
-      self.pca.takeOwnership()
+      if not self.pca.takeOwnership():
+         raise CardArbitrationError()
       self.pca.setup()
       self.eeprom.setup()
 
@@ -253,7 +259,7 @@ class DenaliCardSlot(CardSlot):
       self.card = card
       self.presenceGpio = presenceGpio
       if not self.card:
-         self.loadCard(self.CARD_CLS(self))
+         self._loadCard(self.CARD_CLS(self))
 
    def getPresence(self):
       if self.presenceGpio is None:
@@ -262,8 +268,8 @@ class DenaliCardSlot(CardSlot):
       return self.presenceGpio.isActive()
 
    def getEeprom(self):
-      if not self.getPresence():
-         return None
+      if not self.getPresence() or self.getFault():
+         return {}
       self.card.setupIdentification()
       return self.card.eeprom.prefdl()
 

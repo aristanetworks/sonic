@@ -18,6 +18,7 @@ class BlackBoxFeature(OneShotFeature):
          name='blackbox',
          path=flashPath('blackbox'),
          keep=Config().blackbox_max_logs,
+         compress=True,
       )
       with lf.newLog(datetimeToFileName(datetime.datetime.now())) as f:
          blackbox.dump(f.name)

@@ -1,4 +1,4 @@
-
+import gzip
 import os
 
 from ...core.config import flashPath
@@ -40,7 +40,7 @@ class ShowBlackBox(Renderer):
          return {'path': path,
                  'content': None,
                  'error': 'does not exist'}
-      with open(path, 'rb') as f:
+      with gzip.open(path, 'rb') as f:
          data = f.read()
       content = decoder.decode(data) if decoder else None
       return {'path': path, 'content': content}

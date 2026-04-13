@@ -1,5 +1,6 @@
-
+import gzip
 import os
+import shutil
 from contextlib import contextmanager
 
 def readFileContent(path):
@@ -28,10 +29,11 @@ def rmfile(path, raises=False):
          raise
 
 class RotatedLogFile:
-   def __init__(self, name, path, keep):
+   def __init__(self, name, path, keep, compress):
       self.name = name
       self.path = path
       self.keep = keep
+      self.compress = compress
 
    def _rotate(self):
       logs = sorted(f for f in os.listdir(self.path) if f.startswith(self.name))
@@ -45,3 +47,8 @@ class RotatedLogFile:
       path = os.path.join(self.path, f'{self.name}.{suffix}.log')
       with open(path, 'wb') as f:
          yield f
+      if self.compress:
+         zipPath = os.path.join(self.path, f'{self.name}.{suffix}.log.gz')
+         with open(path, 'rb') as rawFile, gzip.open(zipPath, 'wb') as zipFile:
+            shutil.copyfileobj(rawFile, zipFile)
+         rmfile(path)

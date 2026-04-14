@@ -61,6 +61,8 @@ class DefaultConfig:
    cooling_kp: Optional[float] = None
    cooling_ki: Optional[float] = None
    cooling_kd: Optional[float] = None
+   cooling_rpm_slope: Optional[float] = None
+   cooling_rpm_offset: Optional[float] = None
    cooling_xcvrs_via_api: bool = False
    cooling_xcvrs_use_dom_temperature: bool = True
    cooling_override_xcvr_target: Optional[float] = None

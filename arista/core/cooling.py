@@ -242,10 +242,6 @@ class CoolingLogic:
    def config(self):
       return self.zone.algo.config
 
-   def scaleOnElapsed(self, value):
-      factor = min(self.zone.algo.elapsed / self.zone.algo.INTERVAL, 1.0)
-      return value * factor
-
    def computePwm(self, lastPwm):
       raise NotImplementedError
 
@@ -256,6 +252,10 @@ class CoolingLogicLegacy(CoolingLogic):
       super().__init__(zone)
       self.maxDecrease = Config().cooling_max_decrease
       self.maxIncrease = Config().cooling_max_increase
+
+   def scaleOnElapsed(self, value):
+      factor = min(self.zone.algo.elapsed / self.zone.algo.INTERVAL, 1.0)
+      return value * factor
 
    def computePwm(self, lastPwm):
       infos = ThermalInfos(self.config.targetOffset)
@@ -319,6 +319,99 @@ class CoolingLogicIncPid(CoolingLogic):
               for thermal in self.zone.thermals.values() if thermal.valid()]
       return min(max(*pwms, self.config.minSpeed), self.config.maxSpeed)
 
+class ThermalClassicPid:
+   def __init__(self, thermal):
+      self.thermal = thermal
+
+      if thermal.config['ki'] != 0:
+         logging.warning('%s ki!=0, integral is currently not implemented', thermal)
+
+      self.resolution = 1
+      self.lambda_ = 0.3
+
+      self.p = 0
+      self.i = 0
+      self.d = 0
+      self.value = 0
+
+   def update(self):
+      curTs, temperature = self.thermal.data.get[-1]
+      if len(self.thermal.data.get) < 2:
+         lastTs = curTs
+         lastTemperature = temperature
+      else:
+         lastTs, lastTemperature = self.thermal.data.get[-2]
+
+      delta = abs(temperature - lastTemperature)
+      self.resolution = min(self.resolution, delta)
+      if self.resolution >= 1:
+         self.lambda_ = 0.08
+      elif self.resolution >= 0.5:
+         self.lambda_ = 0.1
+      elif self.resolution >= 0.25:
+         self.lambda_ = 0.15
+      else:
+         self.lambda_ = 0.3
+
+      err = self.thermal.target - temperature
+      if lastTs == curTs:
+         # First reading, initialise P to current error
+         self.p = err
+      else:
+         lastP = self.p
+         self.p = (1 - self.lambda_) * self.p + self.lambda_ * err
+
+         d = (self.p - lastP) / (curTs - lastTs)
+         self.d = (1 - self.lambda_) * self.d + self.lambda_ * d
+
+      value = 0
+      for term in 'p', 'i', 'd':
+         tunedVal = self.thermal.config[f'k{term}'] * getattr(self, term)
+         value += tunedVal
+
+      self.value = value
+
+class CoolingLogicClassicPid(CoolingLogic):
+   NAME = 'classicpid'
+
+   def __init__(self, zone):
+      super().__init__(zone)
+      self.thermalPids = {}
+      self.targetRpm = HistoricalData('targetRpm')
+
+   def computePwm(self, lastPwm):
+      pids = []
+      seen = set()
+      for thermal in self.zone.thermals.values():
+         if not thermal.valid() or thermal.config['kp'] + thermal.config['kd'] == 0:
+            continue
+
+         thermalPid = self.thermalPids.get(thermal)
+         if thermalPid is None:
+            self.thermalPids[thermal] = thermalPid = ThermalClassicPid(thermal)
+
+         thermalPid.update()
+         pids.append(thermalPid.value)
+         seen.add(thermal)
+      for thermal in self.zone.thermals.values():
+         if thermal not in seen and thermal in self.thermalPids:
+            # thermal went away, clear its PID state
+            self.thermalPids.pop(thermal)
+
+      if not pids:
+         return self.config.maxSpeed
+
+      worstPid = min(pids)
+      newRpm = (self.targetRpm.lastSet or self.config.maxSpeed) - worstPid
+      if newRpm < self.config.minSpeed:
+         newRpm = self.config.minSpeed
+      elif newRpm > self.config.maxSpeed:
+         newRpm = self.config.maxSpeed
+      self.targetRpm.setValue(self.zone.algo.now, newRpm)
+
+      pwm = (self.config.rpmSlope * newRpm) + self.config.rpmOffset
+      return pwm
+
 @dataclass
 class CoolingConfig:
 
@@ -331,6 +424,8 @@ class CoolingConfig:
    kd: float = 10
    negHyst: float = 1
    posHyst: float = 1
+   rpmSlope: float = 1
+   rpmOffset: float = 0
    profile: str = 'default'
    thermalPolicyConfig: ThermalPolicyConfig = None
    defaultZone: str = 'default'
@@ -347,6 +442,8 @@ class CoolingConfig:
             ('cooling_kp', 'kp'),
             ('cooling_ki', 'ki'),
             ('cooling_kd', 'kd'),
+            ('cooling_rpm_slope', 'rpmSlope'),
+            ('cooling_rpm_offset', 'rpmOffset'),
             ('cooling_hysteresis_negative', 'negHyst'),
             ('cooling_hysteresis_positive', 'posHyst'),
             ('cooling_asic_via_db', 'asicViaDb'),
@@ -468,6 +565,7 @@ class CoolingAlgorithm(object):
    LOGICS = {l.NAME: l for l in [
       CoolingLogicLegacy,
       CoolingLogicIncPid,
+      CoolingLogicClassicPid,
    ]}
 
    def __init__(self, platform):

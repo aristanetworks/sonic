@@ -489,14 +489,14 @@ class OsfpSlot(XcvrSlot):
       return self.modSel.setActive(value)
 
 class Cartridge:
-   def __init__(self, index, eeprom, interrupt, wp):
+   def __init__(self, index, eeprom, interrupts, wp):
       self.index = index
       self.eeprom = eeprom
-      self.interrupt = interrupt
+      self.interrupts = interrupts
       self.wp = wp
 
    def getPresence(self):
-      return not self.interrupt.asserted()
+      return all(not interrupt.asserted() for interrupt in self.interrupts)
 
 class BackplaneConnector(XcvrSlot):
    def __init__(self, *args, cartridge=None, **kwargs):

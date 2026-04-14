@@ -160,7 +160,7 @@ class Moby(FixedSystem):
                addr=scd.i2cAddr(12 + i, 0x50),
                portName=f'cartridge{i}',
             ),
-            interrupt=intrs[0].getInterruptBit(f'phd{i + 1}_det_l', 15 + i),
+            interrupts=[intrs[0].getInterruptBit(f'phd{i + 1}_det_l', 15 + i)],
             wp=scd.addGpio(GpioDesc(f'phd{i + 1}_wp', addr=0x2D00, bit=i)),
          ) for i in range(0, self.BACKPLANE_CARTRIDGES)
       ]

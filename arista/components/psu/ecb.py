@@ -27,20 +27,19 @@ def _makeTPS16890Description(senseRes):
    # Current (A): m = 9.547 * SENSE_RESISTANCE, b = 0, R = -3
    # Power (W): m = 1.08 * SENSE_RESISTANCE, b = 0, R = -4
    # Temperature (C): m = 140, b = 32103, R = -2
-
-   # SysfsEntryFloat does Y * scale where scale = SCALE_FACTOR * desc.scale
-   # desc.scale = 10^-R / m adjusts for device-specific PMBus coefficients
    TPS16890_VOLTAGE_SCALE = 100. / 1166
    TPS16890_CURRENT_SCALE_PER_OHM = 1000. / 9.547
    TPS16890_POWER_SCALE_PER_OHM = 10000. / 1.08
    currentScale = TPS16890_CURRENT_SCALE_PER_OHM / senseRes
    voltageScale = TPS16890_VOLTAGE_SCALE
    powerScale = TPS16890_POWER_SCALE_PER_OHM / senseRes
+   tempScale = 100. / 140
+   tempOffset = -32103. / 140
 
    desc = psuDescHelper(
+      # TempSysfsImpl applies Y * scale + offset
       sensors=[
-         # TODO: define filter which applies the above formula
-         ('internal', Position.OTHER, 100, 105, 110),
+         ('internal', Position.OTHER, 100, 105, 110, tempScale, tempOffset),
       ],
       hasFans=False,
       inputRailId=None,

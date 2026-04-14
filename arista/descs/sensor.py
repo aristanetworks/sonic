@@ -15,6 +15,7 @@ class SensorDesc(HwDesc):
    def __init__(self, diode, name=None, position=Position.OTHER,
                 target=0., overheat=0., critical=0.,
                 low=0.0, lcritical=-5.0, readFilter: Optional[Filter]=None,
+                scale=1., offset=0.,
                 **kwargs):
       super(SensorDesc, self).__init__(**kwargs)
       self.diode = diode
@@ -27,6 +28,8 @@ class SensorDesc(HwDesc):
       self.low = float(low)
       self.lcritical = float(lcritical)
       self.filter = readFilter
+      self.scale = float(scale)
+      self.offset = float(offset)
 
    def renderName(self, **kwargs):
       values = kwargs.copy()

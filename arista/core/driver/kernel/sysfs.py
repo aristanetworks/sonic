@@ -559,6 +559,7 @@ class TempSysfsImpl(Temp, GenericSysfs):
    DESC_CLS = SensorDesc
    DESC_NAME = 'sensors'
    SYSFS_PREFIX = 'temp'
+   SCALE_FACTOR = 0.001
 
    def __init__(self, driver, desc, **kwargs):
       self.tempId = desc.diode + 1
@@ -567,7 +568,8 @@ class TempSysfsImpl(Temp, GenericSysfs):
       self.reportHwThresh = Config().report_hw_thresholds
       self.__dict__.update(**kwargs)
       self.label = SysfsEntry(self, 'temp%d_label' % self.tempId)
-      self.input = SysfsEntryFloat(self, 'temp%d_input' % self.tempId)
+      self.input = SysfsEntryFloat(self, 'temp%d_input' % self.tempId,
+                                   scale=self.SCALE_FACTOR * desc.scale)
       self.max = SysfsEntryFloat(self, 'temp%d_max' % self.tempId)
       self.crit = SysfsEntryFloat(self, 'temp%d_crit' % self.tempId)
       self.min = SysfsEntryFloat(self, 'temp%d_min' % self.tempId)
@@ -603,6 +605,7 @@ class TempSysfsImpl(Temp, GenericSysfs):
 
    def getTemperature(self):
       temperature = self.input.read()
+      temperature += self.desc.offset
       if self.desc.filter is not None:
          temperature = self.desc.filter.apply(temperature)
       return temperature

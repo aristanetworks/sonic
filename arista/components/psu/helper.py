@@ -53,8 +53,11 @@ def psuDescHelper(hasFans=True, maxRpm=None, minRpm=0,
          target=target,
          overheat=overheat,
          critical=critical,
+         scale=rest[0] if rest else 1.,
+         offset=rest[1] if rest else 0.,
       )
-      for i, (name, position, target, overheat, critical) in enumerate(sensors)
+      for i, (name, position, target, overheat, critical, *rest) in \
+         enumerate(sensors)
    ]
 
    return PsuDesc(fans=fans, rails=rails, sensors=sensors)

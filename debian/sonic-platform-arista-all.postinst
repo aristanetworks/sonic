@@ -2,7 +2,7 @@
 
 set -e
 
-. /host/machine.conf
+onie_platform="$(sed -n 's/^[[:space:]]*onie_platform[[:space:]]*=[[:space:]]*//p' /host/machine.conf)"
 
 if [ -z "$onie_platform" ]; then
     echo "Warning: onie_platform variable not set"

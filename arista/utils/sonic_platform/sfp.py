@@ -60,8 +60,9 @@ class Sfp(SfpBase):
       self._slot = slot
       self._sfputil = None
       sfp = slot.getXcvr()
-      self._eepromPath = EEPROM_PATH.format(sfp.getI2cAddr().bus,
-                                            sfp.getI2cAddr().address)
+      self._addr = sfp.getI2cAddr()
+      self._eepromPath = EEPROM_PATH.format(self._addr.bus,
+                                            self._addr.address)
       self._sfp_type = None
       if Config().api_sfp_thermal:
          self._thermal_list.append(SfpThermal(self))
@@ -293,3 +294,12 @@ class Sfp(SfpBase):
 
    def get_write_max(self):
       return self._slot.slot.xcvr.driver.getWriteMax()
+
+   def set_bus_speed(self, speed):
+      self._slot.slot.xcvr.driver.setBusSpeed(speed)
+
+   def get_io_group_name(self):
+      try:
+         return self._addr.uniqueName
+      except Exception: # pylint: disable=broad-except
+         return "all"

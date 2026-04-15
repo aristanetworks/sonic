@@ -22,9 +22,10 @@ class SfpOptoe(SfpOptoeBase):
       self._slot = slot
       sfp = slot.getXcvr()
       self._eepromPath = None
-      if sfp.getI2cAddr():
-         self._eepromPath = EEPROM_PATH.format(sfp.getI2cAddr().bus,
-                                               sfp.getI2cAddr().address)
+      self._addr = sfp.getI2cAddr()
+      if self._addr:
+         self._eepromPath = EEPROM_PATH.format(self._addr.bus,
+                                               self._addr.address)
       self._sfp_type = None
       if not slot.getName().startswith('rj45') and Config().api_sfp_thermal:
          self._thermal_list.append(SfpThermal(self))
@@ -151,6 +152,12 @@ class SfpOptoe(SfpOptoeBase):
 
    def set_bus_speed(self, speed):
       self._slot.slot.xcvr.driver.setBusSpeed(speed)
+
+   def get_io_group_name(self):
+      try:
+         return self._addr.uniqueName
+      except Exception: # pylint: disable=broad-except
+         return "all"
 
    def set_power(self, mode):
       raise NotImplementedError

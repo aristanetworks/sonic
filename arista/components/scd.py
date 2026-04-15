@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+
 import copy
 import datetime
 import os
@@ -64,6 +66,17 @@ class ScdI2cAddr(I2cAddr):
    def __init__(self, scd, bus, addr, **kwargs):
       super().__init__(bus, addr, **kwargs)
       self.scd_ = scd
+
+   @property
+   def master(self):
+      if not self.scd_.smbusMasters:
+         return 0
+      busPerMaster = next(iter(self.scd_.smbusMasters.values()))['bus']
+      return self.bus_ // busPerMaster
+
+   @property
+   def uniqueName(self):
+      return f'SCD{self.scd_.instanceNumber}/{self.master}'
 
    @property
    def busName(self):
@@ -462,6 +475,15 @@ class Scd(PciComponent):
    INTERRUPTS = []
    XCVR_GROUPS = []
    FAULT_TIME_BASE = datetime.datetime(2000, 1, 1)
+
+   _INSTANCE_NUM = 0
+
+   @classmethod
+   def getNextInstanceNumber(cls):
+      instance = cls._INSTANCE_NUM
+      cls._INSTANCE_NUM += 1
+      return instance
+
    def __init__(self, addr, registerCls=None, ports=None, **kwargs):
       drivers = [
          KernelDriver(module='scd'),
@@ -493,6 +515,10 @@ class Scd(PciComponent):
       self.regs = self.drivers['scd-hwmon'].regs
       self.inventory.addProgrammable(ScdProgrammable(self))
       self._processAttributes(ports)
+
+      # NOTE: Needed to have a unique identifier per scd for the perpose of
+      # mapping to IO groups.
+      self.instanceNumber = self.getNextInstanceNumber()
 
    def __str__(self):
       return f'{Scd.__name__}(addr={self.addr})'

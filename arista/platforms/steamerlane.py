@@ -11,6 +11,7 @@ from ..components.psu.ecb import createPmbusECB, Tps16890
 from ..components.scd import Scd
 from ..components.tmp401 import Tmp431
 from ..components.vrm.ibc import Pwr689
+from ..components.vrm.tda38740 import Xdpe1a2g5b, Xdpe1b284b, Tda38740a
 
 from ..descs.cause import ReloadCauseDesc
 from ..descs.led import LedDesc, LedKind
@@ -95,14 +96,50 @@ class SteamerLaneBase(FixedSystem):
             psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS,
          )
 
-      for addr in range(0x10, 0x18):
+      ibcs = [
+         (0x10, 'POS12V_LHS'),
+         (0x11, 'POS12V_RHS'),
+         (0x12, 'POS12V_MCORE_LHS'),
+         (0x13, 'POS12V_MCORE_RHS'),
+         (0x14, 'POS12V_OPTICS0'),
+         (0x15, 'POS12V_OPTICS1'),
+         (0x16, 'POS12V_OPTICS2'),
+         (0x17, 'POS12V_OPTICS3'),
+      ]
+      for ibcId, (addr, name) in enumerate(ibcs):
          self.cpu.syscpld.newComponent(Pwr689, addr=pwrBus.i2cAddr(addr), sensors=[
-            SensorDesc(diode=0, name='IBC 0x%02x' % addr,
+            SensorDesc(diode=0, name='IBC %d %s' % (ibcId, name),
                        position=Position.OTHER, target=100, overheat=105,
                        critical=110),
          ])
 
-      # TODO: add VRMs
+      vrms = [
+         (Tda38740a, 0x4a, ['POS1V2_VDDA']),
+         (Tda38740a, 0x4b, ['POS1V8_VDD0']),
+         (Tda38740a, 0x4e, ['POS1V5_RVDD_0']),
+         (Tda38740a, 0x4f, ['POS1V5_RVDD_1']),
+         (Xdpe1a2g5b, 0x60, ['TH6_MCORE']),
+         (Xdpe1b284b, 0x62, ['POS0V75_PHYCORE_0', 'POS0V75_PHYCORE_1']),
+         (Xdpe1b284b, 0x64, ['POS0V75_PHYCORE_2', 'POS0V75_PHYCORE_3']),
+         (Xdpe1b284b, 0x66, ['POS0V75_PHYCORE_4', 'POS0V75_PHYCORE_5']),
+         (Xdpe1b284b, 0x68, ['POS0V75_PHYCORE_6', 'POS0V75_PHYCORE_7']),
+         (Xdpe1b284b, 0x6a, ['POS0V72_TRVDD_01', 'POS0V72_TRVDD_23']),
+         (Xdpe1b284b, 0x6c, ['POS0V72_TRVDD_45', 'POS0V72_TRVDD_67']),
+         (Xdpe1b284b, 0x6e, ['POS0V75_TRVDD_0', 'POS0V9_TRVDD_0']),
+         (Xdpe1b284b, 0x70, ['POS0V75_TRVDD_1', 'POS0V9_TRVDD_1']),
+         (Xdpe1a2g5b, 0x72, ['POS3V3_OPTICS0', 'POS3V3_OPTICS1']),
+         (Xdpe1a2g5b, 0x74, ['POS3V3_OPTICS2', 'POS3V3_OPTICS3']),
+      ]
+      vrmTempParams = {'target': 105, 'overheat': 115, 'critical': 120}
+      for vrmId, (cls, addr, diodes) in enumerate(vrms):
+         self.cpu.cpld.newComponent(
+            cls,
+            addr=pwrBus.i2cAddr(addr),
+            sensors=[
+               SensorDesc(diode=diodeId, name="VRM %d %s" % (vrmId, name),
+                          **vrmTempParams) for diodeId, name in enumerate(diodes)
+            ]
+         )
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       self.scd = scd = port.newComponent(Scd, addr=port.addr)

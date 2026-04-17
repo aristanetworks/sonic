@@ -56,6 +56,10 @@ class CliPciTest(unittest.TestCase):
       self._runMain(['pci', 'read', self.FAKE_DEVICE, '0x1000'])
       self._checkOutputValue('0x4030201')
 
+   def testSimplePciReadBinaryOutput(self) -> None:
+      self._runMain(['pci', 'read', self.FAKE_DEVICE, '0x1000', '--binary'])
+      self._checkOutputValue('0000_0100_0000_0011_0000_0010_0000_0001')
+
    def testSimplePciWrite(self) -> None:
       self._runMain(['pci', 'write', '--verify',
                      self.FAKE_DEVICE, '1024', '0x42424242'])

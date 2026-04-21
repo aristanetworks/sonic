@@ -83,7 +83,7 @@ class Moby(FixedSystem):
 
    CHASSIS = MobyChassis
    CPU_CLS = RedstartCpu
-   COOLING = CoolingConfig(minSpeed=15)
+   COOLING = CoolingConfig(minSpeed=15, asicViaDb=True)
 
    BACKPLANE_CONNECTORS = 8
    BACKPLANE_CARTRIDGES = 4

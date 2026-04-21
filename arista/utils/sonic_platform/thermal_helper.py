@@ -336,6 +336,8 @@ class CoolingEntityManager(object):
       self._thermals = {}
       self._xcvrs = {}
       self._xcvrs_via_api = Config().cooling_xcvrs_via_api
+      self._cooling_asic_via_db = Config().cooling_asic_via_db or \
+            self._chassis.getPlatform().COOLING.asicViaDb
 
    def _get_dbhelper(self, namespace=''):
       db = self._dbhelpers.get(namespace)
@@ -492,7 +494,7 @@ class CoolingEntityManager(object):
       #       requires xcvr data to be published in CHASSIS_STATE_DB
 
    def update_asics(self, chassis):
-      if Config().cooling_asic_via_db:
+      if self._cooling_asic_via_db:
          for ns, asic in self._iter_inventory_asics(chassis):
             name = ns if ns else 'asic'
             self.get_asic(name).register_asic(asic)

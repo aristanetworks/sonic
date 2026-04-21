@@ -280,6 +280,7 @@ class CoolingConfig:
    kd: float = 10
    negHyst: float = 1
    posHyst: float = 1
+   asicViaDb: bool = False
 
    def update(self):
       for kgc, kcc in [
@@ -290,6 +291,7 @@ class CoolingConfig:
             ('cooling_kd', 'kd'),
             ('cooling_hysteresis_negative', 'negHyst'),
             ('cooling_hysteresis_positive', 'posHyst'),
+            ('cooling_asic_via_db', 'asicViaDb'),
          ]:
          if value := getattr(Config(), kgc, None):
             # TODO: ensure type is correct or convert

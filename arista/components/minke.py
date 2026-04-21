@@ -21,13 +21,13 @@ class FanBoardBase:
    FAN_CPLD_CLS = None
    IDPROM_CLS = At24C32
 
-   def __init__(self, parent, bus):
+   def __init__(self, parent, bus, fanMaxPowerDraw=0):
       self.parent = parent
       self.bus = bus
       self.eeprom = self.create_eeprom()
       self.cpld = self.create_cpld()
       self.temp = self.create_temp()
-      self.slots = self.create_fan_slots()
+      self.slots = self.create_fan_slots(fanMaxPowerDraw)
       self.dpm = self.create_dpm() # pylint: disable=assignment-from-none
 
    def create_eeprom(self):
@@ -42,12 +42,13 @@ class FanBoardBase:
             target=65, overheat=80, critical=95),
       ])
 
-   def create_fan_slots(self):
+   def create_fan_slots(self, fanMaxPowerDraw=0):
       fansPerSlot = self.FAN_COUNT // self.FAN_SLOTS
       return [
          self.parent.newComponent(
             FanSlot,
             slotId=slotId,
+            maxPowerDraw=fanMaxPowerDraw,
             led=self.cpld.addFanLed(LedDesc(
                name='fan_slot%d' % slotId,
                colors=[LedColor.RED, LedColor.AMBER, LedColor.GREEN,

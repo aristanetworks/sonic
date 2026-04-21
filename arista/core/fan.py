@@ -90,4 +90,4 @@ class FanSlot(SlotComponent):
       return True
 
    def getMaxPowerDraw(self):
-      return self.maxPowerDraw
+      return float(self.maxPowerDraw)

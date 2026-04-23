@@ -1,7 +1,7 @@
 
 import datetime
 
-from ..core.config import etcPath
+from ..core.config import etcPath, flashPath
 
 from ..libs.config import parseKeyValueConfig
 from ..libs.procfs import getCmdlineDict
@@ -41,13 +41,14 @@ class OnieEeprom(object):
       name = getCmdlineDict().get('onie_platform')
       if name is not None:
          return name
-      try:
-         return getMachineConfigDict().get('platform')
-      except FileNotFoundError:
-         # NOTE: this statement is reached when /host is not available
-         #       (e.g when running inside pmon)
-         path = etcPath('sonic-environment')
-         return parseKeyValueConfig(path).get('PLATFORM')
+      machineConf = getMachineConfigDict(path=flashPath('machine.conf'))
+      if machineConf:
+         return machineConf.get('platform')
+
+      # NOTE: this statement is reached when /host is not available
+      #       (e.g when running inside pmon)
+      path = etcPath('sonic-environment')
+      return parseKeyValueConfig(path).get('PLATFORM')
 
    def _convertMfgTime(self, mfgtime):
       if mfgtime is None:

@@ -462,10 +462,6 @@ def inDebug():
 def inSimulation():
    return simulation
 
-def runningInContainer():
-   # Docker containers by default have this path.
-   return os.path.exists("/.dockerenv")
-
 def simulateWith(simulatedFunc):
    def simulateThisFunc(func):
       @wraps(func)

@@ -4,8 +4,8 @@ import subprocess
 from collections import namedtuple
 
 from .. import platforms
-from ..core.utils import runningInContainer
 from ..core import platform
+from ..libs.docker import runningInContainer
 
 Port = namedtuple('Port', ['portNum', 'lanes', 'offset', 'singular', 'alias'])
 
@@ -47,13 +47,14 @@ def parsePortConfig():
 
 def getSonicConfigVar(name):
    return subprocess.check_output(['sonic-cfggen', '-d', '-v',
-                                   name.replace('"', "'")]).strip()
+                                   name.replace('"', "'")],
+                                  text=True).strip()
 
 def getSonicVersVar(name):
    return subprocess.check_output(['sonic-cfggen', '-y',
                                    '/etc/sonic/sonic_version.yml',
-                                   '-v', name.replace('"', "'")]).strip()
-
+                                   '-v', name.replace('"', "'")],
+                                  text=True).strip()
 def getSonicPlatformName():
    platformKey = "DEVICE_METADATA['localhost']['platform']"
    return getSonicConfigVar(platformKey)

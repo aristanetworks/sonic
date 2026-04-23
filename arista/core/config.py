@@ -4,6 +4,7 @@ from typing import Optional, Union, get_origin
 import yaml
 
 from .log import getLogger
+from ..libs.nos import getPlatformPath
 from ..libs.procfs import getCmdlineDict
 
 logging = getLogger(__name__)
@@ -79,6 +80,7 @@ class Config():
          cls.instance_.types = None
 
          cls.instance_._parseDefaultConfig()
+         cls.instance_._parsePlatformConfig()
          cls.instance_._parseConfig()
          cls.instance_._parseCmdline()
 
@@ -126,6 +128,28 @@ class Config():
          if k in cmdline:
             self.setAttr(key, cmdline[k])
 
+   def _parseYaml(self, path):
+      try:
+         with open(path, 'r') as f:
+            data = yaml.safe_load(f)
+      except IOError as e:
+         logging.warning('cannot open file %s: %s', path, e)
+         return
+      except yaml.YAMLError as e:
+         logging.warning('invalid %s format: %s', path, e)
+         return
+
+      for key in self._getKeys():
+         if key in data:
+            self.setAttr(key, data[key])
+
+   def _parsePlatformConfig(self):
+      platformPath = getPlatformPath()
+      if platformPath is not None:
+         platformConfigPath = os.path.join(platformPath, 'arista-platform.yaml')
+         if os.path.exists(platformConfigPath):
+            self._parseYaml(platformConfigPath)
+
    def _parseConfig(self):
       if os.path.exists(FLASH_CONFIG_PATH):
          try:
@@ -142,19 +166,7 @@ class Config():
       if not os.path.exists(CONFIG_PATH):
          return
 
-      try:
-         with open(CONFIG_PATH, 'r') as f:
-            data = yaml.safe_load(f)
-      except IOError as e:
-         logging.warning('cannot open file %s: %s', CONFIG_PATH, e)
-         return
-      except yaml.YAMLError as e:
-         logging.warning('invalid %s format: %s', CONFIG_PATH, e)
-         return
-
-      for key in self._getKeys():
-         if key in data:
-            self.setAttr(key, data[key])
+      self._parseYaml(CONFIG_PATH)
 
    def get(self, confName):
       return getattr(self, confName, None)

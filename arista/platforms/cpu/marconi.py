@@ -2,12 +2,14 @@ from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
 from ...components.cpld import SysCpld
+from ...components.cpu.amd.k10temp import K10Temp
 from ...components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ...components.lm75 import Tmp75
 from ...components.scd import Scd, ScdSmbusDesc
 from ...components.vrm.tda38740 import Xdpe1e496b
 
 from ...descs.cause import ReloadCauseDesc
+from ...descs.led import LedDesc, LedKind
 from ...descs.sensor import Position, SensorDesc
 
 class MarconiCpu(Cpu):
@@ -30,16 +32,36 @@ class MarconiCpu(Cpu):
       super().__init__(**kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
+      port = self.pciRoot.rootPort(device=0x18, func=3)
+      port.newComponent(
+         K10Temp,
+         addr=port.addr,
+         sensors=[
+            SensorDesc(diode=0, name='CPU internal', position=Position.OTHER,
+                       target=80, overheat=100, critical=105),
+         ]
+      )
 
-      # TODO: add CPU and/or PCH temperature, likely from components.cpu.intel
-
-      port = self.pciRoot.pciBridge(device=0x2, func=2).downstreamPort(0)
-      self.cpld = cpld = port.newComponent(Scd, addr=port.addr)
-      cpld.createPowerCycle()
-      cpld.addSmbusMasterRange(0x8000, 2, 0x80, 7)
+      cpldPort = self.pciRoot.pciBridge(device=0x2, func=2).downstreamPort(0)
+      self.cpld = cpldPort.newComponent(Scd, addr=cpldPort.addr)
+      self.cpld.createPowerCycle()
+      self.cpld.addSmbusMasterRange(0x8000, 2, 0x80, 7)
+      self.cpld.createInterrupt(addr=0x3000, num=0)
+      self.cpld.addLeds([
+         LedDesc(
+            name=name,
+            addr=addr,
+            **LedKind.desc(LedKind.RGB_8_F),
+         ) for name, addr in [
+            ('status', 0x6050),
+            ('fan_status', 0x6060), # Only used on air cooled products
+            ('psu_status', 0x6070),
+            ('scm_status', 0x6090),
+         ]
+      ])
 
       bus = self.getSmbus(self.SMBUS_SC)
-      self.syscpld = cpld.newComponent(SysCpld, addr=bus.i2cAddr(0x23))
+      self.syscpld = self.cpld.newComponent(SysCpld, addr=bus.i2cAddr(0x23))
       # TODO: define the appropriate syscpld ideally on the platform side
 
       # TODO: everything related ot the BMC, will likely need a new subpackage

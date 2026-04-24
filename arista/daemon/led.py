@@ -21,7 +21,7 @@ class StatusLedFeature(PollDaemonFeature):
    def getStatus(self, platform, led):
       return LedColor.GREEN
 
-   def getScmStatus(self, platform, led):
+   def getAllSwitchcardStatus(self, platform, led):
       # TODO: implement logic for SCM leds
       return LedColor.GREEN
 
@@ -86,7 +86,7 @@ class StatusLedFeature(PollDaemonFeature):
          'psu_status': self.getAllPsusStatus,
          'fabric_status': self.getAllFabricsStatus,
          'linecard_status': self.getAllLinecardsStatus,
-         'scm': self.getScmStatus,
+         'scm_status': self.getAllSwitchcardStatus,
       }
       policy = ledPolicies.get(name)
       return policy

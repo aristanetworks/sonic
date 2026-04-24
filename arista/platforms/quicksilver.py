@@ -134,7 +134,7 @@ class QuicksilverBase(FixedSystem):
          (0x6060, 'fan_status'),
          (0x6070, 'psu_status'),
          (0x6090, 'beacon'),
-         (0x60A0, 'scm')
+         (0x60A0, 'scm_status')
       ])
 
       scd.addResets([

@@ -7,7 +7,13 @@ from ...components.cpu.redstart import (
     RedstartSysCpld,
 )
 from ...components.pci import EcrcPciQuirk
-from ...components.scd import Scd, ScdCause
+from ...components.scd import (
+    BlackBoxRegisterMap,
+    Scd,
+    ScdBlackBox,
+    ScdCause,
+    ScdSpiController
+)
 
 from ...descs.cause import ReloadCauseAltSource
 from ...descs.sensor import Position, SensorDesc
@@ -57,6 +63,19 @@ class RedstartCpu(Cpu):
 
       self.syscpld = cpld.newComponent(syscpldCls,
                                        addr=cpld.i2cAddr(self.SMBUS_SC, 0x23))
+
+      bbCtrl = cpld.newComponent(
+          ScdSpiController,
+          addr=0x1100,
+          stride=0x100,
+          numCs=2
+      )
+      bbCtrl.newComponent(
+          ScdBlackBox,
+          addr=bbCtrl.spiAddr(cs=1),
+          ctrl=BlackBoxRegisterMap(cpld.driver, cmd=0x1100),
+          bufSplit=0x6000,
+      )
 
       cpld.addReloadCauseProvider(causes=[
          ScdCause(0x01, ScdCause.OVERTEMP),

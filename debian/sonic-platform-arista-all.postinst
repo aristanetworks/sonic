@@ -32,7 +32,7 @@ depmod -a
 
 pywhl="/usr/share/sonic/device/$onie_platform/sonic_platform-1.0-py3-none-any.whl"
 if [ ! -f "$pywhl" ]; then
-    cp /usr/share/sonic/device/x86_64-arista_common/*.whl  \
+    cp /usr/share/sonic/device/any-arista_common/*.whl \
         "/usr/share/sonic/device/$onie_platform"
 fi
 

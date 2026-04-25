@@ -46,8 +46,13 @@ override_dh_auto_install:
 	$(MAKE) install-fs \
 	   DESTDIR=$(CURDIR)/debian/$(DEB_SOURCE)
 
-	$(MAKE) install-py3whl install-drivers install-fs \
+	$(MAKE) install-py3whl install-fs \
+	   DESTDIR=$(CURDIR)/debian/$(DEB_SOURCE)-all \
+	   ARCH=$(DEB_HOST_ARCH)
+ifneq ($(DEB_HOST_ARCH),arm64)
+	$(MAKE) install-drivers \
 	   DESTDIR=$(CURDIR)/debian/$(DEB_SOURCE)-all
+endif
 
 	dh_installdirs -pdrivers-$(DEB_SOURCE)-dev /lib/modules/$(KVERSION)/$(INSTALL_MOD_DIR)
 	cp $(CURDIR)/src/Module.symvers debian/drivers-$(DEB_SOURCE)-dev/lib/modules/$(KVERSION)/$(INSTALL_MOD_DIR)/scd-Module.symvers

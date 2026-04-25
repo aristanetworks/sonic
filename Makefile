@@ -42,7 +42,7 @@ LOGROTATE_DESTDIR ?= $(DESTDIR)/etc/logrotate.d/
 DBGDUMP_DESTDIR ?= $(DESTDIR)/usr/local/bin/debug-dump
 
 PLATFORM_DESTDIR ?= $(DESTDIR)/usr/share/sonic/device
-PLATFORM_COMMON_DESTDIR ?= $(PLATFORM_DESTDIR)/x86_64-arista_common
+PLATFORM_COMMON_DESTDIR ?= $(PLATFORM_DESTDIR)/any-arista_common
 
 # build
 PY_BUILD_ARGS ?=

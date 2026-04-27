@@ -4,7 +4,12 @@ from ...core.pci import PciPortDesc, PciRoot
 from ...components.cpu.amd.k10temp import K10Temp
 from ...components.dpm.ucd import Ucd90160, UcdGpi, UcdPriority
 from ...components.max6658 import Max6658
-from ...components.scd import Scd
+from ...components.scd import (
+   BlackBoxRegisterMap,
+   Scd,
+   ScdBlackBox,
+   ScdSpiController,
+)
 
 from ...descs.sensor import Position, SensorDesc
 from ...descs.cause import ReloadCauseDesc, ReloadCauseAltSource
@@ -44,6 +49,19 @@ class WoodpeckerCpu(Cpu):
       ])
 
       cpld.createPowerCycle()
+
+      bbCtrl = cpld.newComponent(
+         ScdSpiController,
+         addr=0x1100,
+         stride=0x100,
+         numCs=2,
+      )
+
+      bbCtrl.newComponent(
+         ScdBlackBox,
+         addr=bbCtrl.spiAddr(cs=1),
+         ctrl=BlackBoxRegisterMap(cpld.driver, cmd=0x1100),
+      )
 
    def addCpuDpm(self, addr=None, causes=None, rails=None):
       addr = addr or self.cpuDpmAddr()

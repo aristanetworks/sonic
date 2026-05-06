@@ -1,7 +1,6 @@
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
-from ...components.cpld import SysCpld
 from ...components.cpu.amd.k10temp import K10Temp
 from ...components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ...components.lm75 import Tmp75
@@ -22,7 +21,12 @@ class MarconiCpu(Cpu):
    PCI_PORT_SCD0 = PciPortDesc(0x3, 2)
    PCI_PORT_SCD1 = PciPortDesc(0x3, 5)
 
+   SMBUS_FP = ScdSmbusDesc(0, 0)
+   SMBUS_CPU_POL = ScdSmbusDesc(0, 1)
+   SMBUS_CPU_PWR = ScdSmbusDesc(0, 2)
    SMBUS_BMC = ScdSmbusDesc(0, 5)
+   SMBUS_CPU_TMP = ScdSmbusDesc(0, 6)
+
    SMBUS_SC = ScdSmbusDesc(1, 0)
    SMBUS_POL = ScdSmbusDesc(1, 1)
    SMBUS_PWR = ScdSmbusDesc(1, 2)
@@ -59,20 +63,14 @@ class MarconiCpu(Cpu):
             ('scm_status', 0x6090),
          ]
       ])
-
-      bus = self.getSmbus(self.SMBUS_SC)
-      self.syscpld = self.cpld.newComponent(SysCpld, addr=bus.i2cAddr(0x23))
-      # TODO: define the appropriate syscpld ideally on the platform side
+      # TODO: leak detection registers on CPU CPLD
 
       # TODO: everything related ot the BMC, will likely need a new subpackage
       # under arista.platforms.bmc and a new base definition under
       # arista.core.bmc
       # eeprom is at self.getSmbus(self.SMBUS_BMC).i2cAddr(0x52)
 
-      # TODO: leak detection if it's managed by the CPU should have some bits
-      # and pieces here
-
-      # VRM
+      cpuPwrBus = self.getSmbus(self.SMBUS_CPU_PWR)
       vrmTempParams = {'target': 85, 'overheat': 100, 'critical': 125}
       vrmRails = [
          'POS1V1_MEM',
@@ -82,7 +80,7 @@ class MarconiCpu(Cpu):
       ]
       self.cpld.newComponent(
          Xdpe1e496b,
-         addr=self.cpld.i2cAddr(2, 0x68),
+         addr=cpuPwrBus.i2cAddr(0x68),
          sensors=[
             SensorDesc(
              diode=diodeId,
@@ -92,9 +90,10 @@ class MarconiCpu(Cpu):
       ])
 
       # TODO: Add power rails and temp sensor
+      cpuPolBus = self.getSmbus(self.SMBUS_CPU_POL)
       self.cpld.newComponent(
          Ucd90320,
-         addr=self.cpld.i2cAddr(1, 0x31),
+         addr=cpuPolBus.i2cAddr(0x31),
          causes=[
             # TODO: update reload cause list
             UcdGpi(6, ReloadCauseDesc.OVERTEMP),
@@ -102,18 +101,20 @@ class MarconiCpu(Cpu):
       ])
 
       # Front panel shim board
+      fpBus = self.getSmbus(self.SMBUS_FP)
       self.cpld.newComponent(
          Tmp75,
-         addr=self.cpld.i2cAddr(0, 0x48),
+         addr=fpBus.i2cAddr(0x48),
          sensors=[
             SensorDesc(diode=0, name='Front panel', position=Position.INLET,
                        target=55, overheat=65, critical=70),
          ]
       )
       # CPU board ambient
+      cpuTmpBus = self.getSmbus(self.SMBUS_CPU_TMP)
       self.cpld.newComponent(
          Tmp75,
-         addr=self.cpld.i2cAddr(6, 0x49),
+         addr=cpuTmpBus.i2cAddr(0x49),
          sensors=[
             SensorDesc(diode=0, name='Ambient', position=Position.INLET,
                        target=55, overheat=65, critical=70),

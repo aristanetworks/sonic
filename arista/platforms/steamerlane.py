@@ -6,8 +6,10 @@ from ..core.psu import PsuSlot
 from ..core.utils import incrange
 
 from ..components.asic.xgs.tomahawk6 import Tomahawk6
+from ..components.cpld import SysCpld
 from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdMon
 from ..components.lm75 import Tmp75
+from ..components.pca954x import Pca9548
 from ..components.psu.ecb import createPmbusECB, Tps16890
 from ..components.scd import Scd
 from ..components.tmp401 import Tmp431
@@ -88,17 +90,26 @@ class SteamerLaneBase(FixedSystem):
       # in a dedicated method. If the BMC takes ownership of those it would
       # make things easier to not load them from the CPU
 
-      #bus = self.cpu.getSmbus(self.cpu.SMBUS_FC)
-      # TODO: add necessary components
-      # 0x23 SYSCPLD
-      # 0x08 POWER_CYCLER
-      # 0x50 CPU_IDPROM
-      # 0x74 IO EXPANDER
+      scBus = self.cpu.getSmbus(self.cpu.SMBUS_SC)
+
+      # Virtual CPLD inside the switchcard SCD
+      self.syscpld = self.cpu.cpld.newComponent(
+         SysCpld,
+         addr=scBus.i2cAddr(0x23)
+      )
+      # TODO: define syscpld registers (pwr_cycle_en)
+
+      self.pca = self.cpu.cpld.newComponent(
+         Pca9548,
+         addr=scBus.i2cAddr(0x74)
+      )
+      # TODO: define GpioRegister for PCA IO expander
 
       polBus = self.cpu.getSmbus(self.cpu.SMBUS_POL)
 
       self.cpu.cpld.newComponent(
-         Ucd90320, addr=polBus.i2cAddr(0x11),
+         Ucd90320,
+         addr=polBus.i2cAddr(0x11),
          causes=[
             UcdMon(1, ReloadCauseDesc.POWERLOSS, "Busbar"),
             UcdMon(2, ReloadCauseDesc.POWERLOSS, "ECB output"),
@@ -114,7 +125,10 @@ class SteamerLaneBase(FixedSystem):
             UcdGpi(27, ReloadCauseDesc.RAIL, "TH6"),
             UcdGpi(32, ReloadCauseDesc.POWERLOSS, "ECB enable"),
       ])
-      self.cpu.cpld.newComponent(Ucd90320,addr=polBus.i2cAddr(0x13))
+      self.cpu.cpld.newComponent(
+         Ucd90320,
+         addr=polBus.i2cAddr(0x13)
+      )
 
       pwrBus = self.cpu.getSmbus(self.cpu.SMBUS_PWR)
 
@@ -244,8 +258,6 @@ class SteamerLaneBase(FixedSystem):
          ResetDesc('switch_chip_pcie_reset', addr=0x4000, bit=1, auto=False),
          ResetDesc('switch_chip_reset', addr=0x4000, bit=0, auto=False),
       ])
-
-      # TODO: add system/status LEDs (on the management card)
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC1)
       self.asic = port.newComponent(Tomahawk6, addr=port.addr,

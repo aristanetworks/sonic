@@ -15,6 +15,10 @@ class BlackBoxImpl(InventoryInterface):
    def enabled(self):
       raise NotImplementedError
 
+   @diagmethod('model', io=True)
+   def getModel(self):
+      raise NotImplementedError
+
    def setEnabled(self, enabled):
       raise NotImplementedError
 

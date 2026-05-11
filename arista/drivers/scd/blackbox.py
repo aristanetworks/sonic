@@ -4,6 +4,7 @@ import subprocess
 from ...core.config import Config
 from ...core.log import getLogger
 from ...core.blackbox import BlackBoxDecoder
+from ...core.utils import StoredData
 from ...inventory.blackbox import BlackBoxImpl
 from ...drivers.spi import SpidevDriver
 
@@ -86,6 +87,9 @@ class ScdBlackBoxImpl(BlackBoxImpl):
    def version(self):
       return self.component.version()
 
+   def getModel(self):
+      return self.component.driver.framModel
+
    def enabled(self):
       return self.component.enabled()
 
@@ -102,8 +106,26 @@ class ScdBlackBoxImpl(BlackBoxImpl):
       return self.component.driver.erase()
 
 class ScdBlackBoxDriver(SpidevDriver):
+   def __init__(self, **kwargs):
+      super().__init__(**kwargs)
+      self._framModel = None
+
    def getBlackBox(self, component):
       return ScdBlackBoxImpl(component)
+
+   @property
+   def framModel(self):
+      if self._framModel is None:
+         cache = StoredData(
+            f'blackbox{self.addr.bus}.{self.addr.cs}_fram_model')
+         if cache.exist():
+            self._framModel = cache.read()
+         else:
+            model = self._detectFramModel()
+            if model:
+               cache.write(model)
+               self._framModel = model
+      return self._framModel or 'Unknown'
 
    def dump(self, outputPath):
       return self._runFlashromCmd(op='-r', outputPath=outputPath)
@@ -111,16 +133,26 @@ class ScdBlackBoxDriver(SpidevDriver):
    def erase(self):
       return self._runFlashromCmd(op='-E')
 
+   def _detectFramModel(self):
+      output = self._runFlashromCmd(op='-V')
+      if output is not None:
+         for line in output.splitlines():
+            if 'flash chip' in line:
+               parts = line.split()
+               ## Example: "Found Macronix flash chip "MX25U25645G""
+               return f'{parts[1]} {parts[4].strip('"')}'
+      return None
+
    def _runFlashromCmd(self, op, outputPath=None):
       devPath = self.getDevPath()
       if not os.path.exists(devPath):
          logging.error('%s: spidev not found: %s', self, devPath)
-         return False
+         return None
 
       flashromPath = Config().blackbox_flashrom_path
       if not os.path.exists(flashromPath):
          logging.error('%s: flashrom-arista not found at %s', self, flashromPath)
-         return False
+         return None
 
       cmd = [flashromPath, '-p', f'linux_spi:dev={devPath}']
       cmd.append(op)
@@ -131,7 +163,7 @@ class ScdBlackBoxDriver(SpidevDriver):
          logging.debug('%s: Executing %s', self, ' '.join(cmd))
          result = subprocess.run(
             cmd,
-            stdout=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             timeout=5,
             check=False
@@ -139,12 +171,13 @@ class ScdBlackBoxDriver(SpidevDriver):
 
          if result.returncode:
             logging.error('%s: flashrom cmd failed. rc:%d', self, result.returncode)
-            return False
+            return None
 
       except subprocess.TimeoutExpired:
          logging.error('%s: flashrom cmd %s timed out', self, op)
-         return False
+         return None
       except (OSError, ValueError) as e:
          logging.error('%s: Error executing flashrom command: %s', self, e)
-         return False
-      return True
+         return None
+
+      return result.stdout.decode('ascii')

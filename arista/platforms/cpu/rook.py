@@ -104,6 +104,7 @@ class RookCpu(Cpu):
    def addCpuDpm(self, addr=None, causes=None):
       addr = addr or self.cpuDpmAddr()
       return self.cpld.newComponent(Ucd90160, addr=addr, causes=causes or {
+         'cpu-s3': UcdGpi(2),
          'overtemp': UcdGpi(3),
          'procerror': UcdGpi(4, priority=UcdPriority.LOW),
          'fansmissing': UcdGpi(5),

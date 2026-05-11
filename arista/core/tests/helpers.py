@@ -1,20 +1,32 @@
 from ..fixed import FixedSystem
 from ..linecard import Linecard
 from ..platform import getPlatforms, loadPlatforms
+from ..supervisor import Supervisor
 
-def getAllFixedSystems():
+def _getFixedSystemClasses(ignoreSupervisor=False):
    loadPlatforms()
    for platformCls in getPlatforms():
-      if issubclass(platformCls, Linecard) and platformCls.CPU_CLS:
-         yield platformCls()
-      elif issubclass(platformCls, FixedSystem):
-         yield platformCls()
+      if ignoreSupervisor and issubclass(platformCls, Supervisor):
+         continue
       # NOTE: this leaves behind the following products
       # - chassis
       # - fabric cards
       # - linecards without CPUs
+      if issubclass(platformCls, Linecard) and platformCls.CPU_CLS:
+         yield platformCls
+      elif issubclass(platformCls, FixedSystem):
+         yield platformCls
+
+def getAllFixedSystems(ignoreSupervisor=False):
+   for platformCls in _getFixedSystemClasses(ignoreSupervisor=ignoreSupervisor):
+      yield platformCls()
+
+def getAllFixedSystemKeys(ignoreSupervisor=False):
+   for platformCls in _getFixedSystemClasses(ignoreSupervisor=ignoreSupervisor):
+      yield platformCls.SID[0] if platformCls.SID else platformCls.SKU[0]
 
 getAllSystems = getAllFixedSystems
+getAllSystemKeys = getAllFixedSystemKeys
 
 def classname(obj):
    return obj.__class__.__name__

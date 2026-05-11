@@ -1,95 +1,82 @@
-from ...tests.testing import unittest, patch
+from unittest.mock import patch
+
+import pytest
+
 from ...core import utils
-from ...core.fabric import Fabric
-from ...core.linecard import Linecard
-from ...core.modular import Modular
-from ...core.platform import loadPlatforms, getPlatforms
-from ...core.supervisor import Supervisor
+from ...core.tests.helpers import getAllFixedSystemKeys
 
 from .. import cleanupSimulation, main, setupSimulation
 
 def fakesleep(_):
    pass
 
-@patch('time.sleep', fakesleep)
-class CliLegacyTest(unittest.TestCase):
+PLATFORM_KEYS = list(getAllFixedSystemKeys())
+SUP_KEYS = (frozenset(PLATFORM_KEYS) -
+            frozenset(getAllFixedSystemKeys(ignoreSupervisor=True)))
 
-   @classmethod
-   def setUpClass(cls):
-      loadPlatforms()
-      cls.platforms = getPlatforms()
-      cls._initialSimulation = utils.simulation
+_INITIAL_SIMULATION = utils.simulation
 
-   def setUp(self):
+class SimulationBase:
+   def setup_method(self):
       setupSimulation()
 
-   def tearDown(self):
+   def teardown_method(self):
       cleanupSimulation()
-      utils.simulation = self._initialSimulation
+      utils.simulation = _INITIAL_SIMULATION
 
-   def _runMain(self, args, code=0):
-      exitCode = main(args)
-      self.assertEqual(exitCode, code,
-                       msg='Command %s failed with code %s' % (args, exitCode))
+def _runMain(args, code=0):
+   exitCode = main(args)
+   assert exitCode == code, f'Command {args} failed with code {exitCode}'
 
+@patch('time.sleep', fakesleep)
+class TestCliBasic(SimulationBase):
    def testSysEeprom(self):
-      self._runMain(['syseeprom'])
+      _runMain(['syseeprom'])
 
    def testPlatforms(self):
-      self._runMain(['platforms'])
+      _runMain(['platforms'])
 
    def testHelpAll(self):
-      with self.assertRaises(SystemExit) as sysExit:
-         self._runMain(['--help-all'])
-      self.assertEqual(sysExit.exception.code, 0)
-
-   def _foreachPlatform(self, *args, **kwargs):
-      code = kwargs.get('code', 0)
-      ignoreSup = kwargs.get('ignoreSupervisor', False)
-      ignoreTup = tuple([Modular, Fabric] + ([Supervisor] if ignoreSup else []))
-      for platform in self.platforms:
-         if issubclass(platform, ignoreTup):
-            continue
-         if issubclass(platform, Linecard) and not platform.CPU_CLS:
-            continue
-         key = platform.SID[0] if platform.SID else platform.SKU[0]
-         _args = ['-p', key] + list(args)
-         self._runMain(_args, code)
-
-   def testSetup(self):
-      self._foreachPlatform('setup')
-
-   def testResetToggle(self):
-      self._foreachPlatform('reset', '--toggle')
-
-   def testClean(self):
-      self._foreachPlatform('clean')
-
-   def testDump(self):
-      self._foreachPlatform('dump', ignoreSupervisor=True)
-
-   def testRebootCause(self):
-      self._foreachPlatform('reboot-cause')
-
-   def testDiag(self):
-      self._foreachPlatform('platform', 'diag', '--noIo')
+      with pytest.raises(SystemExit) as exc:
+         _runMain(['--help-all'])
+      assert exc.value.code == 0
 
    def testDiagIo(self):
       # TODO: fix simulation mode
-      #self._foreachPlatform('diag')
-      pass
+      #_runMain(['-p', key, 'platform', 'diag'])
+      pytest.skip('simulation mode not yet supported')
 
-   def testWatchdogStatus(self):
-      self._foreachPlatform('watchdog', '--status')
+@pytest.mark.parametrize('key', PLATFORM_KEYS)
+@patch('time.sleep', fakesleep)
+class TestCliPerPlatform(SimulationBase):
+   def testSetup(self, key):
+      _runMain(['-p', key, 'setup'])
 
-   def testWatchdogArm(self):
-      self._foreachPlatform('watchdog', '--arm')
+   def testResetToggle(self, key):
+      _runMain(['-p', key, 'reset', '--toggle'])
 
-   def testWatchdogArmTimeout(self):
-      self._foreachPlatform('watchdog', '--arm', '250')
+   def testClean(self, key):
+      _runMain(['-p', key, 'clean'])
 
-   def testWatchdogStop(self):
-      self._foreachPlatform('watchdog', '--stop')
+   def testDump(self, key):
+      if key in SUP_KEYS:
+         pytest.skip('dump not supported on supervisors')
+      _runMain(['-p', key, 'dump'])
 
-if __name__ == '__main__':
-   unittest.main()
+   def testRebootCause(self, key):
+      _runMain(['-p', key, 'reboot-cause'])
+
+   def testDiag(self, key):
+      _runMain(['-p', key, 'platform', 'diag', '--noIo'])
+
+   def testWatchdogStatus(self, key):
+      _runMain(['-p', key, 'watchdog', '--status'])
+
+   def testWatchdogArm(self, key):
+      _runMain(['-p', key, 'watchdog', '--arm'])
+
+   def testWatchdogArmTimeout(self, key):
+      _runMain(['-p', key, 'watchdog', '--arm', '250'])
+
+   def testWatchdogStop(self, key):
+      _runMain(['-p', key, 'watchdog', '--stop'])

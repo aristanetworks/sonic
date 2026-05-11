@@ -52,6 +52,7 @@ class ShowBlackBox(Renderer):
          List("BlackBox:", header=("%s", 'component'), tree=[
             Row('Enabled: %r', 'enabled'),
             Row('Version: %d', 'version'),
+            Row('Fram Model: %s', 'model')
          ]).render(model['blackboxes'])
       for log in model['logs']:
          print(f'\n=== {os.path.basename(log["path"])} ===')

@@ -10,6 +10,7 @@ from ...components.cpu.crow import (
    CrowFanCpld,
    CrowSysCpld,
 )
+from ...components.dpm.ucd import Ucd90120A, UcdGpi
 from ...components.max6658 import Max6658
 
 from ...descs.fan import FanDesc, FanPosition
@@ -63,3 +64,9 @@ class CrowCpu(Cpu):
                cpld.addFan(fanDesc),
             ]
          )
+
+   def addCpuDpm(self, scd, i2cBus):
+      scd.newComponent(Ucd90120A, addr=scd.i2cAddr(i2cBus, 0x4e, t=3), causes={
+         'cpu-s5': UcdGpi(1),
+         'cpu-s3': UcdGpi(2),
+      })

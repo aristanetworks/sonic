@@ -149,7 +149,7 @@ class Upperlake(FixedSystem):
       )
 
    def configureCpuDpm(self):
-      self.scd.newComponent(Ucd90120A, addr=self.scd.i2cAddr(1, 0x4e, t=3))
+      self.cpu.addCpuDpm(self.scd, 1)
 
    def configureSwitchDpm(self):
       self.scd.newComponent(Ucd90120A, addr=self.scd.i2cAddr(5, 0x4e, t=3), causes={

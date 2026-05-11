@@ -202,7 +202,7 @@ class Lodoga(LodogaBase):
       super().__init__(CrowCpu, LodogaCpldRegisters)
 
    def addPlatformComponents(self):
-      self.scd.newComponent(Ucd90120A, addr=self.scd.i2cAddr(0, 0x4e, t=3))
+      self.cpu.addCpuDpm(self.scd, 0)
       self.scd.addLeds([
          (0x6050, 'status'),
          (0x6060, 'fan_status'),

@@ -25,9 +25,10 @@ from ....inventory.temp import Temp
 logging = getLogger(__name__)
 
 class SysfsEntry(object):
-   def __init__(self, parent, name, prefix=None, pathCallback=None):
+   def __init__(self, parent, name, prefix=None, pathCallback=None, driver=None):
       self.parent = parent
-      self.driver = parent.driver
+      self.driver = parent.driver if parent else driver
+      assert self.driver, 'Driver for SysfsEntry must be provided'
       self.baseName = name
       self.name_ = None
       self.prefix_ = prefix

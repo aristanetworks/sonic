@@ -6,6 +6,7 @@
 #include <linux/bitfield.h>
 #include <linux/i2c.h>
 #include <linux/hwmon.h>
+#include <linux/hwmon-sysfs.h>
 #include <linux/regmap.h>
 #include <linux/version.h>
 
@@ -460,6 +461,63 @@ static const struct hwmon_chip_info max31732_chip_info = {
     .info = max31732_info,
 };
 
+static ssize_t beta_comp_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    struct max31732_data *data = dev_get_drvdata(dev);
+    struct sensor_device_attribute *sattr = to_sensor_dev_attr(attr);
+    int ret;
+
+    ret = regmap_test_bits(data->regmap, MAX31732_REG_BETA_COMP_ENABLE, BIT(sattr->index));
+    if (ret < 0)
+        return ret;
+
+    return sysfs_emit(buf, "%d\n", ret);
+}
+
+static ssize_t beta_comp_store(struct device *dev, struct device_attribute *attr,
+                   const char *buf, size_t count)
+{
+    struct max31732_data *data = dev_get_drvdata(dev);
+    struct sensor_device_attribute *sattr = to_sensor_dev_attr(attr);
+    long val;
+    int ret;
+
+    if (kstrtol(buf, 10, &val))
+        return -EINVAL;
+
+    if (val == 0)
+        ret = regmap_clear_bits(data->regmap, MAX31732_REG_BETA_COMP_ENABLE, BIT(sattr->index));
+    else if (val == 1)
+        ret = regmap_set_bits(data->regmap, MAX31732_REG_BETA_COMP_ENABLE, BIT(sattr->index));
+    else
+        return -EINVAL;
+
+    return ret ? ret : count;
+}
+
+/* Remote channels are 1-4 (bits 1-4 of BETA_COMP_ENABLE), exposed as temp2..temp5 */
+static SENSOR_DEVICE_ATTR_RW(temp2_beta_comp_enable, beta_comp, 1);
+static SENSOR_DEVICE_ATTR_RW(temp3_beta_comp_enable, beta_comp, 2);
+static SENSOR_DEVICE_ATTR_RW(temp4_beta_comp_enable, beta_comp, 3);
+static SENSOR_DEVICE_ATTR_RW(temp5_beta_comp_enable, beta_comp, 4);
+
+static struct attribute *max31732_extra_attrs[] = {
+    &sensor_dev_attr_temp2_beta_comp_enable.dev_attr.attr,
+    &sensor_dev_attr_temp3_beta_comp_enable.dev_attr.attr,
+    &sensor_dev_attr_temp4_beta_comp_enable.dev_attr.attr,
+    &sensor_dev_attr_temp5_beta_comp_enable.dev_attr.attr,
+    NULL,
+};
+
+static const struct attribute_group max31732_extra_group = {
+    .attrs = max31732_extra_attrs,
+};
+
+static const struct attribute_group *max31732_extra_groups[] = {
+    &max31732_extra_group,
+    NULL,
+};
+
 static int max31732_parse_alarms(struct device *dev, struct max31732_data *data)
 {
     s32 ret;
@@ -591,7 +649,7 @@ static int max31732_probe(struct i2c_client *client)
     }
 
     data->hwmon_dev = devm_hwmon_device_register_with_info(dev, client->name, data,
-                                   &max31732_chip_info, NULL);
+                                   &max31732_chip_info, max31732_extra_groups);
 
     return PTR_ERR_OR_ZERO(data->hwmon_dev);
 }

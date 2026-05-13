@@ -44,6 +44,10 @@ class RedstartCpu(Cpu):
 
       cpld.createPowerCycle()
       cpld.addSmbusMasterRange(0x8000, 1, 0x80, 6)
+      cpld.addLeds([
+          (0x6050, 'cpu_status'),
+      ])
+
 
       self.fanboard = self.parent.CHASSIS.addFanboard(cpld, cpld.getSmbus(9))
 

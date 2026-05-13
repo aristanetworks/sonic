@@ -2,6 +2,7 @@ from collections import defaultdict
 
 # NOTE: these import are for inventory objects critical to the .core package
 # pylint: disable=unused-import
+from ..inventory.led import MultiLed
 from ..inventory.reloadcause import ReloadCause, ReloadCauseProvider
 from ..inventory.slot import Slot
 
@@ -157,6 +158,9 @@ class Inventory():
    def addLed(self, led):
       self.leds[led.getName()] = led
       return led
+
+   def addMultiLed(self, name, leds):
+      return self.addLed(MultiLed(name, leds))
 
    def addLedGroup(self, name, leds):
       self.ledGroups[name] = leds

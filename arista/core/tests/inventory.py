@@ -195,5 +195,36 @@ class InventoryTest(unittest.TestCase):
          invval = getattr(inv, attr)()
          self.assertEqual(metaval, invval)
 
+class MultiLedTest(unittest.TestCase):
+   def _addMultiLed(self):
+      inv = Inventory()
+      led1 = MockLed('switch_status', color='green')
+      led2 = MockLed('cpu_status', color='green')
+      multiLed = inv.addMultiLed('status', [led1, led2])
+      return inv, multiLed, led1, led2
+
+   def testGetName(self):
+      _, multiLed, _, _ = self._addMultiLed()
+      self.assertEqual(multiLed.getName(), 'status')
+
+   def testGetColor(self):
+      _, multiLed, _, _ = self._addMultiLed()
+      self.assertEqual(multiLed.getColor(), 'green')
+
+   def testSetColorSyncsAllLeds(self):
+      _, multiLed, led1, led2 = self._addMultiLed()
+      multiLed.setColor('red')
+      self.assertEqual(led1.getColor(), 'red')
+      self.assertEqual(led2.getColor(), 'red')
+
+   def testGetColorReadsFirstLed(self):
+      _, multiLed, led1, _ = self._addMultiLed()
+      led1.setColor('amber')
+      self.assertEqual(multiLed.getColor(), 'amber')
+
+   def testAddMultiLed(self):
+      inv, multiLed, _, _ = self._addMultiLed()
+      self.assertIs(inv.getLed('status'), multiLed)
+
 if __name__ == '__main__':
    unittest.main()

@@ -104,11 +104,16 @@ class CitrineBase(FixedSystem):
       ])
 
       scd.addLeds([
-         LedDesc(name='status', addr=0x6050, **LedKind.desc(LedKind.RGB_8_F)),
+         LedDesc(name='switch_status', addr=0x6050, **LedKind.desc(LedKind.RGB_8_F)),
          LedDesc(name='fan_status', addr=0x6060, **LedKind.desc(LedKind.RGB_8_F)),
          LedDesc(name='psu_status', addr=0x6070, **LedKind.desc(LedKind.RGB_8_F)),
          LedDesc(name='beacon', addr=0x6090, **LedKind.desc(LedKind.RGB_8_F)),
          LedDesc(name='scm', addr=0x60A0, **LedKind.desc(LedKind.RGB_8_F)),
+      ])
+
+      self.inventory.addMultiLed('status', [
+         scd.inventory.getLed('switch_status'),
+         self.cpu.cpld.inventory.getLed('cpu_status'),
       ])
 
       scd.addResets([

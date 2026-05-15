@@ -43,6 +43,7 @@ setup_br1() {
    fi
 
    ip link add name br1 type bridge
+   ip link property add dev br1 altname eth1-midplane
    ip link set dev br1 up
    echo 1 > /proc/sys/net/ipv4/conf/br1/route_localnet
    ip addr add 127.100.1.1/16 dev br1

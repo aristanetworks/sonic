@@ -518,7 +518,7 @@ class Scd(PciComponent):
 
    def _addXcvrSlot(self, cls, name, port, bus=None, addr=None, ledAddr=None,
                     ledAddrOffsetFn=lambda x: 0x10, intrRegs=None,
-                    intrRegIdxFn=None, intrBitFn=None, **kwargs):
+                    intrRegIdxFn=None, intrBitFn=None, ledScd=None, **kwargs):
       intr = self.inventory.getInterrupts().get(f'port{port.index}')
       if intr is None and intrRegs:
          intrReg = intrRegs[intrRegIdxFn(port.index)]
@@ -555,7 +555,8 @@ class Scd(PciComponent):
                laneName = "%s_%d" % (laneName, laneId)
             leds.append((ledAddr, laneName))
             ledAddr += ledAddrOffsetFn(port.index)
-      ledGroup = self.addLedGroup(name, leds)
+      # LEDs may live on a different SCD than the slot's SMBus/interrupts
+      ledGroup = (ledScd or self).addLedGroup(name, leds)
       return self.newComponent(
          cls=cls,
          name=name,
@@ -635,7 +636,7 @@ class Scd(PciComponent):
 
    def addXcvrSlots(self, ports, addr=None, bus=None, ledAddr=None,
                     addrOffset=0x10, busOffset=1, ledAddrOffsetFn=lambda x: 0x10,
-                    **kwargs):
+                    ledScd=None, **kwargs):
       for p in ports:
          func = None
          if isinstance(p, Rj45):
@@ -651,7 +652,7 @@ class Scd(PciComponent):
          else:
             raise ValueError( 'Unsupported xcvr %s by SCD' % p )
          func(port=p, addr=addr, bus=bus, ledAddr=ledAddr,
-              ledAddrOffsetFn=ledAddrOffsetFn, **kwargs)
+              ledAddrOffsetFn=ledAddrOffsetFn, ledScd=ledScd, **kwargs)
          if addr is not None:
             addr += addrOffset
          if ledAddr is not None:

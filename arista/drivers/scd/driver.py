@@ -24,6 +24,7 @@ from ...libs.i2c import i2cBusFromName
 logging = getLogger(__name__)
 
 SCD_WAIT_TIMEOUT = 5.
+SYS_SCD_PATH = '/sys/class/scd'
 
 class ScdKernelDriver(PciKernelDriver):
    def __init__(self, scd=None, **kwargs):
@@ -155,6 +156,11 @@ class ScdKernelDriver(PciKernelDriver):
          self.scd.nmiConfig.setup(self.scd)
       if Config().lock_scd_conf:
          utils.writeConfig(path, {'init_trigger': '1'})
+      # Disable kernel panicking on NMI interrupts
+      utils.writeConfig(SYS_SCD_PATH, {
+         'disable_nmi': '1',
+         'watchdog_panic_enabled': '0',
+      })
       super(ScdKernelDriver, self).finish()
 
    def resetSim(self, value):

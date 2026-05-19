@@ -107,8 +107,13 @@ class SfpOptoe(SfpOptoeBase):
 
       # XXX: Hack to handle SFP modules plugged into non-SFP ports, which could
       # allow for a reset to "succeed" when it shouldn't
-      if self.sfp_type == "SFP":
-         return False
+      try:
+         if self.sfp_type == "SFP":
+            return False
+      except Exception: # pylint: disable-msg=broad-except
+         time.sleep(self.RESET_DELAY)
+         if self.sfp_type == "SFP":
+            return False
       return True
 
    def clear_interrupt(self):

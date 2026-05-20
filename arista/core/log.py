@@ -156,7 +156,7 @@ class CliLogSink(LogSink):
       return '%s%s%s' % (color, message, reset)
 
    def write(self, line, record):
-      print(line)
+      print(line, flush=True)
       if record.exc:
          traceback.print_exception(*sys.exc_info())
 

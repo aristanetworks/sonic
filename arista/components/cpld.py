@@ -363,13 +363,16 @@ class SysCpld(I2cComponent):
    DRIVER = SysCpldI2cDriver
    PRIORITY = Priority.DEFAULT
 
+   PROGRAMMABLE_CLS = SysCpldProgrammable
    SEU_REPORTER_CLS = SysCpldSeuReporter
    FAULT_TIME_BASE = datetime.datetime(2000, 1, 1)
 
    def __init__(self, *args, **kwargs):
       super(SysCpld, self).__init__(*args, **kwargs)
-      self.inventory.addProgrammable(SysCpldProgrammable(self))
-      self.inventory.addSeuReporter(self.SEU_REPORTER_CLS(self))
+      if self.PROGRAMMABLE_CLS: # pylint: disable=using-constant-test
+         self.inventory.addProgrammable(self.PROGRAMMABLE_CLS(self))
+      if self.SEU_REPORTER_CLS: # pylint: disable=using-constant-test
+         self.inventory.addSeuReporter(self.SEU_REPORTER_CLS(self))
 
    def getVersion(self):
       if inSimulation():

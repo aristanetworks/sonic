@@ -30,7 +30,7 @@ class RedstartCpu(Cpu):
    SMBUS_PWR = 8
    SMBUS_FC = 9
 
-   def __init__(self, **kwargs):
+   def __init__(self, syscpldCls=RedstartSysCpld, **kwargs):
       super().__init__(**kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
@@ -55,7 +55,7 @@ class RedstartCpu(Cpu):
       self.fanboard = self.parent.CHASSIS.addFanboard(cpld,
                                                       cpld.getSmbus(self.SMBUS_FC))
 
-      self.syscpld = cpld.newComponent(RedstartSysCpld,
+      self.syscpld = cpld.newComponent(syscpldCls,
                                        addr=cpld.i2cAddr(self.SMBUS_SC, 0x23))
 
       cpld.addReloadCauseProvider(causes=[

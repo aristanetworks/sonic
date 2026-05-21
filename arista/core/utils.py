@@ -246,6 +246,9 @@ class FileWaiter():
 
       logging.debug('Waiting file %s.', self.waitFile)
 
+      if inSimulation():
+         return True
+
       for r in Retrying(interval=self.waitTimeout):
          if self.fileExists():
             return True

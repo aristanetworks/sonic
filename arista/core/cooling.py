@@ -317,6 +317,8 @@ class CoolingLogicIncPid(CoolingLogic):
    def computePwm(self, lastPwm):
       pwms = [self.computePwmForThermal(lastPwm, thermal)
               for thermal in self.zone.thermals.values() if thermal.valid()]
+      if not pwms:
+         return self.config.maxSpeed
       return min(max(*pwms, self.config.minSpeed), self.config.maxSpeed)
 
 class ThermalClassicPid:

@@ -44,6 +44,8 @@ def _makeTPS16890Description(senseRes):
       hasFans=False,
       inputRailId=None,
       outputRailId=None,
+      outputMinVoltage=45.5,
+      outputMaxVoltage=52.5,
    )
    # TPS16890 only has input telemetry (vin/iin/pin) but it's only a circuit
    # breaker so output values should be very similar. Use direction=INPUT and
@@ -107,6 +109,8 @@ def _makeLTC4287Description(senseRes):
       hasFans=False,
       inputRailId=None,
       outputRailId=None,
+      outputMinVoltage=45.5,
+      outputMaxVoltage=52.5,
    )
    # LTC4287 exposes a mix of input and output telemetry:
    # - vin/pin are INPUT (no iin available)

@@ -179,10 +179,9 @@ class PsuManager:
       # try expected PSU models first
       models = slot.psus
       if tryAll:
-         models = slot.psus + [p for p in self.psuModels \
-               if p not in slot.psus and p.AUTODETECT_PMBUS]
+         models = slot.psus + [p for p in self.psuModels if p not in slot.psus]
       for model in models:
-         if not model.PMBUS_ADDR:
+         if not model.PMBUS_ADDR or not model.AUTODETECT_PMBUS:
             continue
 
          try:

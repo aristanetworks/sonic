@@ -140,7 +140,7 @@ class ScdBlackBoxDriver(SpidevDriver):
             if 'flash chip' in line:
                parts = line.split()
                ## Example: "Found Macronix flash chip "MX25U25645G""
-               return f'{parts[1]} {parts[4].strip('"')}'
+               return f'''{parts[1]} {parts[4].strip('"')}'''
       return None
 
    def _runFlashromCmd(self, op, outputPath=None):

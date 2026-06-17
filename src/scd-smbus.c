@@ -279,7 +279,7 @@ static int scd_smbus_master_wait(struct scd_smbus *bus, u16 addr)
          }
 
          if (time_after(jiffies, timeo)) {
-            master_err(master,
+            master_dbg(master,
                        "cs " CS_FMT " timed out after %ums bus=%d addr=%#02x\n",
                        CS_ARGS(cs), jiffies_to_msecs(jiffies - start),
                        bus->adap.nr, addr);

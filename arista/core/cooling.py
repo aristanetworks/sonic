@@ -1,5 +1,7 @@
 import copy
 import csv
+import datetime
+import json
 import math
 import os
 from dataclasses import dataclass
@@ -149,7 +151,9 @@ class CoolingThermalBase(CoolingObject):
       super().__init__(*args, **kwargs)
       self.overheat = None
       self.critical = None
+
       self.lastDrovePwm = math.inf
+      self.logicData_ = {}
 
    @property
    def temperature(self):
@@ -178,6 +182,12 @@ class CoolingThermalBase(CoolingObject):
                        self.name, self.config['kp'], self.config['ki'],
                        self.config['kd'], self.zone)
          self.configInitialized = True
+
+   def logicData(self, key):
+      data = self.logicData_.get(key)
+      if data is None:
+         self.logicData_[key] = data = HistoricalData(key)
+      return data
 
 class ThermalInfo(object):
    def __init__(self, thermal, value, target, overheat):
@@ -247,6 +257,12 @@ class CoolingLogic:
    def computePwm(self, lastPwm):
       raise NotImplementedError
 
+   def exportCooling(self):
+      return [self.zone.lastSpeed]
+
+   def exportThermal(self, _thermal):
+      return []
+
 class CoolingLogicLegacy(CoolingLogic):
    NAME = 'legacy'
 
@@ -272,10 +288,18 @@ class CoolingLogicLegacy(CoolingLogic):
 
       logging.debug('%s: using %s to set fan speed', self, info.thermal)
 
+      for candidate in infos.infos:
+         # Exported under 'p' so CSV columns match other cooling logic.
+         candidate.thermal.logicData('p').getValue(self.zone.algo.now,
+                                                   self.scaleOnElapsed(
+                                                      candidate.deltap))
+
       # Skip any fan speed adjustment if the temperature change is between some
       # configurable values
       if -self.config.negHyst < info.delta < self.config.posHyst:
          return lastPwm
+
+      info.thermal.lastDrovePwm = self.zone.algo.now
 
       if info.delta < 0:
          pwmDelta = max(self.maxDecrease * info.deltap, -self.maxDecrease)
@@ -291,6 +315,9 @@ class CoolingLogicLegacy(CoolingLogic):
 
       return pwm
 
+   def exportThermal(self, thermal):
+      return [thermal.logicData('p').lastGet or 0]
+
 class CoolingLogicIncPid(CoolingLogic):
    NAME = 'incpid'
 
@@ -305,11 +332,16 @@ class CoolingLogicIncPid(CoolingLogic):
       kp, ki, kd = thermal.config['kp'], thermal.config['ki'], thermal.config['kd']
 
       pwmDelta = 0
+      p = i = d = 0
       if temperature < minVal or temperature > maxVal:
-         pwmDelta = kp * (temperature - lastTemperature) + \
-                    ki * (temperature - target) + \
-                    kd * (temperature - 2 * lastTemperature +
-                          llastTemperature)
+         p = kp * (temperature - lastTemperature)
+         i = ki * (temperature - target)
+         d = kd * (temperature - 2 * lastTemperature + llastTemperature)
+         pwmDelta = p + i + d
+
+      thermal.logicData('p').getValue(self.zone.algo.now, p)
+      thermal.logicData('i').getValue(self.zone.algo.now, i)
+      thermal.logicData('d').getValue(self.zone.algo.now, d)
 
       logging.debug('%s temperature=%f target=%f pwmDelta=%f',
                     thermal, temperature, target, pwmDelta)
@@ -317,11 +349,22 @@ class CoolingLogicIncPid(CoolingLogic):
       return lastPwm + pwmDelta
 
    def computePwm(self, lastPwm):
-      pwms = [self.computePwmForThermal(lastPwm, thermal)
+      pwms = [(thermal, self.computePwmForThermal(lastPwm, thermal))
               for thermal in self.zone.thermals.values() if thermal.valid()]
       if not pwms:
          return self.config.maxSpeed
-      return min(max(*pwms, self.config.minSpeed), self.config.maxSpeed)
+
+      worstThermal, newPwm = max(pwms, key=lambda k: k[1])
+      if newPwm < self.config.minSpeed:
+         newPwm = self.config.minSpeed
+      elif newPwm > self.config.maxSpeed:
+         newPwm = self.config.maxSpeed
+
+      worstThermal.lastDrovePwm = self.zone.algo.now
+      return newPwm
+
+   def exportThermal(self, thermal):
+      return [thermal.logicData(k).lastGet or 0 for k in ('p', 'i', 'd')]
 
 class ThermalClassicPid:
    def __init__(self, thermal, targetOffset=0):
@@ -371,6 +414,9 @@ class ThermalClassicPid:
          tunedVal = self.thermal.config[f'k{term}'] * getattr(self, term)
          value += tunedVal
 
+         # flip the sign for compatibility with incpid
+         self.thermal.logicData(term).getValue(now, -tunedVal)
+
       self.value = value
       self.lastUpdateTime = now
 
@@ -417,6 +463,12 @@ class CoolingLogicClassicPid(CoolingLogic):
 
       pwm = (self.config.rpmSlope * newRpm) + self.config.rpmOffset
       return pwm
+
+   def exportCooling(self):
+      return [self.targetRpm.lastSet or self.config.maxSpeed]
+
+   def exportThermal(self, thermal):
+      return [thermal.logicData(k).lastGet or 0 for k in ('p', 'i', 'd')]
 
 @dataclass
 class CoolingConfig:
@@ -553,18 +605,144 @@ class CoolingZone(object):
       for fan in self.fans.values():
          fan.set(self.algo.now, desiredSpeed)
 
-   def export(self, path):
-      path = os.path.join(path, '%s.cooling.csv' % self.name)
-      with open(path, 'a', encoding='utf8', newline='') as f:
-         writer = csv.writer(f, dialect='unix')
-         for col in (self.fans, self.thermals):
-            for obj in col.values():
-               for op in ['get', 'set']:
-                  entry = getattr(obj.data, op, None)
-                  if not entry:
-                     continue
-                  ts, value = entry[-1]
-                  writer.writerow((str(ts), obj.name, op, str(value)))
+class ThermalExportCsv:
+   def __init__(self, path, name):
+      self.path = path
+      self.name = name
+      self.file = None
+      self.writer = None
+
+   def open(self):
+      # pylint: disable=consider-using-with
+      self.file = open(
+         os.path.join(self.path, self.name), 'w', encoding='utf8', newline='')
+      self.writer = csv.writer(self.file, dialect='unix')
+
+   def writerow(self, row):
+      self.writer.writerow(row)
+
+   def flush(self):
+      self.file.flush()
+
+   def close(self):
+      self.file.close()
+
+
+class ThermalExporter:
+   def __init__(self, path):
+      self.path = path
+      self.thermalIdMap = {}
+
+      self.info = None
+      self.nextSensorId = 1
+
+      self.thermalCsv = ThermalExportCsv(path, 'thermals.csv')
+      self.fanCsv = ThermalExportCsv(path, 'fans.csv')
+
+      self.startMono = None
+
+   def updateZoneInfo(self, zone):
+      self.info['zones'][zone.name] = {
+         'logic': zone.logic.NAME,
+      }
+
+      for key, thermal in zone.thermals.items():
+         if not thermal.valid():
+            continue
+
+         if key in self.thermalIdMap:
+            continue
+
+         self.thermalIdMap[key] = str(self.nextSensorId)
+         # TODO: Stable sensor IDs
+         self.nextSensorId += 1
+
+         self.info['sensors'].append({
+            'id': self.thermalIdMap[key],
+            'name': thermal.name,
+            'zone': zone.name,
+            'target': thermal.target + zone.algo.config.targetOffset,
+            'overheat': thermal.overheat,
+            'critical': thermal.critical,
+         })
+
+      with open(os.path.join(self.path, 'info.json'), 'w') as f:
+         json.dump(self.info, f)
+
+   def load(self, zones, now):
+      if self.info is not None:
+         return
+
+      os.makedirs(self.path, exist_ok=True)
+
+      self.startMono = now
+      self.info = {
+         'start': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+         'sensors': [],
+         'zones': {},
+      }
+      for zone in zones.values():
+         self.updateZoneInfo(zone)
+
+      self.thermalCsv.open()
+      self.fanCsv.open()
+
+   def exportZone(self, zone, now):
+      for key, thermal in zone.thermals.items():
+         if not thermal.valid():
+            continue
+         if key not in self.thermalIdMap:
+            self.updateZoneInfo(zone)
+
+         ts, value = thermal.data.get[-1]
+         row = [
+            # timestamp (relative to start of export)
+            int(ts - self.startMono),
+            # sensor ID
+            self.thermalIdMap[key],
+            # temperature
+            value,
+            # how long since this thermal drove PWM (or -1 if never)
+            -1 if thermal.lastDrovePwm == math.inf else \
+                  now - thermal.lastDrovePwm,
+            # cooling logic parameters (e.g. P, I and D terms)
+         ] + zone.logic.exportThermal(thermal)
+
+         self.thermalCsv.writerow(row)
+
+      ts = zone.speed.set[-1][0]
+      configured = zone.logic.exportCooling()
+
+      for key, fan in zone.fans.items():
+         actual = 0
+         if fan.data.get:
+            actual = fan.data.get[-1][1]
+
+         self.fanCsv.writerow([
+            # timestamp
+            int(ts - self.startMono),
+            # fan zone
+            zone.name
+            # configured speed (for whole zone)
+         ] + configured + [
+            # fan name
+            key,
+            # actual speed
+            actual
+         ])
+
+   def run(self, zones, now):
+      self.load(zones, now)
+
+      for zone in zones.values():
+         self.exportZone(zone, now)
+
+      self.thermalCsv.flush()
+      self.fanCsv.flush()
+
+   def close(self):
+      self.thermalCsv.close()
+      self.fanCsv.close()
 
 class CoolingAlgorithm(object):
 
@@ -583,6 +761,7 @@ class CoolingAlgorithm(object):
       self.elapsed = None
       self.initialized = False
       self.zones = {}
+      self.exporter = None
 
    def __str__(self):
       return '%s()' % self.__class__.__name__
@@ -604,11 +783,8 @@ class CoolingAlgorithm(object):
          logging.debug('%s: with config %s', self, self.config)
          self.loadZones()
 
-   def export(self, path):
-      if inSimulation():
-         return
-      for zone in self.zones.values():
-         zone.export(path)
+         if not inSimulation() and Config().cooling_export_path:
+            self.exporter = ThermalExporter(Config().cooling_export_path)
 
    def run(self, elapsed=None, fans=None, thermals=None, update=False,
            extraPwms=None):
@@ -636,5 +812,5 @@ class CoolingAlgorithm(object):
       logging.debug('%s: algorithm took %.4fs to run', self,
                     monotonicRaw() - self.now)
 
-      if Config().cooling_export_path:
-         self.export(Config().cooling_export_path)
+      if self.exporter is not None:
+         self.exporter.run(self.zones, self.now)

@@ -1,4 +1,8 @@
+import csv
 from dataclasses import dataclass
+import json
+import os
+import tempfile
 
 from ...descs.sensor import SensorDesc
 
@@ -16,6 +20,7 @@ from ..cooling import (
     CoolingLogicLegacy,
     CoolingThermalBase,
     ThermalClassicPid,
+    ThermalExporter,
 )
 
 from ..thermal_policy_config import ThermalPolicyConfig
@@ -530,6 +535,123 @@ class CoolingIntegrationTest(unittest.TestCase):
       self.assertEqual(fans['fan_1'].data.lastSet, 60)
       self.assertEqual(fans['fan_2'].data.lastSet, 100)
 
+class CoolingLogicExportTest(unittest.TestCase):
+
+   def _makeAlgo(self, logic, thermalConfig=None):
+      config = {
+         'thermals': {
+            'hotspot': thermalConfig or {},
+         },
+         'zones': {
+            'default': {'logic': logic},
+         },
+      }
+      algo = CoolingAlgorithm(CoolingMockPlatform(CoolingMockInventory([], [])))
+      algo.load(policyConfig=config)
+      return algo
+
+   def _makeFansAndThermals(self, fanValues=None, tempValues=None):
+      fans = {
+         'fan1': CoolingMockFan('fan1',
+            inv=CoolingMockInvFan('fan1', values=fanValues or [50])),
+      }
+      thermals = {
+         'hotspot': CoolingMockThermal('hotspot',
+            inv=CoolingMockInvTemp(name='hotspot', target=50,
+                                   values=tempValues or [55])),
+      }
+      return fans, thermals
+
+   def _exportRows(self, algo):
+      with tempfile.TemporaryDirectory() as tmpdir:
+         exporter = ThermalExporter(tmpdir)
+         exporter.run(algo.zones, algo.now)
+         exporter.close()
+
+         with open(os.path.join(tmpdir, 'thermals.csv'),
+                   encoding='utf8', newline='') as f:
+            thermalRows = list(csv.reader(f))
+         with open(os.path.join(tmpdir, 'fans.csv'),
+                   encoding='utf8', newline='') as f:
+            fanRows = list(csv.reader(f))
+         return thermalRows, fanRows
+
+   def testLegacy(self):
+      algo = self._makeAlgo('legacy')
+      fans, thermals = self._makeFansAndThermals()
+
+      algo.run(fans=fans, thermals=thermals,
+               elapsed=algo.INTERVAL, update=True)
+
+      thermalRows, fanRows = self._exportRows(algo)
+      self.assertEqual(thermalRows[0], ['0', '1', '55.0', '0.0', '0.5'])
+      self.assertEqual(fanRows[0][1:], ['default', '62.5', 'fan1', '50'])
+
+   def testIncPid(self):
+      algo = self._makeAlgo('incpid', {
+         'kp': 1,
+         'ki': 2,
+         'kd': 3,
+      })
+      fans, thermals = self._makeFansAndThermals(
+         fanValues=[50, 50], tempValues=[50, 55])
+
+      for _ in range(2):
+         algo.run(fans=fans, thermals=thermals,
+                  elapsed=algo.INTERVAL, update=True)
+
+      thermalRows, fanRows = self._exportRows(algo)
+      self.assertEqual(thermalRows[0],
+                       ['0', '1', '55.0', '0.0', '5.0', '10.0', '15.0'])
+      self.assertEqual(fanRows[0][1:], ['default', '80.0', 'fan1', '50'])
+
+   def testClassicPid(self):
+      algo = self._makeAlgo('classicpid', {
+         'kp': 2,
+         'ki': 0,
+         'kd': 3,
+      })
+      fans, thermals = self._makeFansAndThermals()
+
+      algo.run(fans=fans, thermals=thermals,
+               elapsed=algo.INTERVAL, update=True)
+
+      thermalRows, fanRows = self._exportRows(algo)
+      self.assertEqual(thermalRows[0],
+                       ['0', '1', '55.0', '0.0', '10.0', '0', '0'])
+      self.assertEqual(fanRows[0][1:], ['default', '100', 'fan1', '50'])
+
+   def testInfoKeepsSeenThermals(self):
+      algo = self._makeAlgo('legacy')
+      fans = {
+         'fan1': CoolingMockFan('fan1',
+            inv=CoolingMockInvFan('fan1', values=[50, 50])),
+      }
+      thermals = {
+         'old': CoolingMockThermal('old',
+            inv=CoolingMockInvTemp(name='old', target=50, values=[55])),
+      }
+
+      with tempfile.TemporaryDirectory() as tmpdir:
+         exporter = ThermalExporter(tmpdir)
+         algo.run(fans=fans, thermals=thermals,
+                  elapsed=algo.INTERVAL, update=True)
+         exporter.run(algo.zones, algo.now)
+
+         thermals = {
+            'new': CoolingMockThermal('new',
+               inv=CoolingMockInvTemp(name='new', target=50, values=[56])),
+         }
+         algo.run(fans=fans, thermals=thermals,
+                  elapsed=algo.INTERVAL, update=True)
+         exporter.run(algo.zones, algo.now)
+         exporter.close()
+
+         with open(os.path.join(tmpdir, 'info.json'), encoding='utf8') as f:
+            info = json.load(f)
+
+      self.assertEqual([s['name'] for s in info['sensors']], ['old', 'new'])
+
 class CoolingClassicPidLogicTest(unittest.TestCase):
 
    class ClassicPidPlatform(CoolingMockPlatform):
@@ -691,6 +813,8 @@ class ThermalClassicPidTest(unittest.TestCase):
       self.assertAlmostEqual(pid.p, -0.8)
       self.assertAlmostEqual(pid.d, -0.0064)
       self.assertAlmostEqual(pid.value, -0.8064)
+      self.assertAlmostEqual(pid.thermal.logicData('p').lastGet, 0.8)
+      self.assertAlmostEqual(pid.thermal.logicData('d').lastGet, 0.0064)
 
    def testTuning(self):
       pid = self._makeThermalPid([(0, 40), (1000, 50)], kp=2, kd=3)
@@ -700,6 +824,8 @@ class ThermalClassicPidTest(unittest.TestCase):
       pid.update(110)
 
       self.assertAlmostEqual(pid.value, -1.6192)
+      self.assertAlmostEqual(pid.thermal.logicData('p').lastGet, 1.6)
+      self.assertAlmostEqual(pid.thermal.logicData('d').lastGet, 0.0192)
 
 class CoolingLegacyLogicTest(unittest.TestCase):
 

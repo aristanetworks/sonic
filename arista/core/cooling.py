@@ -1,5 +1,6 @@
 import copy
 import csv
+import math
 import os
 from dataclasses import dataclass
 
@@ -148,6 +149,7 @@ class CoolingThermalBase(CoolingObject):
       super().__init__(*args, **kwargs)
       self.overheat = None
       self.critical = None
+      self.lastDrovePwm = math.inf
 
    @property
    def temperature(self):
@@ -322,8 +324,9 @@ class CoolingLogicIncPid(CoolingLogic):
       return min(max(*pwms, self.config.minSpeed), self.config.maxSpeed)
 
 class ThermalClassicPid:
-   def __init__(self, thermal):
+   def __init__(self, thermal, targetOffset=0):
       self.thermal = thermal
+      self.targetOffset = targetOffset
 
       if thermal.config['ki'] != 0:
          logging.warning('%s ki!=0, integral is currently not implemented', thermal)
@@ -335,14 +338,11 @@ class ThermalClassicPid:
       self.i = 0
       self.d = 0
       self.value = 0
+      self.lastUpdateTime = 0
 
-   def update(self):
-      curTs, temperature = self.thermal.data.get[-1]
-      if len(self.thermal.data.get) < 2:
-         lastTs = curTs
-         lastTemperature = temperature
-      else:
-         lastTs, lastTemperature = self.thermal.data.get[-2]
+   def update(self, now):
+      temperature = self.thermal.temperature
+      lastTemperature = self.thermal.getLast(2) or temperature
 
       delta = abs(temperature - lastTemperature)
       self.resolution = min(self.resolution, delta)
@@ -355,15 +355,15 @@ class ThermalClassicPid:
       else:
          self.lambda_ = 0.3
 
-      err = self.thermal.target - temperature
-      if lastTs == curTs:
+      err = ( self.thermal.target + self.targetOffset ) - temperature
+      if self.lastUpdateTime == 0:
          # First reading, initialise P to current error
          self.p = err
       else:
          lastP = self.p
          self.p = (1 - self.lambda_) * self.p + self.lambda_ * err
 
-         d = (self.p - lastP) / (curTs - lastTs)
+         d = (self.p - lastP) / (now - self.lastUpdateTime)
          self.d = (1 - self.lambda_) * self.d + self.lambda_ * d
 
       value = 0
@@ -372,6 +372,7 @@ class ThermalClassicPid:
          value += tunedVal
 
       self.value = value
+      self.lastUpdateTime = now
 
 class CoolingLogicClassicPid(CoolingLogic):
    NAME = 'classicpid'
@@ -390,26 +391,29 @@ class CoolingLogicClassicPid(CoolingLogic):
 
          thermalPid = self.thermalPids.get(thermal)
          if thermalPid is None:
-            self.thermalPids[thermal] = thermalPid = ThermalClassicPid(thermal)
+            self.thermalPids[thermal] = thermalPid = ThermalClassicPid(
+               thermal, self.config.targetOffset)
 
-         thermalPid.update()
-         pids.append(thermalPid.value)
+         thermalPid.update(self.zone.algo.now)
+         pids.append((thermal, thermalPid.value))
          seen.add(thermal)
-      for thermal in self.zone.thermals.values():
-         if thermal not in seen and thermal in self.thermalPids:
-            # thermal went away, clear its PID state
-            self.thermalPids.pop(thermal)
+      for thermal in set(self.thermalPids) - seen:
+         # thermal went away, clear its PID state
+         self.thermalPids.pop(thermal)
 
       if not pids:
          return self.config.maxSpeed
 
-      worstPid = min(pids)
+      worstThermal, worstPid = min(pids, key=lambda k: k[1])
       newRpm = (self.targetRpm.lastSet or self.config.maxSpeed) - worstPid
       if newRpm < self.config.minSpeed:
          newRpm = self.config.minSpeed
       elif newRpm > self.config.maxSpeed:
          newRpm = self.config.maxSpeed
       self.targetRpm.setValue(self.zone.algo.now, newRpm)
+      worstThermal.lastDrovePwm = self.zone.algo.now
+      logging.debug('%s is driving PID in zone %s (newRpm=%d lastDrovePwm=%d)',
+                    worstThermal, self.zone, newRpm, worstThermal.lastDrovePwm)
 
       pwm = (self.config.rpmSlope * newRpm) + self.config.rpmOffset
       return pwm

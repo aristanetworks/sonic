@@ -2,11 +2,11 @@ import os
 import re
 
 from .config import etcPath, flashPath
-from .driver.kernel import KernelDriver
 from .dynload import importSubmodules
 from .exception import UnknownPlatformError
 from .log import getLogger
 from .prefdl import Prefdl
+from .prerequisites import loadPrerequisites
 from .types import I2cBus
 from .utils import (
    simulateWith,
@@ -26,9 +26,6 @@ host_prefdl_path = flashPath('.system-prefdl')
 host_prefdl_path_bin = flashPath('.system-prefdl-bin')
 fmted_prefdl_path = etcPath('.syseeprom')
 
-PREREQUISITES = [
-   KernelDriver(module='i2c-dev'),
-]
 IDENT_BUS_NAMES = [
    'SMBus PIIX4 adapter port 1 at 0b20',
 ]
@@ -113,10 +110,6 @@ class PlatformManager:
       return importSubmodules(package).keys()
 
 manager = PlatformManager()
-
-def loadPrerequisites():
-   for driver in PREREQUISITES:
-      driver.setup()
 
 def readI2cPrefdlEeprom():
    # pylint: disable=import-outside-toplevel

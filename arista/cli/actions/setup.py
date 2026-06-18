@@ -5,7 +5,7 @@ from ...core import utils
 from ...core.config import Config
 from ...core.component import Priority
 from ...core.log import getLogger
-from ...core.platform import loadPrerequisites
+from ...core.prerequisites import loadPrerequisites
 
 logging = getLogger(__name__)
 

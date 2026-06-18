@@ -11,8 +11,11 @@ from ..cooling import (
     CoolingAlgorithm,
     CoolingConfig,
     CoolingFanBase,
+    CoolingLogicClassicPid,
+    CoolingLogicIncPid,
     CoolingLogicLegacy,
     CoolingThermalBase,
+    ThermalClassicPid,
 )
 
 from ..thermal_policy_config import ThermalPolicyConfig
@@ -473,6 +476,230 @@ class CoolingIntegrationTest(unittest.TestCase):
       # All fans should have a speed set
       for fan in fans.values():
          self.assertIsNotNone(fan.data.lastSet)
+
+   def testMultiZoneRunSupportsMixedLogic(self):
+      algo = CoolingAlgorithm(CoolingMockPlatform(CoolingMockInventory([], [])))
+      algo.load(policyConfig={
+         'version': 1,
+         'profiles': {
+            'default': {
+               'thermals': {
+                  'asic_temp': {
+                     'kp': 0.1,
+                     'ki': 0.5,
+                     'kd': 5,
+                     'zone': 'asic_zone',
+                  },
+                  'optics_temp': {
+                     'kp': 1,
+                     'ki': 0,
+                     'kd': 0,
+                     'zone': 'optics_zone',
+                  },
+               },
+               'fans': {
+                  'fan_1': {'zone': 'asic_zone'},
+                  'fan_2': {'zone': 'optics_zone'},
+               },
+               'zones': {
+                  'asic_zone': {'logic': 'incpid'},
+                  'optics_zone': {'logic': 'classicpid'},
+               },
+            },
+         },
+      })
+      fans = {
+         'fan_1': CoolingMockFan('fan_1',
+            inv=CoolingMockInvFan('fan_1', values=[50])),
+         'fan_2': CoolingMockFan('fan_2',
+            inv=CoolingMockInvFan('fan_2', values=[50])),
+      }
+      thermals = {
+         'asic_temp': CoolingMockThermal('asic_temp',
+            inv=CoolingMockInvTemp(name='asic_temp', target=50, values=[70])),
+         'optics_temp': CoolingMockThermal('optics_temp',
+            inv=CoolingMockInvTemp(name='optics_temp', target=50, values=[55])),
+      }
+
+      algo.run(fans=fans, thermals=thermals,
+               elapsed=algo.INTERVAL, update=True)
+
+      self.assertIsInstance(algo.zones['asic_zone'].logic, CoolingLogicIncPid)
+      self.assertIsInstance(algo.zones['optics_zone'].logic,
+                            CoolingLogicClassicPid)
+      self.assertEqual(fans['fan_1'].data.lastSet, 60)
+      self.assertEqual(fans['fan_2'].data.lastSet, 100)
+
+class CoolingClassicPidLogicTest(unittest.TestCase):
+
+   class ClassicPidPlatform(CoolingMockPlatform):
+      COOLING = CoolingConfig(
+         logic=CoolingLogicClassicPid,
+         targetOffset=10,
+      )
+
+   class ClassicPidNoOffsetPlatform(CoolingMockPlatform):
+      COOLING = CoolingConfig(logic=CoolingLogicClassicPid)
+
+   class RpmSlopePlatform(CoolingMockPlatform):
+      COOLING = CoolingConfig(
+         logic=CoolingLogicClassicPid,
+         rpmSlope=0.5,
+         rpmOffset=10,
+      )
+
+   def _makeAlgo(self, platformCls=None, policyConfig=None):
+      algo = CoolingAlgorithm(
+         (platformCls or self.ClassicPidPlatform)(CoolingMockInventory([], [])))
+      algo.load(policyConfig=policyConfig)
+      return algo
+
+   def _makeFansAndThermals(self, fanValues=None, tempValues=None, target=50):
+      fans = {
+         'fan1': CoolingMockFan('fan1',
+            inv=CoolingMockInvFan('fan1', values=fanValues or [100])),
+      }
+      thermals = {
+         'hotspot': CoolingMockThermal('hotspot',
+            inv=CoolingMockInvTemp(
+               name='hotspot', target=target, values=tempValues or [55])),
+      }
+      return fans, thermals
+
+   def testTargetOffset(self):
+      algo = self._makeAlgo()
+      fans, thermals = self._makeFansAndThermals(tempValues=[55])
+
+      algo.run(fans=fans, thermals=thermals,
+               elapsed=algo.INTERVAL, update=True)
+
+      self.assertEqual(fans['fan1'].data.lastSet, 99.625)
+
+   def testRpmSlope(self):
+      algo = self._makeAlgo(self.RpmSlopePlatform)
+      fans, thermals = self._makeFansAndThermals(tempValues=[45])
+
+      algo.run(fans=fans, thermals=thermals,
+               elapsed=algo.INTERVAL, update=True)
+
+      # targetRpm is converted to PWM by rpmSlope/rpmOffset.
+      self.assertEqual(fans['fan1'].data.lastSet, 59.8125)
+      self.assertEqual(algo.zones['default'].logic.targetRpm.lastSet, 99.625)
+
+   def testPidCleanup(self):
+      algo = self._makeAlgo()
+      fans, thermals = self._makeFansAndThermals(
+         fanValues=[100, 100], tempValues=[55])
+
+      algo.run(fans=fans, thermals=thermals,
+               elapsed=algo.INTERVAL, update=True)
+      self.assertEqual(len(algo.zones['default'].logic.thermalPids), 1)
+
+      algo.zones['default'].thermals = {}
+      algo.zones['default'].logic.computePwm(100)
+
+      self.assertEqual(algo.zones['default'].logic.thermalPids, {})
+
+   def testPerThermalTuning(self):
+      algo = self._makeAlgo(
+         self.ClassicPidNoOffsetPlatform,
+         policyConfig={
+            'thermals': {
+               'warm': {'kp': 2, 'ki': 0, 'kd': 0},
+               'hot': {'kp': 0.5, 'ki': 0, 'kd': 0},
+            },
+         },
+      )
+      fans, _ = self._makeFansAndThermals(fanValues=[100, 100])
+      thermals = {
+         'warm': CoolingMockThermal('warm',
+            inv=CoolingMockInvTemp(name='warm', target=50, values=[45, 65])),
+         'hot': CoolingMockThermal('hot',
+            inv=CoolingMockInvTemp(name='hot', target=50, values=[45, 65])),
+      }
+
+      algo.run(fans=fans, thermals=thermals,
+               elapsed=algo.INTERVAL, update=True)
+      firstRpm = fans['fan1'].data.lastSet
+      self.assertEqual(firstRpm, 97.5)
+
+      algo.run(fans=fans, thermals=thermals,
+               elapsed=algo.INTERVAL, update=True)
+
+      # warm drives PID due to its more aggressive tuning
+      self.assertEqual(fans['fan1'].data.lastSet, 99.5)
+      self.assertGreater(fans['fan1'].data.lastSet, firstRpm)
+      self.assertEqual(thermals['warm'].lastDrovePwm, algo.now)
+      self.assertLess(thermals['hot'].lastDrovePwm, algo.now)
+
+class ThermalClassicPidTest(unittest.TestCase):
+
+   def _makeThermalPid(self, readings, target=50, kp=1, kd=0):
+      thermal = CoolingMockThermal('hotspot',
+         inv=CoolingMockInvTemp(name='hotspot', target=target))
+      thermal.config = {'kp': kp, 'ki': 0, 'kd': kd}
+      thermal.data.get = readings
+      return ThermalClassicPid(thermal)
+
+   def testLambda(self):
+      for delta, expectedLambda in [
+            (1.0, 0.08),
+            (0.5, 0.1),
+            (0.25, 0.15),
+            (0.1, 0.3),
+         ]:
+         pid = self._makeThermalPid([(0, 50), (10, 50 + delta)])
+
+         pid.update(10)
+
+         self.assertAlmostEqual(pid.resolution, delta)
+         self.assertEqual(pid.lambda_, expectedLambda)
+
+   def testResolutionFloor(self):
+      pid = self._makeThermalPid([(0, 50), (10, 50.25)])
+      pid.update(10)
+      self.assertEqual(pid.resolution, 0.25)
+      self.assertEqual(pid.lambda_, 0.15)
+
+      # Resolution is the smallest observed temperature step, so later larger
+      # deltas must not make it larger.
+      pid.thermal.data.get.append((20, 52))
+      pid.update(20)
+
+      self.assertEqual(pid.resolution, 0.25)
+      self.assertEqual(pid.lambda_, 0.15)
+
+   def testFirstReading(self):
+      pid = self._makeThermalPid([(10, 55)])
+
+      pid.update(10)
+
+      self.assertEqual(pid.p, -5)
+      self.assertEqual(pid.d, 0)
+      self.assertEqual(pid.value, -5)
+
+   def testSmoothing(self):
+      pid = self._makeThermalPid([(0, 40), (1000, 50)], kd=1)
+
+      pid.update(100)
+      pid.thermal.data.get.append((2000, 60))
+      pid.update(110)
+
+      # lambda=0.08 smooths P first; D is then smoothed using the algorithm
+      # update interval rather than the interval between thermal readings.
+      self.assertEqual(pid.lambda_, 0.08)
+      self.assertAlmostEqual(pid.p, -0.8)
+      self.assertAlmostEqual(pid.d, -0.0064)
+      self.assertAlmostEqual(pid.value, -0.8064)
+
+   def testTuning(self):
+      pid = self._makeThermalPid([(0, 40), (1000, 50)], kp=2, kd=3)
+
+      pid.update(100)
+      pid.thermal.data.get.append((2000, 60))
+      pid.update(110)
+
+      self.assertAlmostEqual(pid.value, -1.6192)
 
 class CoolingLegacyLogicTest(unittest.TestCase):
 

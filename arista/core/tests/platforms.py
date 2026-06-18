@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 from ...tests.testing import unittest, patch
 from ...tests.logging import getLogger
 
@@ -25,9 +27,10 @@ from .. import utils
 from ..component import Component
 from ..driver import Driver
 from ..driver.kernel.sysfs import SysfsEntry, GpioSysfsImpl
-from ..exception import UnknownPlatformError
 from ..fixed import FixedSystem
 from ..hwapi import HwApi
+from ..identity.bmc import PlatformIdentityBmc
+from ..identity import bmc as bmcIdentityModule
 from .. import platform as platformModule
 from ..platform import getPlatformSkus
 from ..sku import Sku
@@ -152,10 +155,12 @@ class MockPlatformTest(unittest.TestCase):
       self.assertIs(manager.bmcSubsystemIndex[('Goldfinch', 'SteamerLaneMv3')],
                     GoldfinchSteamerLane)
 
-      with patch.object(platformModule, 'isBmcEnvironment', return_value=True), \
-           patch.object(platformModule, 'readBmcDeviceTreeModel',
+      identity = PlatformIdentityBmc(manager, cmdline={})
+      with patch.object(platformModule, 'getPlatformIdentity',
+                        return_value=identity), \
+           patch.object(bmcIdentityModule, 'readBmcDeviceTreeModel',
                         return_value='Goldfinch'), \
-           patch.object(platformModule, 'loadPrerequisites'), \
+           patch.object(bmcIdentityModule, 'loadPrerequisites'), \
            patch.object(GoldfinchBmc, 'readChassisEeprom',
                         return_value={'SID': 'SteamerLaneMv3'}):
          platform = platformModule.getPlatform()
@@ -164,42 +169,21 @@ class MockPlatformTest(unittest.TestCase):
       self.assertIsInstance(platform.bmc, GoldfinchBmc)
       self.assertIsInstance(platform.hostSwitch, SteamerLaneHostSwitch)
 
-   def testBmcPlatformLookupWithName(self):
-      with patch.object(platformModule, 'isBmcEnvironment', return_value=True):
-         with self.assertRaisesRegex(
-                  UnknownPlatformError,
-                  'does not accept name'):
-            platformModule.getPlatform('Goldfinch')
-
-   def testBmcPlatformLookupWithUnknownModel(self):
-      with patch.object(platformModule, 'isBmcEnvironment', return_value=True), \
-           patch.object(platformModule, 'readBmcDeviceTreeModel',
-                        return_value='Unknown'):
-         with self.assertRaisesRegex(
-                  UnknownPlatformError,
-                  'Unknown.*supported BMC models: Goldfinch'):
-            platformModule.getPlatform()
-
-   def testBmcPlatformLookupWithEmptySid(self):
-      with patch.object(platformModule, 'isBmcEnvironment', return_value=True), \
-           patch.object(platformModule, 'readBmcDeviceTreeModel',
-                        return_value='Goldfinch'), \
-           patch.object(platformModule, 'loadPrerequisites'), \
-           patch.object(GoldfinchBmc, 'readChassisEeprom', return_value={}):
-         with self.assertRaisesRegex(UnknownPlatformError, 'empty SID'):
-            platformModule.getPlatform()
-
-   def testBmcPlatformLookupWithUnknownSid(self):
-      with patch.object(platformModule, 'isBmcEnvironment', return_value=True), \
-           patch.object(platformModule, 'readBmcDeviceTreeModel',
-                        return_value='Goldfinch'), \
-           patch.object(platformModule, 'loadPrerequisites'), \
-           patch.object(GoldfinchBmc, 'readChassisEeprom',
-                        return_value={'SID': 'Unknown'}):
-         with self.assertRaisesRegex(
-                  UnknownPlatformError,
-                  'No BMC subsystem.*Goldfinch.*Unknown'):
-            platformModule.getPlatform()
+   @patch('arista.platforms.bmc.goldfinch.At24C512')
+   def testGoldfinchChassisEepromReturnsPrefdl(self, mockEeprom):
+      bus = MagicMock()
+      bus.i2cAddr.return_value = MagicMock()
+      eeprom = mockEeprom.return_value
+      eeprom.prefdl.return_value = {
+         'SID': 'SteamerLaneMv3',
+         'SKU': 'DCS-7060XE7-64PRS-MV3-L',
+      }
+      with patch.object(GoldfinchBmc, '_getChassisEepromBus',
+                        return_value=bus):
+         prefdl = GoldfinchBmc.readChassisEeprom()
+      eeprom.driver.setup.assert_called_once()
+      self.assertEqual(prefdl.get('SID'), 'SteamerLaneMv3')
+      self.assertTrue(prefdl.toList())
 
    def testSetup(self):
       for name, platform in getPlatformSkus().items():

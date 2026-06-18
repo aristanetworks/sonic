@@ -114,6 +114,9 @@ class PrefdlBase():
    def getField(self, name):
       return self._data.get(name)
 
+   def get(self, name):
+      return self._data.get(name)
+
    def getCrc(self):
       return self._crc
 

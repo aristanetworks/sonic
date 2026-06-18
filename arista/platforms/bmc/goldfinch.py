@@ -1,5 +1,6 @@
 from ...core.bmc import Bmc
 from ...core.platform import registerBmc
+from ...core.prefdl import Prefdl
 
 from ...components.aspeed.ast2720 import Ast2720
 from ...components.bmc_mgmt_nic import BmcMgmtNic
@@ -42,7 +43,7 @@ class GoldfinchBmc(Bmc, Ast2720):
       eeprom.driver.setup()
       # Use prefdl() rather than readPrefdl() to use the
       # cached file in tmpfs if available.
-      return eeprom.prefdl()
+      return Prefdl.fromDict(eeprom.prefdl())
 
    @classmethod
    def _getChassisEepromBus(cls):

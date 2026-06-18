@@ -16,7 +16,10 @@ sonic-buildimage, and do:
    from arista.utils.sonic_eeprom import board
 """
 
-from ..core.platform import fmted_prefdl_path, readPrefdl
+# The legacy EEPROM plugin bypasses sonic_platform. PlatformIdentity relies on
+# platform registration decorators, so load the platform definitions explicitly.
+from .. import platforms # pylint: disable=unused-import
+from ..core.platform import getPlatformIdentity
 
 try:
    from sonic_platform_base.sonic_eeprom import eeprom_base
@@ -27,13 +30,24 @@ class board(eeprom_base.EepromDecoder):
    def __init__(self, path, format, start, status, readonly=True):
       # pylint: disable=redefined-builtin
       self._prefdl_cache = {}
-      self.prefdl_path = fmted_prefdl_path
-      super(board, self).__init__(self.prefdl_path, format, start, status, True)
+      # path=None: eeprom data comes from PlatformIdentity, not from a
+      # TLV-encoded binary file in sysfs
+      super(board, self).__init__(None, format, start, status, True)
 
    def read_eeprom(self):
-      return readPrefdl()
+      return getPlatformIdentity().syseeprom
+
+   # Base class file-backed methods are not supported; eeprom data is
+   # read via PlatformIdentity above. Override to fail explicitly rather
+   # than silently falling through to file I/O on a None path.
+
+   def read_eeprom_bytes(self, byteCount, offset=0):
+      raise NotImplementedError
 
    def set_eeprom(self, e, cmd_args):
+      raise NotImplementedError
+
+   def write_eeprom(self, e):
       raise NotImplementedError
 
    def decode_eeprom(self, e):

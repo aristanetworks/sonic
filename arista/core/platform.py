@@ -1,19 +1,10 @@
-import os
 import re
 
-from .config import etcPath, flashPath
 from .dynload import importSubmodules
 from .exception import UnknownPlatformError
+from .identity.bmc import PlatformIdentityBmc
+from .identity.factory import createPlatformIdentity
 from .log import getLogger
-from .prefdl import Prefdl
-from .prerequisites import loadPrerequisites
-from .types import I2cBus
-from .utils import (
-   simulateWith,
-   getCmdlineDict,
-   isBmcEnvironment,
-   readBmcDeviceTreeModel,
-)
 
 from ..libs.benchmark import timeit
 
@@ -22,14 +13,6 @@ logging = getLogger(__name__)
 syseeprom = None
 syseepromData = None
 
-host_prefdl_path = flashPath('.system-prefdl')
-host_prefdl_path_bin = flashPath('.system-prefdl-bin')
-fmted_prefdl_path = etcPath('.syseeprom')
-
-IDENT_BUS_NAMES = [
-   'SMBus PIIX4 adapter port 1 at 0b20',
-]
-
 class PlatformManager:
    def __init__(self):
       self.platforms = []
@@ -37,6 +20,7 @@ class PlatformManager:
       self.platformSkuIndex = {}
       self.bmcIndex = {}
       self.bmcSubsystemIndex = {}
+      self.identity = createPlatformIdentity(self)
 
    def registerPlatform(self, cls):
       self.platforms.append(cls)
@@ -69,7 +53,7 @@ class PlatformManager:
       #       cmdline implement getEeprom on all Cpu to get the prefdl from hw
       #       add a fallback mechanism to read /etc/sonic/.syseeprom like done
       #       today
-      getSysEeprom()
+      getSysEepromData()
 
       sid = readSid()
       platformCls = self.platformSidIndex.get(sid)
@@ -111,45 +95,11 @@ class PlatformManager:
 
 manager = PlatformManager()
 
-def readI2cPrefdlEeprom():
-   # pylint: disable=import-outside-toplevel
-   from ..components.eeprom import I2cEeprom
-   loadPrerequisites()
-   for name in IDENT_BUS_NAMES:
-      try:
-         eeprom = I2cEeprom(addr=I2cBus(name).i2cAddr(0x52))
-         eeprom.setup()
-         logging.debug('reading system eeprom from %s',
-                       eeprom.driver.eepromPath())
-         pfdl = eeprom.readPrefdl()
-         pfdl.writeToFile(fmted_prefdl_path)
-         return pfdl
-      except Exception: # pylint: disable=broad-except
-         logging.exception('Could not read prefdl from %s', name)
-   raise UnknownPlatformError('Could not identify current platform')
+def getManager():
+   return manager
 
-def readPrefdl():
-   if isBmcEnvironment():
-      logging.debug('reading system eeprom from bmcEeprom')
-      return getPlatform().bmcEeprom.readPrefdl()
-
-   if os.path.isfile(fmted_prefdl_path) and os.path.getsize(fmted_prefdl_path) > 0:
-      logging.debug('reading system eeprom from %s', fmted_prefdl_path)
-      return Prefdl.fromTextFile(fmted_prefdl_path)
-
-   if os.path.exists(host_prefdl_path_bin):
-      logging.debug('reading bin system eeprom from %s', host_prefdl_path_bin)
-      pfdl = Prefdl.fromBinFile(host_prefdl_path_bin)
-      pfdl.writeToFile(fmted_prefdl_path)
-      return pfdl
-
-   if os.path.exists(host_prefdl_path):
-      logging.debug('reading system eeprom from %s', host_prefdl_path)
-      pfdl = Prefdl.fromTextFile(host_prefdl_path)
-      pfdl.writeToFile(fmted_prefdl_path)
-      return pfdl
-
-   return readI2cPrefdlEeprom()
+def getPlatformIdentity():
+   return manager.identity
 
 def getSonicSku(prefdlData):
    sku = prefdlData.get("SKU")
@@ -172,19 +122,12 @@ def getSonicSku(prefdlData):
    return newSku
 
 class SysEeprom(object):
-   def prefdlSim(self):
-      logging.debug('bypass prefdl reading by returning default values')
-      return {
-         'SKU': 'simulation',
-         'HwApi': '42',
-      }
-
-   @simulateWith(prefdlSim)
    def prefdl(self):
       return self.readPrefdl().data()
 
    def readPrefdl(self):
-      return readPrefdl()
+      identity = getPlatformIdentity()
+      return identity.syseeprom
 
    def readPrefdlRaw(self):
       raise NotImplementedError
@@ -203,43 +146,26 @@ def getSysEepromData():
    return syseepromData
 
 def readSku():
-   return getSysEepromData().get('SKU')
+   return getPlatformIdentity().sku
 
 def readSid():
-   return getCmdlineDict().get('sid')
+   return getPlatformIdentity().sid
 
 def readPlatformName():
-   return getCmdlineDict().get('platform')
+   return getPlatformIdentity().platform
 
 def readHwApi():
-   return getSysEepromData().get('HwApi')
+   return getPlatformIdentity().hwApi
 
 def getPlatformCls(*names):
    return manager.getPlatformCls(*names)
 
 def getPlatform(name=None):
-   if isBmcEnvironment():
-      if name is not None:
-         raise UnknownPlatformError(
-            f'BMC platform identification does not accept name={name!r}')
-
-      model = readBmcDeviceTreeModel()
-      bmcCls = manager.bmcIndex.get(model)
-      if bmcCls is None:
-         supportedModels = ', '.join(sorted(manager.bmcIndex))
-         raise UnknownPlatformError(
-            f'BMC model {model!r} is not registered; supported BMC models: '
-            f'{supportedModels}')
-
-      loadPrerequisites()
-      sid = bmcCls.readChassisEeprom().get('SID')
-      if not sid:
-         raise UnknownPlatformError(
-            f'BMC model {model!r} has an empty SID in its chassis EEPROM')
-      platformCls = manager.bmcSubsystemIndex.get((model, sid))
-      if platformCls is None:
-         raise UnknownPlatformError(
-            f'No BMC subsystem is registered for model {model!r} and SID {sid!r}')
+   identity = getPlatformIdentity()
+   # TODO: make getPlatformCls part of PlatformIdentity. For now, only BMC
+   # identity implements it; generic lookup remains in PlatformManager.
+   if isinstance(identity, PlatformIdentityBmc):
+      platformCls = identity.getPlatformCls(name)
    else:
       platformCls = manager.getPlatformCls(name)
    platform = platformCls()

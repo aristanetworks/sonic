@@ -8,7 +8,11 @@ try:
    from arista.core.cause import getReloadCauseManager
    from arista.core.config import Config
    from arista.core.onie import OnieEeprom
-   from arista.core.platform import getPlatform, readPrefdl, getSonicSku
+   from arista.core.platform import (
+      getPlatform,
+      getPlatformIdentity,
+      getSonicSku,
+   )
    from arista.core.supervisor import Supervisor
    from arista.core.linecard import Linecard
    from arista.utils.sonic_platform.component import Component
@@ -83,7 +87,7 @@ class Chassis(ChassisBase):
       platform = platform or getPlatform()
       ChassisBase.__init__(self)
       self._platform = platform
-      self._eeprom = Eeprom(readPrefdl())
+      self._eeprom = Eeprom(getPlatformIdentity().syseeprom)
       self._inventory = platform.getInventory()
       self._event_watcher = None
       self._chassis = None

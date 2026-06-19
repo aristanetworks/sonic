@@ -472,10 +472,12 @@ class CoolingZone(object):
       return '%s(%s)' % (self.__class__.__name__, self.name)
 
    def load(self, fans=None, thermals=None):
-      self._pwm_infos = {}
+      if not self.initialized:
+         self._pwm_infos = {}
+         self.initialized = True
+
       self.fans = fans or {}
       self.thermals = thermals or {}
-      self.initialized = True
 
    def update(self):
       for f in self.fans.values():
@@ -536,8 +538,7 @@ class CoolingZone(object):
       return desiredSpeed
 
    def run(self, fans=None, thermals=None, update=False, extraPwms=None):
-      if not self.initialized:
-         self.load(fans=fans, thermals=thermals)
+      self.load(fans=fans, thermals=thermals)
       if update:
          self.update()
 

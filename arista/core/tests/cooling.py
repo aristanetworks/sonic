@@ -332,6 +332,61 @@ class CoolingAlgorithmTest(unittest.TestCase):
       self.assertIn('myzone', algo.zones)
       self.assertIsInstance(algo.zones['myzone'].logic, CoolingLogicLegacy)
 
+   def testRunAddsNewThermals(self):
+      algo = CoolingAlgorithm(self._getPlatform())
+      algo.load(policyConfig={
+         'version': 1,
+         'profiles': {
+            'default': {
+               'thermals': {
+                  'cool': {
+                     'zone': 'asic_zone',
+                  },
+                  'hot': {
+                     'kp': 0.5,
+                     'ki': 0.6,
+                     'kd': 0.7,
+                     'zone': 'asic_zone',
+                  },
+               },
+               'fans': {
+                  'fan1': {'zone': 'asic_zone'},
+                  'fan2': {'zone': 'asic_zone'},
+               },
+               'zones': {
+                  'asic_zone': {'logic': 'incpid'},
+               },
+            },
+         },
+      })
+      fans = {
+         'fan1': CoolingMockFan('fan1',
+            inv=CoolingMockInvFan('fan1', values=[50, 50])),
+      }
+      thermals = {
+         'cool': CoolingMockThermal('cool',
+            inv=CoolingMockInvTemp(name='cool', target=50, values=[50, 50])),
+      }
+
+      algo.run(fans=fans, thermals=thermals,
+               elapsed=algo.INTERVAL, update=True)
+      fans['fan2'] = CoolingMockFan('fan2',
+         inv=CoolingMockInvFan('fan2', values=[50]))
+      thermals['hot'] = CoolingMockThermal('hot',
+         inv=CoolingMockInvTemp(name='hot', target=50, values=[70]))
+      algo.run(fans=fans, thermals=thermals,
+               elapsed=algo.INTERVAL, update=True)
+
+      self.assertEqual(fans['fan2'].zone, 'asic_zone')
+      self.assertEqual(thermals['hot'].zone, 'asic_zone')
+      self.assertEqual(thermals['hot'].config['kp'], 0.5)
+      self.assertEqual(thermals['hot'].config['ki'], 0.6)
+      self.assertEqual(thermals['hot'].config['kd'], 0.7)
+      self.assertIn('fan2', algo.zones['asic_zone'].fans)
+      self.assertIn('hot', algo.zones['asic_zone'].thermals)
+      self.assertEqual(fans['fan1'].data.lastSet, 62.0)
+      self.assertEqual(fans['fan2'].data.lastSet, 62.0)
+
 class CoolingIntegrationTest(unittest.TestCase):
 
    POLICY_CONFIG = {

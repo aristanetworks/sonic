@@ -1,3 +1,4 @@
+import ctypes
 import fcntl
 import inspect
 import json
@@ -127,6 +128,33 @@ class MmapResource(ResourceAccessor):
 
    def writeResource(self, addr, size, value):
       self.mmap_[addr: addr + size] = value
+
+   def read32(self, addr):
+      value = ctypes.c_uint32.from_buffer(self.mmap_, addr).value
+      logging.io('%s.read32(%#x) -> %#x', self, addr, value)
+      return value
+
+   def write32(self, addr, value):
+      logging.io('%s.write32(%#x, %#x)', self, addr, value)
+      ctypes.c_uint32.from_buffer(self.mmap_, addr).value = value
+
+   def read16(self, addr):
+      value = ctypes.c_uint16.from_buffer(self.mmap_, addr).value
+      logging.io('%s.read16(%#x) -> %#x', self, addr, value)
+      return value
+
+   def write16(self, addr, value):
+      logging.io('%s.write16(%#x, %#x)', self, addr, value)
+      ctypes.c_uint16.from_buffer(self.mmap_, addr).value = value
+
+   def read8(self, addr):
+      value = ctypes.c_uint8.from_buffer(self.mmap_, addr).value
+      logging.io('%s.read8(%#x) -> %#x', self, addr, value)
+      return value
+
+   def write8(self, addr, value):
+      logging.io('%s.write8(%#x, %#x)', self, addr, value)
+      ctypes.c_uint8.from_buffer(self.mmap_, addr).value = value
 
 class FileResource(ResourceAccessor):
    ''' Resource implementation for a file base memory region. '''

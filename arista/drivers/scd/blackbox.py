@@ -55,11 +55,13 @@ class ScdBlackBoxDecoder(BlackBoxDecoder):
             if c == 0x1a:
                state = WAITING_FIRST_CHAR
          elif state == WAITING_FIRST_CHAR:
+            if c == 0x9a:
+               return result
             if c != 0x1a:
                first_char_idx = i
                state = REWAITING_FIRST_MARKER
          elif state == REWAITING_FIRST_MARKER:
-            if c == 0x1a:
+            if c in (0x1a, 0x9a):
                if first_char_idx < i:
                   result.extend(buf[first_char_idx:i])
                else:

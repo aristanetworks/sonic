@@ -9,7 +9,7 @@ from ..drivers.eeprom import (
    At24C32KernelDriver,
    At24C64KernelDriver,
    At24C512KernelDriver,
-   EepromKernelDriver,
+   At24KernelDriver,
 )
 
 logging = getLogger(__name__)
@@ -42,7 +42,7 @@ def maybeClearCache(name):
       logging.debug("Failed to clear cache %s" % name)
 
 class I2cEeprom(I2cComponent):
-   DRIVER = EepromKernelDriver
+   DRIVER = At24KernelDriver
    PRIORITY = Priority.DEFAULT
 
    def eepromName(self):

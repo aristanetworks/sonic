@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+
 import csv
 from dataclasses import dataclass
 import json
@@ -147,6 +149,30 @@ class CoolingConfigTest(unittest.TestCase):
       self.assertEqual(result['kp'], 0.1)
       self.assertEqual(result['ki'], 2)
       self.assertEqual(result['kd'], 5)
+
+      result = config.thermalPolicyConfig.getZoneConfigMap()
+      zone = result[config.defaultZone]
+      self.assertEqual(zone['logic'], config.logic.NAME)
+      self.assertEqual(zone['minSpeed'], config.minSpeed)
+      self.assertEqual(zone['maxSpeed'], config.maxSpeed)
+
+   def testSetThermalPolicyConfigPerZoneSpeed(self):
+      config = CoolingConfig(logic=MockLogic(), kp=0.1, ki=2, kd=5)
+      MIN_SPEED = 20
+      MAX_SPEED = 50
+      config.loadPolicyConfig({
+         'zones': {
+            'psu': {
+               'logic': 'incpid',
+               'minSpeed': MIN_SPEED,
+               'maxSpeed': MAX_SPEED
+            }
+         }
+      })
+      result = config.thermalPolicyConfig.getZoneConfigMap()
+      self.assertEqual(result['psu']['logic'], 'incpid')
+      self.assertEqual(result['psu']['minSpeed'], MIN_SPEED)
+      self.assertEqual(result['psu']['maxSpeed'], MAX_SPEED)
 
 class CoolingFanBaseTest(unittest.TestCase):
 
@@ -401,7 +427,25 @@ class CoolingAlgorithmTest(unittest.TestCase):
       self.assertEqual(fans['fan1'].data.lastSet, 62.0)
       self.assertEqual(fans['fan2'].data.lastSet, 62.0)
 
+   def testZoneMinSpeedBiggerThanMaxSpeed(self):
+      data = {
+         'thermals': {'temp1': {'kp': 0.1}},
+         'fans': {'fan.*': {'zone': 'psu'}},
+         'zones': {'psu': {'logic': 'incpid', 'minSpeed': 30, 'maxSpeed': 10}},
+      }
+      algo = CoolingAlgorithm(self._getPlatform())
+      algo.load(policyConfig=data)
+      # If minSpeed > maxSpeed, then set them to config defaults
+      self.assertEqual(algo.zones['psu'].minSpeed, algo.config.minSpeed)
+      self.assertEqual(algo.zones['psu'].maxSpeed, algo.config.maxSpeed)
+
 class CoolingIntegrationTest(unittest.TestCase):
+
+   ASIC_MIN_SPEED = 45
+   ASIC_MAX_SPEED = 54
+
+   OPTICS_MIN_SPEED = 48
+   OPTICS_MAX_SPEED = 61
 
    POLICY_CONFIG = {
       'version': 1,
@@ -416,8 +460,16 @@ class CoolingIntegrationTest(unittest.TestCase):
                'fan_[3-4]': {'zone': 'optics_zone'},
             },
             'zones': {
-               'asic_zone': {'logic': 'incpid'},
-               'optics_zone': {'logic': 'incpid'},
+               'asic_zone': {
+                  'logic': 'incpid',
+                  'minSpeed': ASIC_MIN_SPEED,
+                  'maxSpeed': ASIC_MAX_SPEED,
+               },
+               'optics_zone': {
+                  'logic': 'incpid',
+                  'minSpeed': OPTICS_MIN_SPEED,
+                  'maxSpeed': OPTICS_MAX_SPEED,
+               },
             },
          },
       },
@@ -446,6 +498,25 @@ class CoolingIntegrationTest(unittest.TestCase):
             inv=CoolingMockInvTemp(name='asic_temp', values=[70, 72])),
          'optics_temp': CoolingMockThermal('optics_temp',
             inv=CoolingMockInvTemp(name='optics_temp', values=[60, 62])),
+      }
+      return fans, thermals
+
+   def _makeFansAndThermalsMultiZone(self):
+      fans = {
+         'fan_1': CoolingMockFan('fan_1',
+            inv=CoolingMockInvFan('fan_1', values=[40])),
+         'fan_2': CoolingMockFan('fan_2',
+            inv=CoolingMockInvFan('fan_2', values=[40])),
+         'fan_3': CoolingMockFan('fan_3',
+            inv=CoolingMockInvFan('fan_3', values=[40])),
+         'fan_4': CoolingMockFan('fan_4',
+            inv=CoolingMockInvFan('fan_4', values=[40])),
+      }
+      thermals = {
+         'asic_temp': CoolingMockThermal('asic_temp',
+            inv=CoolingMockInvTemp(name='asic_temp', values=[10, 100])),
+         'optics_temp': CoolingMockThermal('optics_temp',
+            inv=CoolingMockInvTemp(name='optics_temp', values=[0, 100])),
       }
       return fans, thermals
 
@@ -487,6 +558,28 @@ class CoolingIntegrationTest(unittest.TestCase):
       # All fans should have a speed set
       for fan in fans.values():
          self.assertIsNotNone(fan.data.lastSet)
+
+   def testMultiZoneMinMaxSpeed(self):
+      algo = self._makeAlgo()
+      fans, thermals = self._makeFansAndThermalsMultiZone()
+
+      algo.run(fans=fans, thermals=thermals,
+         elapsed=algo.INTERVAL, update=True)
+
+      # Drive the fans to lower speeds by starting with a low temperature
+      self.assertGreaterEqual(fans['fan_1'].data.lastSet, self.ASIC_MIN_SPEED)
+      self.assertGreaterEqual(fans['fan_2'].data.lastSet, self.ASIC_MIN_SPEED)
+      self.assertGreaterEqual(fans['fan_3'].data.lastSet, self.OPTICS_MIN_SPEED)
+      self.assertGreaterEqual(fans['fan_4'].data.lastSet, self.OPTICS_MIN_SPEED)
+
+      algo.run(fans=fans, thermals=thermals,
+         elapsed=algo.INTERVAL, update=True)
+
+      # Drive the fans to higher speeds by sharply increasing the temperature
+      self.assertLessEqual(fans['fan_1'].data.lastSet, self.ASIC_MAX_SPEED)
+      self.assertLessEqual(fans['fan_2'].data.lastSet, self.ASIC_MAX_SPEED)
+      self.assertLessEqual(fans['fan_3'].data.lastSet, self.OPTICS_MAX_SPEED)
+      self.assertLessEqual(fans['fan_4'].data.lastSet, self.OPTICS_MAX_SPEED)
 
    def testMultiZoneRunSupportsMixedLogic(self):
       algo = CoolingAlgorithm(CoolingMockPlatform(CoolingMockInventory([], [])))
@@ -714,6 +807,74 @@ class CoolingClassicPidLogicTest(unittest.TestCase):
       self.assertEqual(fans['fan1'].data.lastSet, 59.8125)
       self.assertEqual(algo.zones['default'].logic.targetRpm.lastSet, 99.625)
 
+   def testPwmClampedToMinSpeed(self):
+      MIN_SPEED = 10
+      MAX_SPEED = 25
+      policyConfig = {
+         'version': 1,
+         'profiles': {
+            'default': {
+               'thermals': {
+                  'hotspot': {
+                     'kp': 5, 'ki': 0, 'kd': 0, 'zone': 'default',
+                  },
+               },
+               'zones': {
+                  'default': {
+                     'logic': 'classicpid',
+                     'minSpeed': MIN_SPEED,
+                     'maxSpeed': MAX_SPEED,
+                  },
+               },
+            },
+         },
+      }
+      algo = self._makeAlgo(self.RpmSlopePlatform, policyConfig)
+      fans, thermals = self._makeFansAndThermals(
+         fanValues=[100], tempValues=[30], target=50)
+
+      algo.run(fans=fans, thermals=thermals,
+               elapsed=algo.INTERVAL, update=True)
+
+      cooling = self.RpmSlopePlatform.COOLING
+      fan_pwm = MIN_SPEED * cooling.rpmSlope + cooling.rpmOffset
+      self.assertEqual(fans['fan1'].data.lastSet, fan_pwm)
+      self.assertEqual(algo.zones['default'].logic.targetRpm.lastSet, MIN_SPEED)
+
+   def testPwmClampedToMaxSpeed(self):
+      MIN_SPEED = 10
+      MAX_SPEED = 25
+      policyConfig = {
+         'version': 1,
+         'profiles': {
+            'default': {
+               'thermals': {
+                  'hotspot': {
+                     'kp': 5, 'ki': 0, 'kd': 0, 'zone': 'default',
+                  },
+               },
+               'zones': {
+                  'default': {
+                     'logic': 'classicpid',
+                     'minSpeed': MIN_SPEED,
+                     'maxSpeed': MAX_SPEED,
+                  },
+               },
+            },
+         },
+      }
+      algo = self._makeAlgo(self.RpmSlopePlatform, policyConfig)
+      fans, thermals = self._makeFansAndThermals(
+         fanValues=[100], tempValues=[80], target=30)
+
+      algo.run(fans=fans, thermals=thermals,
+               elapsed=algo.INTERVAL, update=True)
+
+      cooling = self.RpmSlopePlatform.COOLING
+      fan_pwm = MAX_SPEED * cooling.rpmSlope + cooling.rpmOffset
+      self.assertEqual(fans['fan1'].data.lastSet, fan_pwm)
+      self.assertEqual(algo.zones['default'].logic.targetRpm.lastSet, MAX_SPEED)
+
    def testPidCleanup(self):
       algo = self._makeAlgo()
       fans, thermals = self._makeFansAndThermals(
@@ -839,9 +1000,9 @@ class CoolingLegacyLogicTest(unittest.TestCase):
       inv = CoolingMockInventory([], [])
       return CoolingMockPlatform(inv)
 
-   def _getSimpleAlgo(self, fanInitial=30, temps=None):
+   def _getSimpleAlgo(self, fanInitial=30, temps=None, policyConfig=None):
       algo = CoolingAlgorithm(self._getPlatform())
-      algo.load()
+      algo.load(policyConfig)
       fans = {
          'fan1': CoolingMockFan('fan1',
             inv=CoolingMockInvFan('fan1', values=[fanInitial])),
@@ -869,11 +1030,41 @@ class CoolingLegacyLogicTest(unittest.TestCase):
          self._assertFanSpeedSane(fans)
 
    def testMinFanSpeed(self):
+      MIN_SPEED = 30
+      data = {
+         'version': 1,
+         'profiles': {
+            'default': {
+               'zones': {
+                  'default': {'logic': 'incpid', 'minSpeed': MIN_SPEED},
+               },
+            },
+         },
+      }
       algo, fans, thermals = self._getSimpleAlgo(
-         fanInitial=35, temps=[0])
+         fanInitial=50, temps=[0], policyConfig=data)
+
       algo.run(fans=fans, thermals=thermals,
                elapsed=algo.INTERVAL, update=True)
-      self.assertEqual(self._lastFanSpeed(fans), 30)
+      self.assertEqual(self._lastFanSpeed(fans), MIN_SPEED)
+
+   def testMaxFanSpeed(self):
+      MAX_SPEED = 75
+      data = {
+         'version': 1,
+         'profiles': {
+            'default': {
+               'zones': {
+                  'default': {'logic': 'incpid', 'maxSpeed': MAX_SPEED},
+               },
+            },
+         },
+      }
+      algo, fans, thermals = self._getSimpleAlgo(
+         fanInitial=70, temps=[100], policyConfig=data)
+      algo.run(fans=fans, thermals=thermals,
+               elapsed=algo.INTERVAL, update=True)
+      self.assertEqual(self._lastFanSpeed(fans), MAX_SPEED)
 
    def testDecreasingFanSpeed(self):
       algo, fans, thermals = self._getSimpleAlgo(

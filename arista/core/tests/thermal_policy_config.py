@@ -17,11 +17,19 @@ class MockConfig:
    kd: float = 10
    profile: str = 'default'
    defaultZone: str = 'board'
+   minSpeed: int = 60
+   maxSpeed: int = 100
    logic: MockLogic = field(default_factory=MockLogic)
 
 class ThermalPolicyConfigV1Test(unittest.TestCase):
 
    CONFIG = MockConfig()
+
+   ASIC_MIN_SPEED = 30
+   ASIC_MAX_SPEED = 90
+
+   OPTICS_MIN_SPEED = 50
+   OPTICS_MAX_SPEED = 100
 
    DATA = {
       'version': 1,
@@ -43,8 +51,16 @@ class ThermalPolicyConfigV1Test(unittest.TestCase):
                'fan_[5-8]': {'zone': 'optics_zone'},
             },
             'zones': {
-               'asic_zone': {'logic': 'incpid'},
-               'optics_zone': {'logic': 'incpid'},
+               'asic_zone': {
+                  'logic': 'incpid',
+                  'minSpeed': ASIC_MIN_SPEED,
+                  'maxSpeed': ASIC_MAX_SPEED,
+               },
+               'optics_zone': {
+                  'logic': 'incpid',
+                  'minSpeed': OPTICS_MIN_SPEED,
+                  'maxSpeed': OPTICS_MAX_SPEED,
+               },
             },
          },
       },
@@ -99,10 +115,19 @@ class ThermalPolicyConfigV1Test(unittest.TestCase):
       cfg = self._makeCfg(data=data)
       self.assertEqual(cfg.fanConfig['fan.*']['zone'], self.CONFIG.defaultZone)
 
-   def testNormalizeZoneKeepsExistingLogic(self):
+   def testNormalizeZoneKeepsExistingConfig(self):
       cfg = self._makeCfg()
       self.assertEqual(cfg.zoneConfig['asic_zone']['logic'], 'incpid')
+      self.assertEqual(cfg.zoneConfig['asic_zone']['minSpeed'],
+                        self.ASIC_MIN_SPEED)
+      self.assertEqual(cfg.zoneConfig['asic_zone']['maxSpeed'],
+                        self.ASIC_MAX_SPEED)
+
       self.assertEqual(cfg.zoneConfig['optics_zone']['logic'], 'incpid')
+      self.assertEqual(cfg.zoneConfig['optics_zone']['minSpeed'],
+                        self.OPTICS_MIN_SPEED)
+      self.assertEqual(cfg.zoneConfig['optics_zone']['maxSpeed'],
+                        self.OPTICS_MAX_SPEED)
 
    def testNormalizeZoneInjectsDefaultLogic(self):
       data = {
@@ -117,6 +142,8 @@ class ThermalPolicyConfigV1Test(unittest.TestCase):
       }
       cfg = self._makeCfg(data=data)
       self.assertEqual(cfg.zoneConfig['myzone']['logic'], self.CONFIG.logic.NAME)
+      self.assertEqual(cfg.zoneConfig['myzone']['minSpeed'], self.CONFIG.minSpeed)
+      self.assertEqual(cfg.zoneConfig['myzone']['maxSpeed'], self.CONFIG.maxSpeed)
 
    def testGetThermalConfigExactMatch(self):
       cfg = self._makeCfg()
@@ -166,12 +193,13 @@ class ThermalPolicyConfigV1Test(unittest.TestCase):
       result['zone'] = 'modified'
       self.assertEqual(cfg.getFanConfig('fan_1')['zone'], 'asic_zone')
 
-   def testGetZoneLogicMap(self):
+   def testGetZoneConfigMap(self):
       cfg = self._makeCfg()
-      zones = cfg.getZoneLogicMap()
-      self.assertEqual(zones[self.CONFIG.defaultZone], self.CONFIG.logic.NAME)
-      self.assertEqual(zones['asic_zone'], 'incpid')
-      self.assertEqual(zones['optics_zone'], 'incpid')
+      zones = cfg.getZoneConfigMap()
+      self.assertEqual(zones[self.CONFIG.defaultZone]['logic'],
+                        self.CONFIG.logic.NAME)
+      self.assertEqual(zones['asic_zone']['logic'], 'incpid')
+      self.assertEqual(zones['optics_zone']['logic'], 'incpid')
 
    def testNonDefaultProfile(self):
       data = {
@@ -198,7 +226,7 @@ class ThermalPolicyConfigV0Test(unittest.TestCase):
       data = {
          'thermals': {'temp1': {'kp': 0.1}},
          'fans': {'fan.*': {'zone': 'psu'}},
-         'zones': {'psu': {'logic': 'incpid'}},
+         'zones': {'psu': {'logic': 'incpid', 'minSpeed': 50, 'maxSpeed': 100}},
       }
       cfg = ThermalPolicyConfig(self.CONFIG, data)
       self.assertIn('temp1', cfg.thermalConfig)
@@ -217,6 +245,8 @@ class ThermalPolicyConfigV0Test(unittest.TestCase):
       self.assertEqual(cfg.thermalConfig['temp1']['zone'], self.CONFIG.defaultZone)
       self.assertEqual(cfg.fanConfig['fan.*']['zone'], self.CONFIG.defaultZone)
       self.assertEqual(cfg.zoneConfig['myzone']['logic'], self.CONFIG.logic.NAME)
+      self.assertEqual(cfg.zoneConfig['myzone']['minSpeed'], self.CONFIG.minSpeed)
+      self.assertEqual(cfg.zoneConfig['myzone']['maxSpeed'], self.CONFIG.maxSpeed)
 
    def testV0GetThermalConfigReturnsDefaultsOnNoMatch(self):
       data = {
@@ -241,8 +271,13 @@ class ThermalPolicyConfigV0Test(unittest.TestCase):
       cfg = ThermalPolicyConfig(self.CONFIG, {})
       self.assertEqual(cfg.getThermalConfig('any')['kp'], self.CONFIG.kp)
       self.assertEqual(cfg.getFanConfig('any')['zone'], self.CONFIG.defaultZone)
-      self.assertEqual(cfg.getZoneLogicMap(),
-                       {self.CONFIG.defaultZone: self.CONFIG.logic.NAME})
+      defaultZoneConfig = {}
+      defaultZoneConfig['logic'] = self.CONFIG.logic.NAME
+      defaultZoneConfig['minSpeed'] = self.CONFIG.minSpeed
+      defaultZoneConfig['maxSpeed'] = self.CONFIG.maxSpeed
+      self.assertEqual(cfg.getZoneConfigMap(),
+                       {self.CONFIG.defaultZone: defaultZoneConfig})
+
 
 if __name__ == '__main__':
    unittest.main()

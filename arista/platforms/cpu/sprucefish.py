@@ -27,6 +27,11 @@ class SprucefishCpu(Cpu):
       quirks=[CompletionTimeoutPciQuirk()]
    )
 
+   PCI_PORT_SCD = PciPortDesc(
+      device=0x1c,
+      func=0,
+   )
+
    def __init__(self, **kwargs):
       super().__init__(**kwargs)
 

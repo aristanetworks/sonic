@@ -49,7 +49,12 @@ class DenaliSupervisor(Supervisor):
       self.createPsus()
 
    def createScd(self):
-      port = self.cpu.pciRoot.pciBridge(device=0x1c).downstreamPort(0)
+      port = self.cpu.pciRoot.pciBridge(
+         domain=self.cpu.PCI_PORT_SCD.domain,
+         bus=self.cpu.PCI_PORT_SCD.bus,
+         device=self.cpu.PCI_PORT_SCD.device,
+         func=self.cpu.PCI_PORT_SCD.func,
+      ).downstreamPort(0)
       self.scd = port.newComponent(Scd, addr=port.addr)
       self.scd.addSmbusMasterRange(0x8000, 3, 0x80)
       self.scd.addUartPortRange(0x7e00, self.linecardCount)

@@ -328,10 +328,6 @@ class CoolingThermal(CoolingThermalBase, EntitySource):
       return True
 
 class CoolingXcvrThermal(CoolingThermal):
-   def __init__(self, *args, **kwargs):
-      super().__init__(*args, **kwargs)
-      self._initialized = False
-
    @property
    def target(self):
       if Config().cooling_override_xcvr_target is not None:
@@ -350,24 +346,33 @@ class CoolingXcvrThermal(CoolingThermal):
          # TODO: something else might need to happen here
          return False
       self.temperature = api.get_module_temperature()
-      if not self._initialized:
+      if not self.valid():
          if hasattr(api, 'get_transceiver_thresholds_support') and \
             api.get_transceiver_thresholds_support():
             self.update_thresholds(api.get_transceiver_threshold_info())
-         self._initialized = True
       return True
 
    def update_from_db(self):
       for i in ([2, 0] if Config().cooling_xcvrs_use_dom_temperature else [0]):
          data = self.dbent.get_all(i)
-         self.temperature = self._float_or_none(data.get('temperature'))
-         if self.temperature is not None:
+         temperature = self._float_or_none(data.get('temperature'))
+         if temperature is not None:
+            # NOTE: this is a load-bearing assignment - the underlying setter will
+            # record a timestamp and the value into a HistoricalData, so we should
+            # only do the assignment if we know the temperature is valid (see
+            # BUG1874730)
+            self.temperature = temperature
             break
 
-      if not self._initialized:
-         data = self.dbent.get_all(1)
-         self.update_thresholds(data)
-         self._initialized = True
+      if not self.valid():
+         # Thresholds may exist in the TRANSCEIVER_DOM_TEMPERATURE table (0) instead
+         # of the TRANSCEIVER_DOM_THRESHOLD table (1)
+         for i in 1, 0:
+            data = self.dbent.get_all(i)
+            self.update_thresholds(data)
+            if self.valid():
+               break
+
       return True
 
 class CoolingAsicThermal(CoolingThermal):

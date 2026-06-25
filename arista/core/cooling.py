@@ -286,8 +286,8 @@ class CoolingLogicLegacy(CoolingLogic):
       # Select the most critical sensor in the system
       info = infos.choose()
       if info is None:
-         # No sensor found, run at 100%
-         return self.config.maxSpeed
+         # No sensor found, run at maximum speed
+         return self.zone.maxSpeed
 
       logging.debug('%s: using %s to set fan speed', self, info.thermal)
 
@@ -313,8 +313,8 @@ class CoolingLogicLegacy(CoolingLogic):
       pwmDelta = self.scaleOnElapsed(pwmDelta)
 
       # Enforce fan speed limits
-      pwm = max(lastPwm + pwmDelta, self.config.minSpeed)
-      pwm = min(pwm, self.config.maxSpeed)
+      pwm = max(lastPwm + pwmDelta, self.zone.minSpeed)
+      pwm = min(pwm, self.zone.maxSpeed)
 
       return pwm
 
@@ -355,13 +355,13 @@ class CoolingLogicIncPid(CoolingLogic):
       pwms = [(thermal, self.computePwmForThermal(lastPwm, thermal))
               for thermal in self.zone.thermals.values() if thermal.valid()]
       if not pwms:
-         return self.config.maxSpeed
+         return self.zone.maxSpeed
 
       worstThermal, newPwm = max(pwms, key=lambda k: k[1])
-      if newPwm < self.config.minSpeed:
-         newPwm = self.config.minSpeed
-      elif newPwm > self.config.maxSpeed:
-         newPwm = self.config.maxSpeed
+      if newPwm < self.zone.minSpeed:
+         newPwm = self.zone.minSpeed
+      elif newPwm > self.zone.maxSpeed:
+         newPwm = self.zone.maxSpeed
 
       worstThermal.lastDrovePwm = self.zone.algo.now
       return newPwm
@@ -451,14 +451,14 @@ class CoolingLogicClassicPid(CoolingLogic):
          self.thermalPids.pop(thermal)
 
       if not pids:
-         return self.config.maxSpeed
+         return self.zone.maxSpeed
 
       worstThermal, worstPid = min(pids, key=lambda k: k[1])
-      newRpm = (self.targetRpm.lastSet or self.config.maxSpeed) - worstPid
-      if newRpm < self.config.minSpeed:
-         newRpm = self.config.minSpeed
-      elif newRpm > self.config.maxSpeed:
-         newRpm = self.config.maxSpeed
+      newRpm = (self.targetRpm.lastSet or self.zone.maxSpeed) - worstPid
+      if newRpm < self.zone.minSpeed:
+         newRpm = self.zone.minSpeed
+      elif newRpm > self.zone.maxSpeed:
+         newRpm = self.zone.maxSpeed
       self.targetRpm.setValue(self.zone.algo.now, newRpm)
       worstThermal.lastDrovePwm = self.zone.algo.now
       logging.debug('%s is driving PID in zone %s (newRpm=%d lastDrovePwm=%d)',
@@ -517,9 +517,11 @@ class CoolingZone(object):
 
    MAX_SPEED = 100
 
-   def __init__(self, algo, name, logicCls):
+   def __init__(self, algo, name, zoneConfig, logicCls):
       self.algo = algo
       self.name = name
+      self.minSpeed = zoneConfig['minSpeed']
+      self.maxSpeed = zoneConfig['maxSpeed']
       self.logic = logicCls(self)
       self.speed = HistoricalData('target')
       self.fans = None
@@ -770,10 +772,21 @@ class CoolingAlgorithm(object):
       return '%s()' % self.__class__.__name__
 
    def loadZones(self):
-      zones = self.config.thermalPolicyConfig.getZoneLogicMap()
-      for zoneName, logic in zones.items():
+      zones = self.config.thermalPolicyConfig.getZoneConfigMap()
+      for zoneName, zoneConfig in zones.items():
+         logic = zoneConfig['logic']
          logicCls = self.LOGICS.get(logic, CoolingLogicLegacy)
-         zone = CoolingZone(self, zoneName, logicCls)
+         minSpeed = zoneConfig['minSpeed']
+         maxSpeed = zoneConfig['maxSpeed']
+         if minSpeed > maxSpeed:
+            logging.warning('zone %s minSpeed(%.3f) > maxSpeed(%.3f); '
+                            'defaulting to [%.3f, %.3f]',
+                            zoneName, minSpeed, maxSpeed,
+                            self.config.minSpeed, self.config.maxSpeed)
+            zoneConfig['minSpeed'] = self.config.minSpeed
+            zoneConfig['maxSpeed'] = self.config.maxSpeed
+
+         zone = CoolingZone(self, zoneName, zoneConfig, logicCls)
          logging.debug('%s: creating zone %s with logic %s', self, zone, logic)
          self.zones[zoneName] = zone
 

@@ -7,6 +7,8 @@ class ThermalPolicyConfig:
       self.defaultKi = config.ki
       self.defaultKp = config.kp
       self.defaultLogic = config.logic.NAME
+      self.defaultMinSpeed = config.minSpeed
+      self.defaultMaxSpeed = config.maxSpeed
       self.defaultZone = config.defaultZone
       self.version = self.data.get('version', 0)
       self.profile = config.profile
@@ -34,6 +36,8 @@ class ThermalPolicyConfig:
 
       for cfg in profileData.get('zones', {}).values():
          cfg.setdefault('logic', self.defaultLogic)
+         cfg.setdefault('minSpeed', self.defaultMinSpeed)
+         cfg.setdefault('maxSpeed', self.defaultMaxSpeed)
 
    def getThermalConfig(self, name):
       for pattern, cfg in self.thermalConfig.items():
@@ -46,11 +50,14 @@ class ThermalPolicyConfig:
          'zone': self.defaultZone,
       }
 
-   def getZoneLogicMap(self):
-      #NOTE: add defaultZone/defautLogic for backward compatibility
-      zones = {self.defaultZone: self.defaultLogic}
-      zones.update({name: cfg['logic'] for name, cfg in
-                    self.zoneConfig.items()})
+   def getZoneConfigMap(self):
+      #NOTE: add defaultZone/defautConfig for backward compatibility
+      defaultConfig = {}
+      defaultConfig['logic'] = self.defaultLogic
+      defaultConfig['minSpeed'] = self.defaultMinSpeed
+      defaultConfig['maxSpeed'] = self.defaultMaxSpeed
+      zones = {self.defaultZone: defaultConfig}
+      zones.update(self.zoneConfig)
       return zones
 
    def getFanConfig(self, name):

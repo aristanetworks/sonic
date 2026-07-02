@@ -608,8 +608,9 @@ class CoolingEntityManager(object):
          for sfp in chassis.get_all_sfps():
             self.get_xcvr(sfp.get_name()).register_api(sfp)
       else:
-         for dbent in self._get_dbhelper().get_all_xcvrs():
-            self.get_xcvr(dbent.name).register_db(dbent)
+         for ns, _ in self._iter_inventory_asics(chassis):
+            for dbent in self._get_dbhelper(ns).get_all_xcvrs():
+               self.get_xcvr(dbent.name).register_db(dbent)
 
    def update_pwms(self, chassis):
       platform = chassis.getPlatform()

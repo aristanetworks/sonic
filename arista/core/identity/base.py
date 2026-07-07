@@ -44,6 +44,7 @@ class PlatformIdentityBase:
             dir=parentDir)
       os.close(fd)
       prefdl.writeToFile(tmpFilePath)
+      os.chmod(tmpFilePath, 0o644)
       os.replace(tmpFilePath, cacheFilePath)
 
    def _readPrefdl(self):

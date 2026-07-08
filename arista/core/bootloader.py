@@ -1,4 +1,6 @@
 
+import subprocess
+
 from .component.component import Component
 
 from ..libs.procfs import getCmdlineDict
@@ -23,7 +25,14 @@ class Aboot(Component):
       self.inventory.addProgrammable(AbootProgrammable(self))
 
    def getVersion(self):
-      return getCmdlineDict().get('Aboot', 'N/A')
+      version = getCmdlineDict().get('Aboot')
+      if version:
+         return version
+      try:
+         return subprocess.check_output(
+            ['dmidecode', '-s', 'bios-version'], text=True).strip()
+      except Exception: # pylint: disable=broad-except
+         return 'N/A'
 
 class UbootProgrammable(Programmable):
    def __init__(self, uboot):

@@ -345,13 +345,20 @@ class CoolingXcvrThermal(CoolingThermal):
    def target(self):
       if Config().cooling_override_xcvr_target is not None:
          return Config().cooling_override_xcvr_target
-      if Config().cooling_xcvr_target_offset is not None and self.overheat:
-         return self.overheat + Config().cooling_xcvr_target_offset
+      if Config().cooling_xcvr_target_offset is not None:
+         offset = Config().cooling_xcvr_target_offset
+         if Config().cooling_xcvr_target_from_critical and self.critical:
+            return self.critical + offset
+         if self.overheat:
+            return self.overheat + offset
       return super().target
 
    def update_thresholds(self, thresholds):
-      self.overheat = self._float_or_none(thresholds.get('temphighwarning'))
       self.critical = self._float_or_none(thresholds.get('temphighalarm'))
+      if Config().cooling_xcvr_target_from_critical:
+         self.overheat = self.critical
+      else:
+         self.overheat = self._float_or_none(thresholds.get('temphighwarning'))
 
    def update_from_api(self):
       api = self.api.get_xcvr_api()

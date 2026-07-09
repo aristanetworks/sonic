@@ -55,6 +55,7 @@ class DefaultConfig:
    cooling_target_offset: Optional[float] = None
    cooling_target_factor: float = 0.8
    cooling_xcvr_target_offset: float = -10.
+   cooling_xcvr_target_from_critical: bool = False
    cooling_gc_count: int = 15
    cooling_hysteresis_negative: Optional[float] = None
    cooling_hysteresis_positive: Optional[float] = None

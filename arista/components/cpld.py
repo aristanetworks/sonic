@@ -4,7 +4,6 @@ import time
 from ..core.cause import (
    ReloadCauseEntry,
    HardwareReloadCauseProvider,
-   ReloadCauseScore,
 )
 from ..core.component import Priority
 from ..core.component.i2c import I2cComponent
@@ -344,8 +343,6 @@ class SysCpldReloadCauseProvider(HardwareReloadCauseProvider):
             cause=cause.typ,
             rcTime=rcTime,
             rcDesc=cause.description,
-            score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
-                  ReloadCauseScore.getPriority(cause.priority),
             priority=cause.priority,
             altSource=cause.altSource,
          )
@@ -355,7 +352,6 @@ class SysCpldReloadCauseProvider(HardwareReloadCauseProvider):
          cause='unknown',
          rcTime=rcTime,
          rcDesc=f'unknown logged fault {code:#04x}',
-         score=ReloadCauseScore.LOGGED,
          priority=ReloadCausePriority.NORMAL,
       )
 

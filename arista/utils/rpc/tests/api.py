@@ -44,7 +44,6 @@ class FakeReloadCauseManager():
                            'cause': 'unknown cause',
                            'time': 'unknown',
                            'description': 'bar',
-                           'score': 50,
                         },
                      ],
                   },

@@ -5,7 +5,6 @@ from types import SimpleNamespace
 import pytest
 
 from ....components.scd import Scd, ScdReloadCauseRegisters
-from ....core.cause import ReloadCauseScore
 from ....core.inventory import Inventory
 from ....core.tests.helpers import classname, getAllSystems
 from ....descs.cause import CauseDesc, ReloadCauseDesc, ReloadCausePriority
@@ -140,13 +139,9 @@ class TestScdReloadCauseProvider:
       provider.regs_ = regs
       return provider
 
-   def _assertReloadCauseEntry(self, entry, cause, score=None):
+   def _assertReloadCauseEntry(self, entry, cause):
       assert entry.getCause() == cause.typ
       assert entry.getDescription() == cause.description
-      expected_score = score if score is not None else (
-         ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
-         ReloadCauseScore.getPriority(cause.priority))
-      assert entry.getScore() == expected_score
       assert entry.getPriority() == cause.priority
       assert entry.getAltSource() == cause.altSource
       assert entry.getTime(), 'time is empty'
@@ -177,7 +172,7 @@ class TestScdReloadCauseProvider:
          description=f'unknown logged fault {code:#04x}',
          priority=ReloadCausePriority.UNKNOWN,
          altSource=None,
-      ), score=ReloadCauseScore.LOGGED)
+      ))
 
    def testRtcTime(self):
       regs = MockRegs(causeCode=SCD_CAUSES[0].code, fractional=0x10000, seconds=1)
@@ -199,13 +194,9 @@ class TestSimpleScdReloadCauseProvider:
       scd = MockScdSimple(code)
       return SimpleScdReloadCauseProvider(scd, self.ADDR, causes or []), scd
 
-   def _assertReloadCauseEntry(self, entry, cause, score=None):
+   def _assertReloadCauseEntry(self, entry, cause):
       assert entry.getCause() == cause.typ
       assert entry.getDescription() == cause.description
-      expected_score = score if score is not None else (
-         ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
-         ReloadCauseScore.getPriority(ReloadCausePriority.NORMAL))
-      assert entry.getScore() == expected_score
       assert entry.getPriority() == cause.priority
       assert entry.getAltSource() == cause.altSource
 
@@ -232,7 +223,7 @@ class TestSimpleScdReloadCauseProvider:
          description=f'unknown logged fault {code:#04x}',
          priority=ReloadCausePriority.UNKNOWN,
          altSource=None,
-      ), score=ReloadCauseScore.LOGGED)
+      ))
 
    def testClearFaults(self):
       provider, scd = self._make(0x00)

@@ -9,7 +9,7 @@ from .inventory import ReloadCause, ReloadCauseProvider
 from .log import getLogger
 from .utils import JsonStoredData
 
-from ..descs.cause import ReloadCausePriority, ReloadCauseScore, ReloadCauseAltSource
+from ..descs.cause import ReloadCausePriority, ReloadCauseAltSource
 
 from ..libs.date import datetimeToStr, strToDatetime, epochToDatetime
 from ..libs.procfs import bootDatetime
@@ -21,14 +21,12 @@ RELOAD_CAUSE_HISTORY_SIZE=128
 
 class ReloadCauseEntry(ReloadCause):
    def __init__(self, cause='unknown', rcTime='unknown', rcDesc='',
-                      score=ReloadCauseScore.EVENT,
-                      priority=ReloadCausePriority.NORMAL,
-                      altSource=None,
-                      debugInfo=None):
+                     priority=ReloadCausePriority.NORMAL,
+                     altSource=None,
+                     debugInfo=None):
       self.cause = cause
       self.time = rcTime
       self.description = rcDesc
-      self.score = score
       self.priority = priority
       # The alternative source provider that should be checked if this cause presents
       self.altSource = altSource
@@ -54,9 +52,6 @@ class ReloadCauseEntry(ReloadCause):
    def getTime(self):
       return self.time
 
-   def getScore(self):
-      return self.score
-
    def getPriority(self):
       return self.priority
 
@@ -79,7 +74,6 @@ class ReloadCauseEntry(ReloadCause):
          'cause': self.cause,
          'time': self.time,
          'description': self.description,
-         'score': self.score,
          'priority': self.priority,
          'altSource': self.altSource.value if self.altSource else None,
       }
@@ -93,7 +87,6 @@ class ReloadCauseEntry(ReloadCause):
          cause=data['cause'],
          rcTime=data['time'],
          rcDesc=data['description'],
-         score=data['score'],
          # If we load a new image onto an old version SONiC switch, its saved
          # reload cause entries might not have priority or altSource
          priority=(ReloadCausePriority.NORMAL if 'priority' not in data
@@ -217,8 +210,6 @@ class ReloadCauseDataStore(JsonStoredData):
       for item in data:
          if 'description' not in item:
             item['description'] = ''
-         if 'score' not in item:
-            item['score'] = ReloadCauseScore.UNKNOWN
          if 'priority' not in item:
             item['priority'] = ReloadCausePriority.NORMAL
          if 'altSource' not in item:
@@ -360,7 +351,6 @@ class ReloadCauseReport(object):
          cause='unknown',
          rcTime=datetimeToStr(self.date),
          rcDesc='could not find a valid reboot cause',
-         score=ReloadCauseScore.UNKNOWN,
          priority=ReloadCausePriority.UNKNOWN,
       )
 

@@ -7,7 +7,6 @@ from ...libs.integer import isBitSet
 from ...core.cause import (
    ReloadCauseEntry,
    HardwareReloadCauseProvider,
-   ReloadCauseScore,
 )
 from ...core.component import Priority
 from ...core.driver.user.rtc import RealTimeClockImpl
@@ -286,8 +285,6 @@ class Adm1266(PmbusDpm):
                   cause=cause.name,
                   rcTime=datetimeToStr(fault.getTime()),
                   rcDesc='%s (powerup=%d)' % (cause.description, fault.powerup),
-                  score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
-                        ReloadCauseScore.getPriority(cause.priority),
                   priority=cause.priority,
                   altSource=cause.altSource,
                ))

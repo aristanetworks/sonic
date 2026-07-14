@@ -10,7 +10,6 @@ from ..cpld import (
    SysCpldReloadCauseEntry,
    SysCpldReloadCauseProvider,
 )
-from ...core.cause import ReloadCauseScore
 from ...core.tests.helpers import getAllSystems
 from ...descs.cause import CauseDesc, ReloadCauseDesc, ReloadCausePriority
 
@@ -117,13 +116,9 @@ class TestSysCpldReloadCauseProvider:
    def _assertField(self, label, actual, expected):
       assert actual == expected, f'{label}: expected {expected!r}, got {actual!r}'
 
-   def _assertReloadCauseEntry(self, entry, cause, score=None):
+   def _assertReloadCauseEntry(self, entry, cause):
       self._assertField('cause', entry.getCause(), cause.typ)
       self._assertField('description', entry.getDescription(), cause.description)
-      expected_score = score if score is not None else (
-         ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
-         ReloadCauseScore.getPriority(cause.priority))
-      self._assertField('score', entry.getScore(), expected_score)
       self._assertField('priority', entry.getPriority(), cause.priority)
       self._assertField('altSource', entry.getAltSource(), cause.altSource)
       assert entry.getTime(), 'time is empty'
@@ -154,4 +149,4 @@ class TestSysCpldReloadCauseProvider:
          description=f'unknown logged fault {code:#04x}',
          priority=ReloadCausePriority.NORMAL,
          altSource=None,
-      ), score=ReloadCauseScore.LOGGED)
+      ))

@@ -14,7 +14,6 @@ from ..descs.cause import (
    CauseDesc,
    ReloadCauseDesc,
    ReloadCausePriority,
-   ReloadCauseScore,
 )
 from ..drivers.cookie import SonicReloadCauseCookieDriver
 from ..libs.date import datetimeToStr, strToDatetime
@@ -40,12 +39,8 @@ class BertReloadCauseProvider(ReloadCauseProviderHelper):
          self.causes = [ReloadCauseEntry(
             cause='cpu',
             rcDesc=' | '.join(bertLines),
-            score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED,
             priority=ReloadCausePriority.BERT,
          )]
-
-class CookiePriority(ReloadCausePriority):
-   pass
 
 class CookieReloadCauseEntry(ReloadCauseEntry):
    pass
@@ -110,13 +105,7 @@ class SonicReloadCauseCookieComponent(Component):
                       if 'time' in m.groupdict() else 'unknown')
             rcDesc = (descTemplate.format(m.group('command'))
                       if 'command' in m.groupdict() else descTemplate)
-            rcScore = (ReloadCauseScore.LOGGED |
-                       ReloadCauseScore.EVENT |
-                       ReloadCauseScore.DETAILED |
-                       ReloadCauseScore.getPriority(CookiePriority.HIGH))
-
-            return [CookieReloadCauseEntry(rcType, rcTime,
-                                           rcDesc=rcDesc, score=rcScore)]
+            return [CookieReloadCauseEntry(rcType, rcTime, rcDesc=rcDesc)]
       return []
 
 class CookieComponentBase(Component):
@@ -149,8 +138,7 @@ class CookieComponentBase(Component):
                cause=desc.typ,
                rcTime=time,
                rcDesc=desc.description,
-               score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
-                     ReloadCauseScore.getPriority(desc.priority))
+               priority=desc.priority)
 
    def reset(self):
       self.causeData = {}

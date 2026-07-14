@@ -3,7 +3,6 @@ import datetime
 from ...core.cause import (
    ReloadCauseEntry,
    HardwareReloadCauseProvider,
-   ReloadCauseScore,
 )
 from ...core.log import getLogger
 from ...descs.cause import ReloadCauseDesc, ReloadCausePriority
@@ -47,10 +46,6 @@ class SimpleScdReloadCauseProvider(HardwareReloadCauseProvider):
                cause=cause.typ,
                # NOTE: rcTime is not available
                rcDesc=cause.description,
-               # NOTE: even though there is no great details it needs to play
-               #       nicely with devices that do report detailed faults.
-               score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
-                     ReloadCauseScore.getPriority(ReloadCausePriority.NORMAL),
                priority=cause.priority,
                altSource=cause.altSource,
             )
@@ -59,7 +54,6 @@ class SimpleScdReloadCauseProvider(HardwareReloadCauseProvider):
       return ScdReloadCauseEntry(
          cause='unknown',
          rcDesc=f'unknown logged fault {code:#04x}',
-         score=ReloadCauseScore.LOGGED,
          priority=ReloadCausePriority.UNKNOWN,
       )
 
@@ -120,10 +114,6 @@ class ScdReloadCauseProvider(HardwareReloadCauseProvider):
             cause=cause.typ,
             rcTime=rcTime,
             rcDesc=cause.description,
-            # NOTE: even though there is no great details it needs to play
-            #       nicely with devices that do report detailed faults.
-            score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
-                  ReloadCauseScore.getPriority(cause.priority),
             priority=cause.priority,
             altSource=cause.altSource,
          )
@@ -132,6 +122,5 @@ class ScdReloadCauseProvider(HardwareReloadCauseProvider):
       return ScdReloadCauseEntry(
          cause='unknown',
          rcDesc=f'unknown logged fault {code:#04x}',
-         score=ReloadCauseScore.LOGGED,
          priority=ReloadCausePriority.UNKNOWN,
       )

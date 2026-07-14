@@ -2,7 +2,6 @@
 from ...core.cause import (
    ReloadCauseEntry,
    HardwareReloadCauseProvider,
-   ReloadCauseScore,
 )
 from ...core.log import getLogger
 
@@ -28,8 +27,6 @@ class AspeedReloadCauseProvider(HardwareReloadCauseProvider):
          causes.append(ReloadCauseEntry(
             cause=ReloadCauseDesc.POWERLOSS.typ,
             rcDesc='Power loss detected via SCU0_050 PWRST#',
-            score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
-                  ReloadCauseScore.getPriority(ReloadCausePriority.NORMAL),
             priority=ReloadCausePriority.NORMAL,
          ))
 

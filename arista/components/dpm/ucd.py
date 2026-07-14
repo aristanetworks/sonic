@@ -3,7 +3,6 @@ import datetime
 from ...core.cause import (
    ReloadCauseEntry,
    HardwareReloadCauseProvider,
-   ReloadCauseScore,
 )
 from ...core.component import Priority
 from ...core.driver.user.rtc import RealTimeClockImpl
@@ -252,8 +251,6 @@ class Ucd(PmbusDpm):
                cause=cause.causeDesc.typ,
                rcTime=datetimeToStr(time),
                rcDesc=cause.getReason(page=page, detailed=True),
-               score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
-                     ReloadCauseScore.getPriority(cause.priority),
                priority=cause.priority,
                altSource=cause.altSource,
                debugInfo=debugInfo,
@@ -264,8 +261,6 @@ class Ucd(PmbusDpm):
                 cause='gpi-%s' % page,
                 rcTime=datetimeToStr(time),
                 rcDesc='gpi %s detailed fault' % page,
-                score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
-                      ReloadCauseScore.getPriority(UcdPriority.UNKNOWN),
                 priority=ReloadCausePriority.UNKNOWN,
                 debugInfo=debugInfo,
             ))
@@ -278,8 +273,6 @@ class Ucd(PmbusDpm):
                cause=cause.causeDesc.typ,
                rcTime=datetimeToStr(time),
                rcDesc=cause.getReason(page=page, detailed=True),
-               score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
-                     ReloadCauseScore.getPriority(cause.priority),
                priority=cause.priority,
                altSource=cause.altSource,
                debugInfo=debugInfo,
@@ -296,8 +289,6 @@ class Ucd(PmbusDpm):
                   page=page,
                   railName=self._getRailName(page),
                ),
-               score=ReloadCauseScore.EVENT | ReloadCauseScore.DETAILED |
-                     ReloadCauseScore.getPriority(UcdPriority.UNKNOWN),
                priority=ReloadCausePriority.UNKNOWN,
                debugInfo=debugInfo,
             )
@@ -347,8 +338,6 @@ class Ucd(PmbusDpm):
                causes.append(UcdReloadCauseEntry(
                   cause=fault.getReason(),
                   rcDesc='non paged fault',
-                  score=ReloadCauseScore.LOGGED |
-                        ReloadCauseScore.getPriority(UcdPriority.NORMAL),
                   debugInfo=debugInfo,
                ))
             else:
@@ -367,8 +356,6 @@ class Ucd(PmbusDpm):
                causes.append(UcdReloadCauseEntry(
                   cause=cause.causeDesc.typ,
                   rcDesc=cause.getReason(page=bitpos),
-                  score=ReloadCauseScore.LOGGED |
-                        ReloadCauseScore.getPriority(cause.priority),
                   priority=cause.priority,
                   altSource=cause.altSource,
                   debugInfo=debugInfo,
@@ -378,8 +365,6 @@ class Ucd(PmbusDpm):
                causes.append(UcdReloadCauseEntry(
                   cause='gpi-%d' % bitpos,
                   rcDesc='unknown gpi fault',
-                  score=ReloadCauseScore.LOGGED |
-                        ReloadCauseScore.getPriority(UcdPriority.UNKNOWN),
                   priority=UcdPriority.UNKNOWN,
                   debugInfo=debugInfo,
                ))

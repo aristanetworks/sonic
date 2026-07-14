@@ -11,10 +11,6 @@ class ReloadCause(InventoryInterface):
    def getCause(self):
       raise NotImplementedError
 
-   @diagmethod('score')
-   def getScore(self):
-      raise NotImplementedError
-
    @diagmethod('priority')
    def getPriority(self):
       raise NotImplementedError

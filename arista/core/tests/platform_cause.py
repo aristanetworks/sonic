@@ -26,11 +26,6 @@ from ...platforms.linecard.wolverine import (
 )
 from ...platforms.supervisor.otterlake import OtterLake
 
-NEW_VERSION_PRIORITIES = [ReloadCausePriority.PREREBOOT,
-                          ReloadCausePriority.HARDWARE_MAIN,
-                          ReloadCausePriority.HARDWARE_SECONDARY,
-                          ReloadCausePriority.BERT]
-
 MODULAR_PLATFORM_CASES = (
    (
       Camp,
@@ -57,29 +52,6 @@ MODULAR_PLATFORM_CASES = (
       },
    ),
 )
-
-def isProviderPriorityVersionNew(provider):
-   if provider.getPriority() in NEW_VERSION_PRIORITIES:
-      return True
-   return False
-
-def assertPlatformReloadCauseProviderVersion(platform):
-   providerVersion = None
-   for provider in platform.getInventory().getReloadCauseProviders():
-      # BERT is injected on all platforms regardless of their priority scheme,
-      # so it cannot be used as a version indicator. Remove this skip once all
-      # platforms have migrated to the new priority scheme.
-      if provider.getPriority() == ReloadCausePriority.BERT:
-         continue
-
-      currentVersion = isProviderPriorityVersionNew(provider)
-      if providerVersion is None:
-         providerVersion = currentVersion
-      else:
-         assert currentVersion == providerVersion, (
-            f"{classname(platform)}: detect usage of ReloadCauseProvider priority "
-            "from at least two different standards. Please check definitions."
-         )
 
 @pytest.mark.parametrize('platformCls', tuple(getAllSystemClasses()), ids=classname)
 def testPlatformReloadCauseDescs(platformCls):
@@ -109,7 +81,7 @@ def testPlatformReloadCauseDescs(platformCls):
             f'expected {len(provider.adm.causes)} descs, got {len(descs)}')
 
 @pytest.mark.parametrize('platformCls', tuple(getAllSystemClasses()), ids=classname)
-def testPlatformReloadCauseProviderVersion(platformCls):
+def testPlatformReloadCauseProviderPriorities(platformCls):
    # Filter finalized classes with SID and SKU
    if not platformCls.SKU or not platformCls.SID:
       return
@@ -118,7 +90,12 @@ def testPlatformReloadCauseProviderVersion(platformCls):
       return
 
    platform = platformCls()
-   assertPlatformReloadCauseProviderVersion(platform)
+   inventory = platform.getInventory()
+   for provider in inventory.getReloadCauseProviders():
+      assert provider.getPriority() in ReloadCausePriority.PROVIDER_PRIORITIES, (
+         f'{classname(platform)}/{provider.getSourceName()}: unexpected reload '
+         f'cause provider priority {provider.getPriority()}'
+      )
 
 @pytest.mark.parametrize(
    'chassisCls,supervisorCls,fabricCls,linecards',
@@ -129,7 +106,7 @@ def testPlatformReloadCauseProviderVersion(platformCls):
       'NorthFace-OtterLake-Dragonfly',
    ),
 )
-def testModularPlatformReloadCauseProviderVersion(
+def testModularPlatformReloadCauseProviderPriorities(
    chassisCls,
    supervisorCls,
    fabricCls,
@@ -146,4 +123,11 @@ def testModularPlatformReloadCauseProviderVersion(
    # linecard control-domain providers from MetaInventory.
    with mock.patch.object(PowerDomain, 'isEnabled', return_value=True):
       for linecard in chassis.iterLinecards():
-         assertPlatformReloadCauseProviderVersion(linecard)
+         inventory = linecard.getInventory()
+         for provider in inventory.getReloadCauseProviders():
+            assert provider.getPriority() in (
+               ReloadCausePriority.PROVIDER_PRIORITIES
+            ), (
+               f'{classname(linecard)}/{provider.getSourceName()}: unexpected '
+               f'cause provider priority {provider.getPriority()}'
+            )

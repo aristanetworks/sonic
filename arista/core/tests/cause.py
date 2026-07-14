@@ -286,7 +286,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
       if altSource is not None:
          self.assertEqual(rc.getAltSource(), altSource)
 
-   def testReloadCauseAlgorithmNew(self):
+   def testReloadCauseAlgorithm(self):
       # 1) insert 1 secondary hardware with 2 causes, see prioritized cause selected
       self._loadReloadCauses({
          'secondary' : {
@@ -296,7 +296,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
                ('under-voltage', ReloadCauseScore.UNKNOWN, 'Rail X',
                 ReloadCausePriority.NORMAL, None),
                ('unknown', ReloadCauseScore.EVENT, 'Rail Y',
-                ReloadCausePriority.NONE, None),
+                ReloadCausePriority.UNKNOWN, None),
             ]
          }
       })
@@ -386,9 +386,20 @@ class ReloadCauseManagerTest(unittest.TestCase):
          }
       })
       self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='reboot')
-      # 6) test unknown cause
-      self._loadReloadCauses({})
-      self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='unknown')
+      # 6) insert BERT only
+      self._loadReloadCauses({
+         'bert' : {
+            'priority' : ReloadCausePriority.BERT,
+            'causes' : [
+               ('cpu', ReloadCauseScore.UNKNOWN,
+                'Processor Generic error, severity: Fatal',
+                ReloadCausePriority.BERT, None),
+            ]
+         },
+      })
+      self.assertReloadCauseEquals(self.rcm.lastReport().cause,
+                                   cause='cpu',
+                                   priority=ReloadCausePriority.BERT)
       # 7) bert present alongside a prereboot cause: prereboot wins
       self._loadReloadCauses({
          'cookies' : {
@@ -408,7 +419,10 @@ class ReloadCauseManagerTest(unittest.TestCase):
          },
       })
       self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='reboot')
-      self.assertEqual(len(self.rcm.reports), 7)
+      # 8) test unknown cause
+      self._loadReloadCauses({})
+      self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='unknown')
+      self.assertEqual(len(self.rcm.reports), 8)
 
    @contextlib.contextmanager
    def _processLegacyReloadCauses(self, causes):

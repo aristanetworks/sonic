@@ -5,40 +5,35 @@ class ReloadCauseAltSource(Enum):
    # The CPU main hardware controller
    CPU = 'CPU'
 
-class ReloadCausePriority(object):
-   NONE = 0
-   LOW = 10
-   NORMAL = 20
-   HIGH = 30
-
-   PRIMARY = 0
-   SECONDARY = 1
-
-   # All priorities defined above will be eventually cleared out
-   # All below priorities will be set a bit weirdly high before the cleanup
+class ReloadCausePriority:
    # Priorities will be used in two ways:
    # 1) Specify the significance of providers
    # Any new priority value related to providers should be in [10, 50]
-   PREREBOOT = 23
-   HARDWARE_MAIN = 22
-   HARDWARE_SECONDARY = 21
-   BERT = 19
-   # Final values:
-   # PREREBOOT = 40
-   # HARDWARE_MAIN = 30
-   # HARDWARE_SECONDARY = 20
-   # BERT = 10
+   PREREBOOT = 40
+   HARDWARE_MAIN = 30
+   HARDWARE_SECONDARY = 20
+   BERT = 10
+   PROVIDER_PRIORITIES = (
+      PREREBOOT,
+      HARDWARE_MAIN,
+      HARDWARE_SECONDARY,
+      BERT,
+   )
    # 2) Specify the importancy of reload causes from the same provider, majorly
    # between detailed causes and undetailed/unknown ones
    # Any new priority value related to entries should be in [0, 9]
-   UNKNOWN = 18
-   # Final values: using the duplicated definition above before the cleanup
-   # HIGH = 9
-   # NORMAL = 5
-   # LOW = 1
-   # UNKNOWN = 0
+   HIGH = 9
+   NORMAL = 5
+   LOW = 1
+   UNKNOWN = 0
+   CAUSE_PRIORITIES = (
+      HIGH,
+      NORMAL,
+      LOW,
+      UNKNOWN,
+   )
 
-class ReloadCauseScore(object):
+class ReloadCauseScore:
    # DO NOT CHANGE EXISTING VALUES UNLESS YOU UNDERSTAND THE IMPLICATIONS
    # format:
    # 0:7 -> priority
@@ -57,7 +52,7 @@ class CauseDesc:
    typ: str
    desc: str
 
-class ReloadCauseDesc(object):
+class ReloadCauseDesc:
 
    UNKNOWN = CauseDesc('unknown', 'Unknown')
    KILLSWITCH = CauseDesc('killswitch', 'Kill switch')

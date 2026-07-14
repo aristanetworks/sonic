@@ -272,14 +272,11 @@ class ReloadCauseReport(object):
                logging.exception(
                   "Failed to get reload cause from provider %s", sourceName)
 
-   def analyzeCauseFromProviders(self, providers, orderByScore):
+   def analyzeCauseFromProviders(self, providers):
       causes = defaultdict(list)
       for provider in providers:
          for cause in provider.getCauses():
-            if orderByScore:
-               causes[cause.getScore()].append(cause)
-            else:
-               causes[cause.getPriority()].append(cause)
+            causes[cause.getPriority()].append(cause)
 
       for _, causes in reversed(sorted(causes.items())):
          for cause in causes:
@@ -288,46 +285,26 @@ class ReloadCauseReport(object):
       return None
 
    def analyzeCauses(self):
-      cause = self.analyzeCauseFromProviders(self.providers, orderByScore=True)
-      if cause is not None:
-         self.cause = cause
-         return
-
-      self.cause = ReloadCauseEntry(
-         cause='unknown',
-         rcTime=datetimeToStr(self.date),
-         rcDesc='could not find a valid reboot cause',
-         score=ReloadCauseScore.UNKNOWN,
-      )
-
-   # This will be renamed to analyzeCauses after the function above is cleared
-   def analyzeCausesNew(self):
-      # Reorganizing all providers by their priorities
-      # This block will be moved to provider processing when old logics are removed
-      providerDict = {}
-      for priority in ReloadCauseManager.NEW_VERSION_PRIORITIES:
-         providerDict[priority] = []
+      providerDict = {
+         priority: [] for priority in ReloadCausePriority.PROVIDER_PRIORITIES
+      }
       for provider in self.providers:
-         if provider.getPriority() == ReloadCausePriority.PREREBOOT:
-            providerDict[ReloadCausePriority.PREREBOOT].append(provider)
-         elif provider.getPriority() == ReloadCausePriority.HARDWARE_MAIN:
-            if providerDict[ReloadCausePriority.HARDWARE_MAIN]:
-               mainProvider = providerDict[ReloadCausePriority.HARDWARE_MAIN][0]
-               logging.warning("%s:Multiple main controllers found: %s already in "
-                               "data, but %s is found",self,
-                               mainProvider.getSourceName(),
-                               provider.getSourceName())
-            providerDict[ReloadCausePriority.HARDWARE_MAIN].append(provider)
-         elif provider.getPriority() == ReloadCausePriority.HARDWARE_SECONDARY:
-            providerDict[ReloadCausePriority.HARDWARE_SECONDARY].append(provider)
-         elif provider.getPriority() == ReloadCausePriority.BERT:
-            providerDict[ReloadCausePriority.BERT].append(provider)
+         priority = provider.getPriority()
+         if priority == ReloadCausePriority.HARDWARE_MAIN and \
+            providerDict[ReloadCausePriority.HARDWARE_MAIN]:
+            mainProvider = providerDict[ReloadCausePriority.HARDWARE_MAIN][0]
+            logging.warning("%s:Multiple main controllers found: %s already in "
+                            "data, but %s is found", self,
+                            mainProvider.getSourceName(),
+                            provider.getSourceName())
+         if priority in providerDict:
+            providerDict[priority].append(provider)
          else:
             logging.warning("%s:Old version / unknown reload cause provider "
                             "priority %s found", self, provider.getPriority())
       # First check all prereboot providers
       preRebootProviders = providerDict[ReloadCausePriority.PREREBOOT]
-      cause = self.analyzeCauseFromProviders(preRebootProviders, orderByScore=False)
+      cause = self.analyzeCauseFromProviders(preRebootProviders)
       if cause:
          self.cause = cause
          return
@@ -336,17 +313,13 @@ class ReloadCauseReport(object):
       # In case multiple main controllers are found, pick the first one
       if len(mainHardwareProvider) > 1:
          mainHardwareProvider = mainHardwareProvider[:1]
-      cause = self.analyzeCauseFromProviders(mainHardwareProvider,
-                                             orderByScore=False)
+      cause = self.analyzeCauseFromProviders(mainHardwareProvider)
       # If an altSource presents, check its reload cause
       checkedSource = []
       while cause and cause.getAltSource():
          if cause.getAltSource() in checkedSource:
-            loopStr = ""
-            for source in checkedSource:
-               loopStr += source
-               loopStr += " -> "
-            loopStr += cause.getAltSource()
+            loopStr = ' -> '.join(
+               source.value for source in [*checkedSource, cause.getAltSource()])
             logging.warning("%s:Alternative source loop %s found in providers. "
                             "Please review platform code", self, loopStr)
             # Use where the loop ends as the root cause as it is the same as picking
@@ -361,8 +334,7 @@ class ReloadCauseReport(object):
             logging.warning("%s:Alternative source %s is not in the provider list",
                             self, cause.getAltSource())
             break
-         cause = self.analyzeCauseFromProviders([nextSourceProvider],
-                                                orderByScore=False)
+         cause = self.analyzeCauseFromProviders([nextSourceProvider])
       if cause:
          self.cause = cause
          return
@@ -374,12 +346,12 @@ class ReloadCauseReport(object):
                       "software and main hardware controller. "
                       "Pick the first reload cause from the rest", self)
       hardwareProvider = providerDict[ReloadCausePriority.HARDWARE_SECONDARY]
-      cause = self.analyzeCauseFromProviders(hardwareProvider, orderByScore=False)
+      cause = self.analyzeCauseFromProviders(hardwareProvider)
       if cause:
          self.cause = cause
          return
       bertProvider = providerDict[ReloadCausePriority.BERT]
-      cause = self.analyzeCauseFromProviders(bertProvider, orderByScore=False)
+      cause = self.analyzeCauseFromProviders(bertProvider)
       if cause:
          self.cause = cause
          return
@@ -411,11 +383,6 @@ class ReloadCauseManager(object):
 
    VERSION = 3
 
-   NEW_VERSION_PRIORITIES = [ReloadCausePriority.PREREBOOT,
-                             ReloadCausePriority.HARDWARE_MAIN,
-                             ReloadCausePriority.HARDWARE_SECONDARY,
-                             ReloadCausePriority.BERT]
-
    def __init__(self, name=None, path=None):
       self.name = name
       self.path = path or flashPath('reboot-cause/platform/causes.json')
@@ -425,27 +392,6 @@ class ReloadCauseManager(object):
    @classmethod
    def processReportCause(cls, report):
       return report
-
-   def isProviderPriorityVersionNew(self, providers):
-      '''Check if the providers are using the new version of priority or not'''
-      # This is a temporary function and will be cleared once all platforms
-      # get transformed into the new design. If there is necessity to keep
-      # some of the platform running in the old design, it should be discussed
-      # if this function should be kept
-      res = None
-      for provider in providers:
-         # BERT is injected on all platforms regardless of their priority scheme,
-         # so it cannot be used as a version indicator. Remove this skip once all
-         # platforms have migrated to the new priority scheme.
-         if provider.getPriority() == ReloadCausePriority.BERT:
-            continue
-         isNewVersion = provider.getPriority() in self.NEW_VERSION_PRIORITIES
-         if res is None:
-            res = isNewVersion
-         else:
-            assert res == isNewVersion, (
-               "Found reload cause providers at different design versions")
-      return res if res is not None else False
 
    def syncRtcs(self, inventory):
       '''Ensure all component clocks are properly updated'''
@@ -465,10 +411,7 @@ class ReloadCauseManager(object):
       report = ReloadCauseReport(date=date or bootDatetime())
       providers = inventory.getReloadCauseProviders()
       report.processProviders(providers)
-      if self.isProviderPriorityVersionNew(providers):
-         report.analyzeCausesNew()
-      else:
-         report.analyzeCauses()
+      report.analyzeCauses()
       # TODO: only add report if there is none for current boot
       #       probably a tempfile under /run/platform_cache/
       self.reports.insert(0, report)

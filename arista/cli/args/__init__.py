@@ -6,21 +6,31 @@ from ...core.dynload import importSubmodules
 
 registeredParsers = OrderedDict()
 
+def _parser_key(parser_func):
+   # For sanity, make it resiliant to module reload
+   # (i.e. use the func identifier, not the func itself)
+   if parser_func:
+      return (parser_func.__module__, parser_func.__name__)
+   return None
+
+_duplicates = set()  # for inspection in tests
+
 def registerParser(name, parent=None, **kwargs):
    '''Arguments to provide to a subparser'''
-   parentParser = registeredParsers.get(parent)
+   parentParser = getParser(parent)
    if parent is None and parentParser is None:
       parentParser = Parser(None, None, None, None)
-      registeredParsers[None] = parentParser
+      registeredParsers[_parser_key(None)] = parentParser
 
    def decorator(func):
-      parser = getParser(func)
-      if not parser:
-         # FIXME: due to dynamic loading, parent parsers can be reloaded
-         #        we therefore only add it if i
+      key = _parser_key(func)
+      if key not in registeredParsers:
          parser = Parser(name, func, parentParser, kwargs)
-         registeredParsers[func] = parser
+         registeredParsers[key] = parser
          parentParser.addChild(parser)
+      else:
+         # With proper (idempotent) module loading we should never be here
+         _duplicates.add(key)
       return func
    return decorator
 
@@ -28,12 +38,7 @@ def getParsers():
    return registeredParsers.values()
 
 def getParser(parser):
-   for p in registeredParsers.values():
-      if p.parser is not None and \
-         p.parser.__name__ == parser.__name__ and \
-         p.parser.__module__ == parser.__module__:
-         return p
-   return None
+   return registeredParsers.get(_parser_key(parser))
 
 def getRootParser():
    return registeredParsers[None]

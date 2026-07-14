@@ -22,7 +22,8 @@ def walk_packages(path=None, prefix='', onerror=None):
       if info.ispkg:
          loader = get_module_loader(info.module_finder, info.name)
          try:
-            module = loader.load_module(info.name)
+            # patch: don't reload imported modules
+            module = sys.modules.get(info.name) or loader.load_module(info.name)
          except ImportError:
             if onerror is not None:
                onerror(info.name)
@@ -39,7 +40,7 @@ def walk_packages(path=None, prefix='', onerror=None):
 
             yield from walk_packages(path, info.name + '.', onerror)
 
-def importSubmodules(package, prefix=None, recursive=True):
+def importSubmodules(package):
    if isinstance(package, str):
       prefix = package + '.'
       package = importlib.import_module(package)
@@ -50,7 +51,5 @@ def importSubmodules(package, prefix=None, recursive=True):
    for info in walk_packages(package.__path__, prefix=prefix):
       fullName = info.name
       modules[fullName] = importlib.import_module(fullName)
-      if recursive and info.ispkg:
-         modules.update(importSubmodules(fullName, fullName + '.'))
 
    return modules

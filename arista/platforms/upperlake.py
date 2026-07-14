@@ -66,7 +66,7 @@ class Upperlake(FixedSystem):
       ])
 
       self.configureCpuDpm()
-      self.configureSwitchDpm()
+      self.addPlatformComponents()
 
       scd.addLeds([
          (0x6050, 'status'),
@@ -154,7 +154,7 @@ class Upperlake(FixedSystem):
    def configureCpuDpm(self):
       self.cpu.addCpuDpm(self.scd, 1)
 
-   def configureSwitchDpm(self):
+   def addPlatformComponents(self):
       self.scd.newComponent(Ucd90120A, addr=self.scd.i2cAddr(5, 0x4e, t=3), causes=[
          UcdGpi(1, ReloadCauseDesc.REBOOT),
          UcdGpi(2, ReloadCauseDesc.WATCHDOG),
@@ -191,7 +191,7 @@ class UpperlakeElite(Upperlake):
       if self.getHwApi() < HwApi(2):
          super().configureCpuDpm()
 
-   def configureSwitchDpm(self):
+   def addPlatformComponents(self):
       causes = [
          SysCpldCause(0x00, ReloadCauseDesc.UNKNOWN),
          SysCpldCause(0x01, ReloadCauseDesc.REBOOT),

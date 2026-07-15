@@ -305,6 +305,7 @@ class ReloadCauseReport(object):
       if len(mainHardwareProvider) > 1:
          mainHardwareProvider = mainHardwareProvider[:1]
       cause = self.analyzeCauseFromProviders(mainHardwareProvider)
+      lastCause = cause
       # If an altSource presents, check its reload cause
       checkedSource = []
       while cause and cause.getAltSource():
@@ -326,8 +327,10 @@ class ReloadCauseReport(object):
                             self, cause.getAltSource())
             break
          cause = self.analyzeCauseFromProviders([nextSourceProvider])
-      if cause:
-         self.cause = cause
+         if cause:
+            lastCause = cause
+      if lastCause:
+         self.cause = lastCause
          return
       # Finally, try to randomly pick one from secondary causes
       # This will be fixed to pick the firt available reload cause from the first

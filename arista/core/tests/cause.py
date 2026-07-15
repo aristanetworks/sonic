@@ -1,5 +1,6 @@
 
 import contextlib
+import copy
 import datetime
 import json
 import os
@@ -23,6 +24,27 @@ from ..cause import (
 from ..config import Config
 from ..inventory import Inventory
 
+def _oldVersifyCause(cause, priority=ReloadCausePriority.NORMAL, altSource=None):
+   cause['priority'] = priority
+   cause['altSource'] = altSource
+
+def _oldVersifyProvider(provider, priority):
+   provider['priority'] = priority
+   provider['altSource'] = []
+   for cause in provider['causes']:
+      _oldVersifyCause(cause)
+
+def _oldVersify(expected):
+   expected = copy.deepcopy(expected)
+   report = expected['reports'][0]
+   _oldVersifyCause(report['cause'])
+   _oldVersifyProvider(report['providers'][0], ReloadCausePriority.BERT)
+   _oldVersifyProvider(
+      report['providers'][1], ReloadCausePriority.HARDWARE_SECONDARY)
+   _oldVersifyProvider(
+      report['providers'][2], ReloadCausePriority.HARDWARE_SECONDARY)
+   return expected
+
 class MockReloadCauseProvider(ReloadCauseProviderHelper):
    def __init__(self, name, causes, extra=None, **kwargs):
       super().__init__(name=name, causes=causes, extra=extra or {}, **kwargs)
@@ -40,7 +62,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
          {
             "date": EXPECTED_DATE,
             "cause": {
-               'cause': 'powerloss',
+               'cause': ReloadCauseDesc.POWERLOSS.typ,
                'time': EXPECTED_DATE,
                'description': 'user triggered',
                'priority': ReloadCausePriority.NORMAL,
@@ -57,6 +79,13 @@ class ReloadCauseManagerTest(unittest.TestCase):
                {
                   "name": "primary provider",
                   "causes": [
+                     {
+                        'cause': ReloadCauseDesc.CPU.typ,
+                        'time': EXPECTED_DATE,
+                        'description': 'secondary reported',
+                        'priority': ReloadCausePriority.UNKNOWN,
+                        'altSource': ReloadCauseAltSource.CPU.value,
+                     },
                   ],
                   "extra": {},
                   'priority': ReloadCausePriority.HARDWARE_SECONDARY,
@@ -75,7 +104,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
                   ],
                   "extra": {},
                   'priority': ReloadCausePriority.HARDWARE_SECONDARY,
-                  'altSource': [],
+                  'altSource': [ReloadCauseAltSource.CPU.value],
                },
             ],
          },
@@ -88,7 +117,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
          {
             "date": EXPECTED_DATE,
             "cause": {
-               'cause': 'powerloss',
+               'cause': ReloadCauseDesc.POWERLOSS.typ,
                'time': EXPECTED_DATE,
                'description': 'user triggered',
             },
@@ -101,6 +130,11 @@ class ReloadCauseManagerTest(unittest.TestCase):
                {
                   "name": "primary provider",
                   "causes": [
+                     {
+                        'cause': ReloadCauseDesc.CPU.typ,
+                        'time': EXPECTED_DATE,
+                        'description': 'secondary reported',
+                     },
                   ],
                   "extra": {},
                },
@@ -108,7 +142,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
                   "name": "secondary provider",
                   "causes": [
                      {
-                        'cause': 'powerloss',
+                        'cause': ReloadCauseDesc.POWERLOSS.typ,
                         'time': EXPECTED_DATE,
                         'description': 'user triggered',
                      }
@@ -119,21 +153,30 @@ class ReloadCauseManagerTest(unittest.TestCase):
          },
       ],
    }
+   EXPECTED_SIMPLE_OLD_VERSION = _oldVersify(EXPECTED_SIMPLE)
    PROVIDERS_SIMPLE = [
       MockReloadCauseProvider(
          name='primary provider',
          causes=[
+            ReloadCauseEntry(
+               cause=ReloadCauseDesc.CPU.typ,
+               rcTime=EXPECTED_DATE,
+               rcDesc='secondary reported',
+               priority=ReloadCausePriority.UNKNOWN,
+               altSource=ReloadCauseAltSource.CPU,
+            ),
          ],
       ),
       MockReloadCauseProvider(
          name='secondary provider',
          causes=[
             ReloadCauseEntry(
-               cause='powerloss',
+               cause=ReloadCauseDesc.POWERLOSS.typ,
                rcTime=EXPECTED_DATE,
                rcDesc='user triggered',
             ),
          ],
+         altSource=[ReloadCauseAltSource.CPU],
       ),
       MockReloadCauseProvider(
          name='bert',
@@ -207,10 +250,11 @@ class ReloadCauseManagerTest(unittest.TestCase):
       # image
       self.storeJson(self.STORED_SIMPLE_OLD_VERSION)
       self.rcm.loadCauses()
-      self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='powerloss',
+      self.assertReloadCauseEquals(self.rcm.lastReport().cause,
+                                   cause=ReloadCauseDesc.POWERLOSS.typ,
                                    priority=ReloadCausePriority.NORMAL)
       self.rcm.storeCauses()
-      self.assertCauseStoreEqual(self.EXPECTED_SIMPLE)
+      self.assertCauseStoreEqual(self.EXPECTED_SIMPLE_OLD_VERSION)
 
    def testLoadStore(self):
       self.storeJson(self.EXPECTED_SIMPLE)
@@ -257,7 +301,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
       causes = provider.getCauses()
       self.assertEqual(len(causes), 1)
       cause = causes[0]
-      self.assertEqual(cause.getCause(), 'cpu')
+      self.assertEqual(cause.getCause(), ReloadCauseDesc.CPU.typ)
       self.assertEqual(cause.getDescription(), ' | '.join(self.BERT_LINES))
       self.assertEqual(cause.getPriority(), ReloadCausePriority.BERT)
 
@@ -281,133 +325,181 @@ class ReloadCauseManagerTest(unittest.TestCase):
          'secondary' : {
             'priority' : ReloadCausePriority.HARDWARE_SECONDARY,
             'causes' : [
-               ('under-voltage', 'Rail X',
+               (ReloadCauseDesc.RAIL.typ, 'Rail X',
                 ReloadCausePriority.NORMAL, None),
-               ('unknown', 'Rail Y',
+               (ReloadCauseDesc.UNKNOWN.typ, 'Rail Y',
                 ReloadCausePriority.UNKNOWN, None),
             ]
          }
       })
       self.assertReloadCauseEquals(self.rcm.lastReport().cause,
-                                   cause='under-voltage')
+                                   cause=ReloadCauseDesc.RAIL.typ)
       # 2) insert 2 secondary hardware and see any cause selected
       self._loadReloadCauses({
          'secondary1' : {
             'priority' : ReloadCausePriority.HARDWARE_SECONDARY,
             'causes' : [
-               ('under-voltage', 'Rail X',
+               (ReloadCauseDesc.RAIL.typ, 'Rail X',
                 ReloadCausePriority.NORMAL, None),
             ]
          },
          'secondary2' : {
             'priority' : ReloadCausePriority.HARDWARE_SECONDARY,
             'causes' : [
-               ('unknown', 'Rail Y',
+               (ReloadCauseDesc.UNKNOWN.typ, 'Rail Y',
                 ReloadCausePriority.NORMAL, None),
             ]
          }
       })
       self.assertReloadCauseEquals(self.rcm.lastReport().cause,
-                                   cause='under-voltage')
+                                   cause=ReloadCauseDesc.RAIL.typ)
       # 3) insert 1 main hardware and 1 secondary
       self._loadReloadCauses({
          'main' : {
             'priority' : ReloadCausePriority.HARDWARE_MAIN,
             'causes' : [
-               ('powerloss', 'user triggered',
+               (ReloadCauseDesc.POWERLOSS.typ, 'user triggered',
                 ReloadCausePriority.NORMAL, None),
             ]
          },
          'secondary' : {
             'priority' : ReloadCausePriority.HARDWARE_SECONDARY,
             'causes' : [
-               ('under-voltage', 'Rail Y',
+               (ReloadCauseDesc.RAIL.typ, 'Rail Y',
                 ReloadCausePriority.NORMAL, None),
             ]
          }
       })
-      self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='powerloss')
+      self.assertReloadCauseEquals(self.rcm.lastReport().cause,
+                                   cause=ReloadCauseDesc.POWERLOSS.typ)
       # 4) insert 1 main hardware but altSource is 1 secondary
       self._loadReloadCauses({
          'main' : {
             'priority' : ReloadCausePriority.HARDWARE_MAIN,
             'causes' : [
-               ('cpu', 'secondary reported',
+               (ReloadCauseDesc.CPU.typ, 'secondary reported',
                 ReloadCausePriority.NORMAL, ReloadCauseAltSource.CPU),
             ]
          },
          'secondary-CPU' : {
             'priority' : ReloadCausePriority.HARDWARE_SECONDARY,
             'causes' : [
-               ('under-voltage', 'Rail Y',
+               (ReloadCauseDesc.RAIL.typ, 'Rail Y',
                 ReloadCausePriority.NORMAL, None),
             ],
             'altSource' : [ReloadCauseAltSource.CPU]
          }
       })
       self.assertReloadCauseEquals(self.rcm.lastReport().cause,
-                                   cause='under-voltage')
+                                   cause=ReloadCauseDesc.RAIL.typ)
       # 5) insert 1 prereboot, 1 main hardware, and 1 secondary
       self._loadReloadCauses({
          'cookies' : {
             'priority' : ReloadCausePriority.PREREBOOT,
             'causes' : [
-               ('reboot', 'User issued reboot command',
+               (ReloadCauseDesc.REBOOT.typ, 'User issued reboot command',
                 ReloadCausePriority.NORMAL, None),
             ]
          },
          'main' : {
             'priority' : ReloadCausePriority.HARDWARE_MAIN,
             'causes' : [
-               ('cpu', 'secondary reported',
+               (ReloadCauseDesc.CPU.typ, 'secondary reported',
                 ReloadCausePriority.NORMAL, ReloadCauseAltSource.CPU),
             ]
          },
          'secondary-CPU' : {
             'priority' : ReloadCausePriority.HARDWARE_SECONDARY,
             'causes' : [
-               ('under-voltage', 'Rail Y',
+               (ReloadCauseDesc.RAIL.typ, 'Rail Y',
                 ReloadCausePriority.NORMAL, None),
             ],
             'altSource' : [ReloadCauseAltSource.CPU]
          }
       })
-      self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='reboot')
+      self.assertReloadCauseEquals(self.rcm.lastReport().cause,
+                                   cause=ReloadCauseDesc.REBOOT.typ)
       # 6) insert BERT only
       self._loadReloadCauses({
          'bert' : {
             'priority' : ReloadCausePriority.BERT,
             'causes' : [
-               ('cpu', 'Processor Generic error, severity: Fatal',
+               (ReloadCauseDesc.CPU.typ, 'Processor Generic error, severity: Fatal',
                 ReloadCausePriority.BERT, None),
             ]
          },
       })
       self.assertReloadCauseEquals(self.rcm.lastReport().cause,
-                                   cause='cpu',
+                                   cause=ReloadCauseDesc.CPU.typ,
                                    priority=ReloadCausePriority.BERT)
       # 7) bert present alongside a prereboot cause: prereboot wins
       self._loadReloadCauses({
          'cookies' : {
             'priority' : ReloadCausePriority.PREREBOOT,
             'causes' : [
-               ('reboot', 'User issued reboot command',
+               (ReloadCauseDesc.REBOOT.typ, 'User issued reboot command',
                 ReloadCausePriority.NORMAL, None),
             ]
          },
          'bert' : {
             'priority' : ReloadCausePriority.BERT,
             'causes' : [
-               ('cpu', 'Processor Generic error, severity: Fatal',
+               (ReloadCauseDesc.CPU.typ, 'Processor Generic error, severity: Fatal',
                 ReloadCausePriority.BERT, None),
             ]
          },
       })
-      self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='reboot')
-      # 8) test unknown cause
+      self.assertReloadCauseEquals(self.rcm.lastReport().cause,
+                                   cause=ReloadCauseDesc.REBOOT.typ)
+      # 8) altSource loop keeps the last resolved cause and warns
+      with patch('arista.core.cause.logging.warning') as warningCalls:
+         self._loadReloadCauses({
+            'main' : {
+               'priority' : ReloadCausePriority.HARDWARE_MAIN,
+               'causes' : [
+                  (ReloadCauseDesc.CPU.typ, 'secondary reported',
+                   ReloadCausePriority.NORMAL, ReloadCauseAltSource.CPU),
+               ]
+            },
+            'secondary-CPU' : {
+               'priority' : ReloadCausePriority.HARDWARE_SECONDARY,
+               'causes' : [
+                  (ReloadCauseDesc.POWERLOSS.typ, 'cpu power failure',
+                   ReloadCausePriority.NORMAL, ReloadCauseAltSource.CPU),
+               ],
+               'altSource' : [ReloadCauseAltSource.CPU]
+            }
+         })
+      self.assertTrue(any(
+         call.args[0].startswith('%s:Alternative source loop %s found') and
+         call.args[2] == 'CPU -> CPU'
+         for call in warningCalls.call_args_list))
+      self.assertReloadCauseEquals(self.rcm.lastReport().cause,
+                                   cause=ReloadCauseDesc.POWERLOSS.typ,
+                                   altSource=ReloadCauseAltSource.CPU)
+      # 9) altSource provider with no causes keeps the last resolved cause
+      self._loadReloadCauses({
+         'main' : {
+            'priority' : ReloadCausePriority.HARDWARE_MAIN,
+            'causes' : [
+               (ReloadCauseDesc.CPU.typ, 'secondary reported',
+                ReloadCausePriority.NORMAL, ReloadCauseAltSource.CPU),
+            ]
+         },
+         'secondary-CPU' : {
+            'priority' : ReloadCausePriority.HARDWARE_SECONDARY,
+            'causes' : [],
+            'altSource' : [ReloadCauseAltSource.CPU]
+         }
+      })
+      self.assertReloadCauseEquals(self.rcm.lastReport().cause,
+                                   cause=ReloadCauseDesc.CPU.typ,
+                                   altSource=ReloadCauseAltSource.CPU)
+      # 10) test unknown cause
       self._loadReloadCauses({})
-      self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='unknown')
-      self.assertEqual(len(self.rcm.reports), 8)
+      self.assertReloadCauseEquals(self.rcm.lastReport().cause,
+                                   cause=ReloadCauseDesc.UNKNOWN.typ)
+      self.assertEqual(len(self.rcm.reports), 10)
 
    @contextlib.contextmanager
    def _processLegacyReloadCauses(self, causes):

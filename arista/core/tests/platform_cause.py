@@ -131,3 +131,29 @@ def testModularPlatformReloadCauseProviderPriorities(
                f'{classname(linecard)}/{provider.getSourceName()}: unexpected '
                f'cause provider priority {provider.getPriority()}'
             )
+
+@pytest.mark.parametrize('platformCls', tuple(getAllSystemClasses()), ids=classname)
+def testPlatformReloadCauseAltSourcesResolvable(platformCls):
+   if not platformCls.SKU or not platformCls.SID:
+      return
+   if platformCls.PROTOTYPE:
+      return
+
+   platform = platformCls()
+   inventory = platform.getInventory()
+   providers = inventory.getReloadCauseProviders()
+   providerAltSources = {
+      altSource
+      for provider in providers
+      for altSource in provider.getAltSource()
+   }
+
+   for provider in providers:
+      for desc in provider.getReloadCauseDescs():
+         if not desc.altSource:
+            continue
+         assert desc.altSource in providerAltSources, (
+            f'{classname(platform)}/{provider.getSourceName()}: '
+            f'altSource {desc.altSource.value} has no matching provider on '
+            f'this platform'
+         )

@@ -20,57 +20,21 @@ class ScdBlackBoxDecoder(BlackBoxDecoder):
               self._decode(bytearray(data[s:]))).decode('ascii')
 
    def _decode(self, buf):
-      WAITING_FIRST_MARKER = 0
-      WAITING_FIRST_CHAR = 1
-      REWAITING_FIRST_MARKER = 2
+      if not buf:
+         return bytearray()
 
-      result = bytearray()
-      buf_len = len(buf)
+      if all(c == 0xff for c in buf):
+         return bytearray()
 
-      if buf_len == 0:
-         return result
+      end = buf.find(0x9a)
+      if end != -1:
+         return bytearray(buf[:end])
 
-      i = 0
-      first_char_idx = 0
-      last_char_idx = 0
-      state = WAITING_FIRST_MARKER
+      split = buf.find(0x1a)
+      if split != -1:
+         return bytearray(buf[split + 1:] + buf[:split])
 
-      while True:
-         if i >= buf_len:
-            i = 0
-            if state == WAITING_FIRST_MARKER:
-               # Check if blackbox has been erased (all zeros)
-               while buf[i] == 0:
-                  i += 1
-                  if i >= buf_len:
-                     return result
-               return result
-
-         c = buf[i]
-
-         if state == WAITING_FIRST_MARKER:
-            if c == 0x9a:
-               result.extend(buf[:i])
-               return result
-            if c == 0x1a:
-               state = WAITING_FIRST_CHAR
-         elif state == WAITING_FIRST_CHAR:
-            if c == 0x9a:
-               return result
-            if c != 0x1a:
-               first_char_idx = i
-               state = REWAITING_FIRST_MARKER
-         elif state == REWAITING_FIRST_MARKER:
-            if c in (0x1a, 0x9a):
-               if first_char_idx < i:
-                  result.extend(buf[first_char_idx:i])
-               else:
-                  result.extend(buf[first_char_idx:buf_len])
-                  result.extend(buf[:last_char_idx])
-               return result
-            last_char_idx = i
-
-         i += 1
+      return bytearray(buf)
 
 class ScdBlackBoxImpl(BlackBoxImpl):
    def __init__(self, component):

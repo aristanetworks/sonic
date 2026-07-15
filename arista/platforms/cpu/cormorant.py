@@ -14,7 +14,12 @@ from ...components.dpm.adm1266 import (
    AdmPriority
 )
 from ...components.max6658 import Max6658
-from ...components.scd import Scd
+from ...components.scd import (
+   BlackBoxRegisterMap,
+   Scd,
+   ScdBlackBox,
+   ScdSpiController
+)
 
 from ...descs.cause import ReloadCauseAltSource
 from ...descs.gpio import GpioDesc
@@ -74,6 +79,17 @@ class CormorantCpu(Cpu):
 
       self.syscpld = cpld.newComponent(CormorantSysCpld, addr=cpld.i2cAddr(4, 0x23),
                                        registerCls=cpldRegisterCls)
+      bbCtrl = cpld.newComponent(
+          ScdSpiController,
+          addr=0x1100,
+          stride=0x100,
+          numCs=3
+      )
+      bbCtrl.newComponent(
+          ScdBlackBox,
+          addr=bbCtrl.spiAddr(cs=1),
+          ctrl=BlackBoxRegisterMap(cpld.driver, cmd=0x1100),
+      )
 
    def addCpuDpm(self, addr=None, causes=None):
       addr = addr or self.cpuDpmAddr()

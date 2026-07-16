@@ -7,12 +7,7 @@ from ...components.cpu.sprucefish import (
    CpldWatchdogRegisterMap,
    CpuScdPowerCycleOnWdFaultQuirk,
 )
-from ...components.scd import (
-   BlackBoxRegisterMap,
-   Scd,
-   ScdBlackBox,
-   ScdSpiController
-)
+from ...components.scd import Scd
 from ...components.eeprom import At24C512
 from ...components.max6658 import Max6658
 from ...components.pci import CompletionTimeoutPciQuirk

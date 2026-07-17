@@ -9,10 +9,13 @@ from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ..components.psu.liteon import PS2242
 from ..components.scd import Scd
 from ..components.tmp464 import Tmp464
+from ..components.vrm.isl68137 import Isl68221, Isl68225
+from ..components.vrm.raa228228 import Raa228228
 
 from ..descs.cause import ReloadCauseDesc, ReloadCauseAltSource
 from ..descs.gpio import GpioDesc
 from ..descs.psu import PsuStatusPolicy
+from ..descs.rail import RailDesc, RailDirection, VoltageDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
 from ..descs.xcvr import Osfp, QsfpDD
@@ -69,6 +72,49 @@ class QuartzDd(FixedSystem):
             SensorDesc(diode=4, name='JE0_C Diode', position=Position.OTHER,
                        target=80, overheat=100, critical=105),
       ])
+
+      vrmTempParams = {'target': 100, 'overheat': 115, 'critical': 120}
+      vrms = [
+         (Raa228228, 4, 0x4c, [
+            'POS0V75_VDDC_JE0',
+            'POS0V75_RTVDD_JE0',
+         ]),
+         (Raa228228, 4, 0x4d, [
+            'POS0V75_VDDC_JE1',
+            'POS0V75_RTVDD_JE1',
+         ]),
+         (Isl68221, 4, 0x54, [
+            'POS1V2_HBM0_VDD_JE0',
+            'POS1V2_HBM1_VDD_JE0',
+            'POS1V2_TVDD_JE0',
+         ]),
+         (Isl68221, 4, 0x55, [
+            'POS1V2_HBM0_VDD_JE1',
+            'POS1V2_HBM1_VDD_JE1',
+            'POS1V2_TVDD_JE1',
+         ]),
+         (Isl68225, 4, 0x61, [
+            'QSFP_3V3_LEFT',
+            'QSFP_3V3_RIGHT',
+         ])
+      ]
+      for cls, bus, addr, sensors in vrms:
+         scd.newComponent(cls, addr=scd.i2cAddr(bus, addr, t=3, datr=2, datw=3),
+            sensors=[
+               SensorDesc(diode=diodeId, name=name, **vrmTempParams)
+               for diodeId, name in enumerate(sensors)
+            ],
+            rails=[
+               RailDesc(railId=railId,
+                        name=name,
+                        direction=RailDirection.OUTPUT,
+                        rated=False,
+                        voltage=VoltageDesc(voltId=railId,
+                                            name=name,
+                                            direction=RailDirection.OUTPUT,
+                                            rated=False))
+               for railId, name in enumerate(sensors, start=1)
+         ])
 
       scd.addResets([
          ResetDesc('switch_chip0_pcie_reset', addr=0x4000, bit=0, auto=False),

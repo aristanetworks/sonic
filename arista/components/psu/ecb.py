@@ -16,10 +16,10 @@ class TiEcb(PsuModel):
    SENSE_RESISTANCE = 1
 
    @classmethod
-   def makeDescription(cls, senseRes):
+   def makeDescription(cls, senseRes, **kwargs):
       raise NotImplementedError
 
-def _makeTPS16890Description(senseRes):
+def _makeTPS16890Description(senseRes, tempLimits=(100, 105, 110)):
    # TPS16890 telemetry conversion using PMBus DIRECT format:
    #    X = (1/m) * (Y * 10^-R - b)
    # where Y is the 2 byte value read from PMBus register.
@@ -39,7 +39,7 @@ def _makeTPS16890Description(senseRes):
    desc = psuDescHelper(
       # TempSysfsImpl applies Y * scale + offset
       sensors=[
-         ('internal', Position.OTHER, 100, 105, 110, tempScale, tempOffset),
+         ('internal', Position.OTHER, *tempLimits, tempScale, tempOffset),
       ],
       hasFans=False,
       inputRailId=None,
@@ -72,8 +72,8 @@ class Tps16890(TiEcb):
    ]
 
    @classmethod
-   def makeDescription(cls, senseRes):
-      return _makeTPS16890Description(senseRes)
+   def makeDescription(cls, senseRes, **kwargs):
+      return _makeTPS16890Description(senseRes, **kwargs)
 
    DESCRIPTION = _makeTPS16890Description(TiEcb.SENSE_RESISTANCE)
 
@@ -84,7 +84,7 @@ class AdEcb(PsuModel):
    SENSE_RESISTANCE = 1
 
    @classmethod
-   def makeDescription(cls, senseRes):
+   def makeDescription(cls, senseRes, **kwargs):
       raise NotImplementedError
 
 def _makeLTC4287Description(senseRes):
@@ -134,18 +134,18 @@ class Ltc4287(AdEcb):
    ]
 
    @classmethod
-   def makeDescription(cls, senseRes):
+   def makeDescription(cls, senseRes, **kwargs):
       return _makeLTC4287Description(senseRes)
 
    DESCRIPTION = _makeLTC4287Description(AdEcb.SENSE_RESISTANCE)
 
-def createPmbusECB(cls, senseRes, slotId=1, addr=0x10):
+def createPmbusECB(cls, senseRes, slotId=1, addr=0x10, **kwargs):
    # slotId is included in the generated class name to keep it unique
    name = '%s_%d' % (cls.__name__, slotId)
    PmbusECB = type(name, (cls,), {
       'PMBUS_ADDR': addr,
       'SENSE_RESISTANCE': senseRes,
-      'DESCRIPTION': cls.makeDescription(senseRes),
+      'DESCRIPTION': cls.makeDescription(senseRes, **kwargs),
    })
    getPsuManager().psus_.append(PmbusECB)
    return PmbusECB

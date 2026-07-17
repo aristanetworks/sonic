@@ -51,7 +51,7 @@ class MarconiCpu(Cpu):
          addr=port.addr,
          sensors=[
             SensorDesc(diode=0, name='CPU internal', position=Position.OTHER,
-                       target=80, overheat=100, critical=105),
+                       target=81, overheat=100, critical=105),
          ]
       )
 
@@ -157,7 +157,7 @@ class MarconiCpu(Cpu):
          addr=fpBus.i2cAddr(0x48),
          sensors=[
             SensorDesc(diode=0, name='Front panel', position=Position.INLET,
-                       target=55, overheat=65, critical=70),
+                       target=85, overheat=90, critical=95),
          ]
       )
       # CPU board ambient

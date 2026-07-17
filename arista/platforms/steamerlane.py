@@ -75,7 +75,7 @@ class Windsurf(object):
          addr=fcBus.i2cAddr(0x48),
          sensors=[
             SensorDesc(diode=0, name='Rear card', position=Position.OUTLET,
-                       target=75, overheat=80, critical=85),
+                       target=85, overheat=90, critical=95),
          ]
       )
 
@@ -86,7 +86,7 @@ class Windsurf(object):
          addrFunc=fcBus.i2cAddr,
          presentGpio=True,
          psus=[createPmbusECB(Tps16890, senseRes=11000, slotId=psuSlotId,
-                              addr=0x52)],
+                              addr=0x52, tempLimits=(90, 115, 120))],
          forcePsuLoad=True,
          psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS,
       )
@@ -178,7 +178,7 @@ class SteamerLaneBase(FixedSystem):
             addrFunc=pwrBus.i2cAddr,
             presentGpio=True,
             psus=[createPmbusECB(Tps16890, senseRes=1330, slotId=self.psuCounter,
-                                 addr=addr)],
+                                 addr=addr, tempLimits=(90, 115, 120))],
             forcePsuLoad=True,
             psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS,
          )
@@ -200,7 +200,7 @@ class SteamerLaneBase(FixedSystem):
             addr=pwrBus.i2cAddr(addr),
             sensors=[
                SensorDesc(diode=0, name='IBC %d %s' % (ibcId, name),
-                          position=Position.OTHER, target=100, overheat=105,
+                          position=Position.OTHER, target=85, overheat=105,
                           critical=110),
             ]
          )
@@ -222,7 +222,7 @@ class SteamerLaneBase(FixedSystem):
          (Xdpe1a2g5b, 0x72, ['POS3V3_OPTICS0', 'POS3V3_OPTICS1']),
          (Xdpe1a2g5b, 0x74, ['POS3V3_OPTICS2', 'POS3V3_OPTICS3']),
       ]
-      vrmTempParams = {'target': 105, 'overheat': 115, 'critical': 120}
+      vrmTempParams = {'target': 95, 'overheat': 115, 'critical': 120}
       for vrmId, (cls, addr, diodes) in enumerate(vrms):
          self.cpu.cpld.newComponent(
             cls,
@@ -239,8 +239,8 @@ class SteamerLaneBase(FixedSystem):
       scd.addSmbusMasterRange(0x8000, 11, 0x80, 8)
 
       # PCB/TH6 temp sensors
-      pcbDiodeTempParams = {'target': 75, 'overheat': 80, 'critical': 90}
-      th6DiodeTempParams = {'target': 100, 'overheat': 105, 'critical': 110}
+      pcbDiodeTempParams = {'target': 85, 'overheat': 90, 'critical': 95}
+      th6DiodeTempParams = {'target': 90, 'overheat': 105, 'critical': 110}
       tmp431s = [
          (0, 0x4c, ['Back center PCB', 'TH6 diode 0']),
          (1, 0x4c, ['Front left PCB', 'TH6 diode 1']),
@@ -304,6 +304,10 @@ class SteamerLaneBase(FixedSystem):
          ],
          pcieResets=[
             scd.inventory.getReset('switch_chip_pcie_reset'),
+         ],
+         sensors=[
+            SensorDesc(diode=0, name='Asic', position=Position.OTHER,
+                       target=90, overheat=105, critical=110),
          ],
       )
 

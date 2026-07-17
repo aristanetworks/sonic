@@ -7,8 +7,14 @@ class Isl68137KernelDriver(I2cKernelDriver):
 class Isl68226KernelDriver(Isl68137KernelDriver):
    NAME = 'isl68226'
 
+class Isl68221KernelDriver(Isl68137KernelDriver):
+   NAME = 'isl68221'
+
 class Isl68223KernelDriver(Isl68137KernelDriver):
    NAME = 'isl68223'
+
+class Isl68225KernelDriver(Isl68137KernelDriver):
+   NAME = 'isl68225'
 
 class Raa228228KernelDriver(Isl68137KernelDriver):
    NAME = 'raa228228'

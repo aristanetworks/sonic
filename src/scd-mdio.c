@@ -15,6 +15,9 @@
  *
  */
 
+#include <linux/cdev.h>
+#include <linux/fs.h>
+#include <linux/idr.h>
 #include <linux/module.h>
 #include <linux/pci.h>
 #include <linux/version.h>
@@ -22,6 +25,23 @@
 #include "scd.h"
 #include "scd-hwmon.h"
 #include "scd-mdio.h"
+
+#define SCD_MDIO_CDEV_MAX_DEVICES 256
+
+#define SCD_MDIO_PPOS_PRTAD_OVR   BIT(27)
+#define SCD_MDIO_PPOS_DEVAD_OVR   BIT(26)
+#define SCD_MDIO_PPOS_PRTAD_SHIFT 21
+#define SCD_MDIO_PPOS_DEVAD_SHIFT 16
+#define SCD_MDIO_PPOS_MAX         0x0fffffff
+
+static dev_t scd_mdio_devt;
+static struct class *scd_mdio_cdev_class;
+static DEFINE_IDA(scd_mdio_ida);
+static int scd_mdio_cdev_refcount;
+static DEFINE_MUTEX(scd_mdio_cdev_mutex);
+
+static int scd_mdio_cdev_init(void);
+static void scd_mdio_cdev_deinit(void);
 
 static void mdio_master_lock(struct scd_mdio_master *master)
 {
@@ -200,6 +220,7 @@ static int scd_mdio_mii_id(int prtad, int devad, int mode)
    return mii_id;
 }
 
+/* Netdev ioctl path (legacy) */
 static int scd_mdio_read(struct net_device *netdev, int prtad, int devad, u16 addr)
 {
    struct scd_mdio_device *mdio_dev = netdev_priv(netdev);
@@ -243,6 +264,123 @@ static int scd_mdio_write(struct net_device *netdev, int prtad, int devad, u16 a
    return mdiobus_write(mdio_dev->mdio_bus->mii_bus, dev_id, addr, value);
 }
 
+/* Char device file operations */
+static int scd_mdio_cdev_open(struct inode *inode, struct file *filp)
+{
+   struct scd_mdio_device *dev = container_of(inode->i_cdev,
+                                              struct scd_mdio_device, cdev);
+   filp->private_data = dev;
+   return 0;
+}
+
+static ssize_t scd_mdio_cdev_read(struct file *filp, char __user *buf,
+                                  size_t count, loff_t *ppos)
+{
+   struct scd_mdio_device *dev = filp->private_data;
+   struct scd_mdio_master *master = dev->mdio_bus->master;
+   int clause = (dev->mode_support & MDIO_SUPPORTS_C45) ? 1 : 0;
+   u16 prtad, devad, reg;
+   u16 val;
+   int ret;
+
+   if (count < sizeof(val))
+      return -EINVAL;
+   if (*ppos > SCD_MDIO_PPOS_MAX)
+      return -EINVAL;
+
+   prtad = (*ppos & SCD_MDIO_PPOS_PRTAD_OVR) ?
+           (*ppos >> SCD_MDIO_PPOS_PRTAD_SHIFT) & 0x1f : dev->prtad;
+   devad = (*ppos & SCD_MDIO_PPOS_DEVAD_OVR) ?
+           (*ppos >> SCD_MDIO_PPOS_DEVAD_SHIFT) & 0x1f : dev->devad;
+   reg = *ppos & 0xffff;
+
+   dev_dbg(get_scd_dev(master->ctx),
+           "cdev_read_req, master: %d, bus: %d, dev_prtad: %d, dev_devad: %d, "
+           "prtad: %d, devad: %d, reg: %04x",
+           master->id, dev->mdio_bus->id, dev->prtad, dev->devad,
+           prtad, devad, reg);
+
+   mdio_master_lock(master);
+   ret = scd_mdio_bus_request(dev->mdio_bus, SCD_MDIO_SET, clause,
+                              prtad, devad, reg);
+   if (!ret)
+      ret = scd_mdio_bus_request(dev->mdio_bus, SCD_MDIO_READ, clause,
+                                 prtad, devad, 0);
+   mdio_master_unlock(master);
+
+   if (ret < 0)
+      return ret;
+
+   val = ret;
+   if (copy_to_user(buf, &val, sizeof(val)))
+      return -EFAULT;
+
+   dev_dbg(get_scd_dev(master->ctx),
+           "cdev_read_ret, master: %d, bus: %d, prtad: %d, devad: %d, "
+           "reg: %04x, val: %04x",
+           master->id, dev->mdio_bus->id, prtad, devad, reg, val);
+
+   return sizeof(val);
+}
+
+static ssize_t scd_mdio_cdev_write(struct file *filp, const char __user *buf,
+                                   size_t count, loff_t *ppos)
+{
+   struct scd_mdio_device *dev = filp->private_data;
+   struct scd_mdio_master *master = dev->mdio_bus->master;
+   int clause = (dev->mode_support & MDIO_SUPPORTS_C45) ? 1 : 0;
+   u16 prtad, devad, reg;
+   u16 val;
+   int ret;
+
+   if (count < sizeof(val))
+      return -EINVAL;
+   if (*ppos > SCD_MDIO_PPOS_MAX)
+      return -EINVAL;
+
+   if (copy_from_user(&val, buf, sizeof(val)))
+      return -EFAULT;
+
+   prtad = (*ppos & SCD_MDIO_PPOS_PRTAD_OVR) ?
+           (*ppos >> SCD_MDIO_PPOS_PRTAD_SHIFT) & 0x1f : dev->prtad;
+   devad = (*ppos & SCD_MDIO_PPOS_DEVAD_OVR) ?
+           (*ppos >> SCD_MDIO_PPOS_DEVAD_SHIFT) & 0x1f : dev->devad;
+   reg = *ppos & 0xffff;
+
+   dev_dbg(get_scd_dev(master->ctx),
+           "cdev_write_req, master: %d, bus: %d, dev_prtad: %d, dev_devad: %d, "
+           "prtad: %d, devad: %d, reg: %04x, val: %04x",
+           master->id, dev->mdio_bus->id, dev->prtad, dev->devad,
+           prtad, devad, reg, val);
+
+   mdio_master_lock(master);
+   ret = scd_mdio_bus_request(dev->mdio_bus, SCD_MDIO_SET, clause,
+                              prtad, devad, reg);
+   if (!ret)
+      ret = scd_mdio_bus_request(dev->mdio_bus, SCD_MDIO_WRITE, clause,
+                                 prtad, devad, val);
+   mdio_master_unlock(master);
+
+   if (ret < 0)
+      return ret;
+
+   dev_dbg(get_scd_dev(master->ctx),
+           "cdev_write_ret, master: %d, bus: %d, prtad: %d, devad: %d, "
+           "reg: %04x, val: %04x",
+           master->id, dev->mdio_bus->id, prtad, devad, reg, val);
+
+   return sizeof(val);
+}
+
+static const struct file_operations scd_mdio_cdev_fops = {
+   .owner   = THIS_MODULE,
+   .open    = scd_mdio_cdev_open,
+   .read    = scd_mdio_cdev_read,
+   .write   = scd_mdio_cdev_write,
+   .llseek  = noop_llseek,
+};
+
+/* Sysfs attributes for mdio devices */
 static ssize_t mdio_id_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
    struct mdio_device *mdio_dev = to_mdio_device(dev);
@@ -290,6 +428,8 @@ static int __scd_mdio_device_add(struct scd_mdio_bus *bus, u16 dev_id, u16 prtad
    struct net_device *net_dev;
    struct mdio_device *mdio_dev = NULL;
    struct scd_mdio_device *scd_mdio_dev;
+   struct device *cdev_dev = NULL;
+   int minor;
    int err;
 
    if (dev_id >= PHY_MAX_ADDR) {
@@ -306,6 +446,8 @@ static int __scd_mdio_device_add(struct scd_mdio_bus *bus, u16 dev_id, u16 prtad
    scd_mdio_dev = netdev_priv(net_dev);
    scd_mdio_dev->net_dev = net_dev;
    scd_mdio_dev->mdio_bus = bus;
+   scd_mdio_dev->prtad = prtad;
+   scd_mdio_dev->devad = devad;
    scd_mdio_dev->mode_support = clause;
    scd_mdio_dev->mdio_if.prtad = scd_mdio_mii_id(prtad, devad, clause);
    scd_mdio_dev->mdio_if.mode_support = clause;
@@ -332,12 +474,40 @@ static int __scd_mdio_device_add(struct scd_mdio_bus *bus, u16 dev_id, u16 prtad
    }
    scd_mdio_dev->mdio_dev = mdio_dev;
 
+   /* Create char device for rtnl_lock-free access */
+   minor = ida_alloc_max(&scd_mdio_ida, SCD_MDIO_CDEV_MAX_DEVICES - 1, GFP_KERNEL);
+   if (minor < 0) {
+      err = minor;
+      goto fail_ida;
+   }
+   scd_mdio_dev->minor = minor;
+   scd_mdio_dev->devno = MKDEV(MAJOR(scd_mdio_devt), minor);
+
+   cdev_init(&scd_mdio_dev->cdev, &scd_mdio_cdev_fops);
+   scd_mdio_dev->cdev.owner = THIS_MODULE;
+   err = cdev_add(&scd_mdio_dev->cdev, scd_mdio_dev->devno, 1);
+   if (err)
+      goto fail_cdev;
+
+   cdev_dev = device_create(scd_mdio_cdev_class, get_scd_dev(bus->master->ctx),
+                            scd_mdio_dev->devno, NULL, "%s", name);
+   if (IS_ERR(cdev_dev)) {
+      err = PTR_ERR(cdev_dev);
+      goto fail_device_create;
+   }
+
    list_add_tail(&scd_mdio_dev->list, &bus->device_list);
    dev_dbg(get_scd_dev(bus->master->ctx),
            "mdio device %s prtad %d devad %d clause %d", name, prtad, devad, clause);
 
    return 0;
 
+fail_device_create:
+   cdev_del(&scd_mdio_dev->cdev);
+fail_cdev:
+   ida_free(&scd_mdio_ida, minor);
+fail_ida:
+   mdio_device_remove(scd_mdio_dev->mdio_dev);
 fail_register_mdio:
    mdio_device_free(mdio_dev);
 fail_create_mdio:
@@ -442,6 +612,9 @@ static void scd_mdio_device_remove(struct scd_mdio_device *device)
 {
    struct net_device *net_dev = device->net_dev;
 
+   device_destroy(scd_mdio_cdev_class, device->devno);
+   cdev_del(&device->cdev);
+   ida_free(&scd_mdio_ida, device->minor);
    mdio_device_remove(device->mdio_dev);
    mdio_device_free(device->mdio_dev);
    unregister_netdev(net_dev);
@@ -473,6 +646,7 @@ static void scd_mdio_master_remove(struct scd_mdio_master *master)
 
    mutex_destroy(&master->mutex);
    kfree(master);
+   scd_mdio_cdev_deinit();
 }
 
 void scd_mdio_remove_all(struct scd_context *ctx)
@@ -492,15 +666,21 @@ int scd_mdio_master_add(struct scd_context *ctx, u32 addr, u16 id, u16 bus_count
    int err = 0;
    int i;
 
+   err = scd_mdio_cdev_init();
+   if (err)
+      return err;
+
    list_for_each_entry(master, &ctx->mdio_master_list, list) {
       if (master->id == id) {
-         return -EEXIST;
+         err = -EEXIST;
+         goto fail_alloc;
       }
    }
 
    master = kzalloc(sizeof(*master), GFP_KERNEL);
    if (!master) {
-      return -ENOMEM;
+      err = -ENOMEM;
+      goto fail_alloc;
    }
 
    master->ctx = ctx;
@@ -531,4 +711,55 @@ int scd_mdio_master_add(struct scd_context *ctx, u32 addr, u16 id, u16 bus_count
 fail_bus:
    scd_mdio_master_remove(master);
    return err;
+
+fail_alloc:
+   scd_mdio_cdev_deinit();
+   return err;
+}
+
+static int scd_mdio_cdev_init(void)
+{
+   int err = 0;
+
+   mutex_lock(&scd_mdio_cdev_mutex);
+   if (scd_mdio_cdev_refcount++ > 0)
+      goto out;
+
+   err = alloc_chrdev_region(&scd_mdio_devt, 0, SCD_MDIO_CDEV_MAX_DEVICES, "scd-mdio");
+   if (err)
+      goto fail;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+   scd_mdio_cdev_class = class_create("scd_mdio");
+#else
+   scd_mdio_cdev_class = class_create(THIS_MODULE, "scd_mdio");
+#endif
+   if (IS_ERR(scd_mdio_cdev_class)) {
+      err = PTR_ERR(scd_mdio_cdev_class);
+      unregister_chrdev_region(scd_mdio_devt, SCD_MDIO_CDEV_MAX_DEVICES);
+      goto fail;
+   }
+
+out:
+   mutex_unlock(&scd_mdio_cdev_mutex);
+   return 0;
+
+fail:
+   scd_mdio_cdev_refcount--;
+   mutex_unlock(&scd_mdio_cdev_mutex);
+   return err;
+}
+
+static void scd_mdio_cdev_deinit(void)
+{
+   mutex_lock(&scd_mdio_cdev_mutex);
+   if (--scd_mdio_cdev_refcount > 0) {
+      mutex_unlock(&scd_mdio_cdev_mutex);
+      return;
+   }
+
+   class_destroy(scd_mdio_cdev_class);
+   unregister_chrdev_region(scd_mdio_devt, SCD_MDIO_CDEV_MAX_DEVICES);
+   ida_destroy(&scd_mdio_ida);
+   mutex_unlock(&scd_mdio_cdev_mutex);
 }

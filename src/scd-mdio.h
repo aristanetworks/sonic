@@ -18,6 +18,7 @@
 #ifndef _LINUX_DRIVER_SCD_MDIO_H_
 #define _LINUX_DRIVER_SCD_MDIO_H_
 
+#include <linux/cdev.h>
 #include <linux/mii.h>
 #include <linux/netdevice.h>
 #include <linux/phy.h>
@@ -127,6 +128,9 @@ struct scd_mdio_device {
    struct mdio_if_info mdio_if;
    struct net_device *net_dev;
    struct mdio_device *mdio_dev;
+   struct cdev cdev;
+   dev_t devno;
+   int minor;
 };
 
 extern int scd_mdio_device_add(struct scd_context *ctx, u16 master_id, u16 bus_id,

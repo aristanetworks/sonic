@@ -312,6 +312,10 @@ class CoolingThermal(CoolingThermalBase, EntitySource):
          return False
       return self.temperature > self.critical
 
+   @property
+   def in_normal_condition(self):
+      return not self.in_critical_condition and not self.in_overheat_condition
+
    def update_from_inv(self):
       self.temperature = self.inv.getTemperature()
       self.overheat = self.inv.getHighThreshold()

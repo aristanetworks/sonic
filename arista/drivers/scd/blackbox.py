@@ -54,7 +54,10 @@ class ScdBlackBoxImpl(BlackBoxImpl):
       return self.component.version()
 
    def getModel(self):
-      return self.component.driver.framModel
+      driver = self.component.driver
+      if self.enabled():
+         return driver.cachedFramModel or 'Unknown'
+      return driver.framModel
 
    def enabled(self):
       return self.component.enabled()
@@ -79,35 +82,48 @@ class ScdBlackBoxDriver(SpidevDriver):
    def getBlackBox(self, component):
       return ScdBlackBoxImpl(component)
 
+   def _framModelStore(self):
+      return StoredData(f'blackbox{self.addr.bus}.{self.addr.cs}_fram_model')
+
+   def _cacheFramModel(self, model):
+      if model:
+         self._framModelStore().write(model)
+         self._framModel = model
+
    @property
-   def framModel(self):
+   def cachedFramModel(self):
       if self._framModel is None:
-         cache = StoredData(
-            f'blackbox{self.addr.bus}.{self.addr.cs}_fram_model')
+         cache = self._framModelStore()
          if cache.exist():
             self._framModel = cache.read()
-         else:
-            model = self._detectFramModel()
-            if model:
-               cache.write(model)
-               self._framModel = model
+      return self._framModel
+
+   def _parseFramModel(self, output):
+      if output is None:
+         return None
+      for line in output.splitlines():
+         if 'flash chip' in line:
+            parts = line.split()
+            ## Example: "Found Macronix flash chip "MX25U25645G""
+            return f'''{parts[1]} {parts[4].strip('"')}'''
+      return None
+
+   @property
+   def framModel(self):
+      if self.cachedFramModel is None:
+         self._cacheFramModel(self._detectFramModel())
       return self._framModel or 'Unknown'
 
    def dump(self, outputPath):
-      return self._runFlashromCmd(op='-r', outputPath=outputPath)
+      output = self._runFlashromCmd(op='-r', outputPath=outputPath)
+      self._cacheFramModel(self._parseFramModel(output))
+      return output
 
    def erase(self):
       return self._runFlashromCmd(op='-E')
 
    def _detectFramModel(self):
-      output = self._runFlashromCmd(op='-V')
-      if output is not None:
-         for line in output.splitlines():
-            if 'flash chip' in line:
-               parts = line.split()
-               ## Example: "Found Macronix flash chip "MX25U25645G""
-               return f'''{parts[1]} {parts[4].strip('"')}'''
-      return None
+      return self._parseFramModel(self._runFlashromCmd(op='-V'))
 
    def _runFlashromCmd(self, op, outputPath=None):
       devPath = self.getDevPath()

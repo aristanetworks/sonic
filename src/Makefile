@@ -28,3 +28,5 @@ obj-m += tmp468.o
 obj-m += amax31732.o
 obj-m += amax31790.o
 obj-m += arista-fan-cpld.o
+obj-m += ar_pmbus_core.o
+obj-m += atda38740.o

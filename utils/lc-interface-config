@@ -22,18 +22,25 @@ get_interface_slot_id() {
       return
    fi
 
-   local pci_id=$(readlink -f /sys/class/net/$intf/device |
-                  sed -n -E 's#/sys/devices/pci0000:00/0000:00:03.0/0000:05:00.0/0000:06:([0-9a-fA-F]*).*#\1#p')
+   pci_domain="[0-9a-fA-F]{4}"
+   pci_bus="[0-9a-fA-F]{2}"
+   pci_device="[0-9a-fA-F]{2}"
+   pci_func="[0-7]{1}"
 
-   if [ -z "$pci_id" ]; then
-      return
-   fi
+   pci_addr="$pci_domain:$pci_bus:$pci_device\.$pci_func"
 
-   local dev_pci_id=$((16#$pci_id))
-   local slot_id=$(($dev_pci_id - 4))
+   pattern="/sys/devices/pci$pci_domain:$pci_bus/$pci_addr/$pci_addr/$pci_domain:$pci_bus:($pci_device).*"
 
-   if [ "$slot_id" -ge 0 ]; then
-      echo "$slot_id"
+   local sysfs_path=$(readlink -f /sys/class/net/$intf/device)
+
+   if [[ "$sysfs_path" =~ $pattern ]]; then
+      local pci_id="${BASH_REMATCH[1]}"
+      local dev_pci_id=$((16#$pci_id))
+      local slot_id=$(($dev_pci_id - 4))
+
+      if [ "$slot_id" -ge 0 ]; then
+         echo "$slot_id"
+      fi
    fi
 }
 

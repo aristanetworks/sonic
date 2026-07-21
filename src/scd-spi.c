@@ -306,10 +306,13 @@ static int __unregister_spi_dev(struct device *dev, void *data)
 
 static void scd_spi_controller_remove(struct scd_spi_controller *spi)
 {
+   struct device *dev = get_scd_dev(spi->ctx);
+   u32 csr_addr = spi->csr_addr;
+
    device_for_each_child(&spi->controller->dev, NULL,
                          __unregister_spi_dev);
+   dev_notice(dev, "spi @ %#x: controller removed\n", csr_addr);
    spi_unregister_controller(spi->controller);
-   spi_notice(spi, "controller removed\n");
 }
 
 void scd_spi_controller_remove_all(struct scd_context *ctx)
@@ -318,9 +321,8 @@ void scd_spi_controller_remove_all(struct scd_context *ctx)
    struct scd_spi_controller *tmp_spi;
 
    list_for_each_entry_safe(spi, tmp_spi, &ctx->spi_controller_list, list) {
-      scd_spi_controller_remove(spi);
       list_del(&spi->list);
-      kfree(spi);
+      scd_spi_controller_remove(spi);
    }
 }
 

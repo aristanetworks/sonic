@@ -2,9 +2,10 @@ from ...core.bmc import BmcSubsystem
 from ...core.platform import registerPlatform
 
 from ...components.aspeed.ast2720 import Ast2720
+from ...components.bmc_mgmt_nic import BmcMgmtNic
+from ...components.bmc_usb_device_nic import BmcUsbDeviceNic
 from ...components.cookie import SonicReloadCauseCookieComponent
 from ...components.eeprom import At24C512
-from ...components.bmc_usb_device_nic import BmcUsbDeviceNic
 from ...components.lm75 import Tmp75
 
 from ...descs.cause import ReloadCausePriority
@@ -23,6 +24,7 @@ class Goldfinch(BmcSubsystem):
          SensorDesc(diode=0, name='BMC temp sensor',
                     position=Position.OTHER, target=70, overheat=80, critical=90),
       ])
+      self.newComponent(BmcMgmtNic, cpuEeprom=self.cpuEeprom)
       self.newComponent(BmcUsbDeviceNic, udcName='12060000.usb-vhub:p1')
 
       self.newComponent(SonicReloadCauseCookieComponent,

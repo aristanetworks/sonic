@@ -1,9 +1,9 @@
-
 import json
 import os
 
 from .. import registerAction
 from ...args.platform.nic import nicParser
+from ....components.bmc_mgmt_nic import BmcMgmtNic
 from ....components.nic import Nic
 from ....components.bmc_usb_host_nic import BmcUsbHostNic
 from ....components.bmc_usb_device_nic import BmcUsbDeviceNic
@@ -21,6 +21,8 @@ def readBmcJson():
       return json.load(f)
 
 def loadNicConfig(nic):
+   if isinstance(nic, BmcMgmtNic):
+      return {'ifName': nic.interface}
    if isinstance(nic, BmcUsbHostNic):
       if os.path.exists('/etc/sonic'):
          cfg = readBmcJson()

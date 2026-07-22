@@ -30,4 +30,24 @@ class Nic(Component):
       subprocess.check_call(['ip', 'address', 'flush', 'dev', ifName])
       subprocess.check_call(['ip', 'link', 'set', ifName, 'up'])
       subprocess.check_call(
-         ['ip', 'address', 'add', '%s/%d' % (addr, prefixLen), 'dev', ifName])
+         ['ip', 'address', 'add', f'{addr}/{prefixLen:d}', 'dev', ifName])
+
+   def getConfiguredMac(self, ifName):
+      with open(f'/sys/class/net/{ifName}/address', encoding='utf-8') as f:
+         return f.read().strip()
+
+   def isAdminUp(self, ifName):
+      with open(f'/sys/class/net/{ifName}/flags', encoding='utf-8') as f:
+         flags = int(f.read().strip(), 16)
+      return bool(flags & 0x1)  # IFF_UP
+
+   def setMACAddress(self, ifName, mac):
+      adminUp = self.isAdminUp(ifName)
+      if adminUp:
+         subprocess.check_call(['ip', 'link', 'set', 'dev', ifName, 'down'])
+
+      try:
+         subprocess.check_call(['ip', 'link', 'set', 'dev', ifName, 'address', mac])
+      finally:
+         if adminUp:
+            subprocess.check_call(['ip', 'link', 'set', 'dev', ifName, 'up'])

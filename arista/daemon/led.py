@@ -33,9 +33,15 @@ class StatusLedFeature(PollDaemonFeature):
       if not fans:
          fans = inv.getFans()
 
+      badFans = 0
       for fan in fans:
          if not fan.getStatus():
-            return LedColor.RED
+            badFans += 1
+
+      if badFans > 1:
+         return LedColor.RED
+      if badFans == 1:
+         return LedColor.AMBER
       return LedColor.GREEN
 
    def getAllPsusStatus(self, platform, led):

@@ -26,9 +26,16 @@
 #define XDPE192C4B_IC_DEVICE_ID	"\x01\x99"
 #define XDPE1B284B_IC_DEVICE_ID	"\x01\xA3"
 #define XDPE1B2C4B_IC_DEVICE_ID	"\x01\xA4"
-#define XDPE1E496B_IC_DEVICE_ID	"\xB1\x00"
+#define XDPE1E496B_IC_DEVICE_ID	"\x00\xB1"
 
 #define IFX_RETRY_BUS_READ	4
+
+#define MATCH_DEVICE_ID(_id_bytes, _id) \
+	do { \
+		if (status == sizeof(_id_bytes) - 1 && \
+		    !memcmp(device_id, _id_bytes, status)) \
+			return _id; \
+	} while (0)
 
 static const struct i2c_device_id atda38740_id[];
 
@@ -386,7 +393,6 @@ static int tda38740_get_device_id(struct i2c_client *client)
 {
 	struct device *dev = &client->dev;
 	u8 device_id[I2C_SMBUS_BLOCK_MAX + 1];
-	enum chips id;
 	int status;
 
 	status = i2c_smbus_read_i2c_block_data(client, PMBUS_IC_DEVICE_ID,
@@ -398,36 +404,24 @@ static int tda38740_get_device_id(struct i2c_client *client)
 	status = device_id[0];
 	memmove(device_id, device_id + 1, status);
 
-	device_id[status] = '\0';
-	dev_info(dev, "PMBUS IC DEVICE_ID:%s\n", device_id);
+	dev_info(dev, "PMBUS IC DEVICE_ID:%*phN\n", status, device_id);
 
-	if (!strncasecmp(TDA38725_IC_DEVICE_ID, device_id, strlen(device_id))) {
-		id = tda38725;
-	} else if (!strncasecmp(TDA38725A_IC_DEVICE_ID, device_id, strlen(device_id))) {
-		id = tda38725a;
-	} else if (!strncasecmp(TDA38740_IC_DEVICE_ID, device_id, strlen(device_id))) {
-		id = tda38740;
-	} else if (!strncasecmp(TDA38740A_IC_DEVICE_ID, device_id, strlen(device_id))) {
-		id = tda38740a;
-	} else if (!strncasecmp(XDPE1A2G5B_IC_DEVICE_ID, device_id, strlen(device_id))) {
-		id = xdpe1a2g5b;
-	} else if (!strncasecmp(XDPE19284C_IC_DEVICE_ID, device_id, strlen(device_id))) {
-		id = xdpe19284c;
-	} else if (!strncasecmp(XDPE192C4B_IC_DEVICE_ID, device_id, strlen(device_id))) {
-		id = xdpe192c4b;
-	} else if (!strncasecmp(XDPE1B284B_IC_DEVICE_ID, device_id, strlen(device_id))) {
-		id = xdpe1b284b;
-	} else if (!strncasecmp(XDPE1B2C4B_IC_DEVICE_ID, device_id, strlen(device_id))) {
-		id = xdpe1b2c4b;
-	} else if (!strncasecmp(XDPE1E496B_IC_DEVICE_ID, device_id, strlen(device_id))) {
-		id = xdpe1e496b;
-	} else {
-		dev_err(&client->dev, "Unsupported device\n");
-		return -ENODEV;
-	}
+	MATCH_DEVICE_ID(TDA38725_IC_DEVICE_ID, tda38725);
+	MATCH_DEVICE_ID(TDA38725A_IC_DEVICE_ID, tda38725a);
+	MATCH_DEVICE_ID(TDA38740_IC_DEVICE_ID, tda38740);
+	MATCH_DEVICE_ID(TDA38740A_IC_DEVICE_ID, tda38740a);
+	MATCH_DEVICE_ID(XDPE1A2G5B_IC_DEVICE_ID, xdpe1a2g5b);
+	MATCH_DEVICE_ID(XDPE19284C_IC_DEVICE_ID, xdpe19284c);
+	MATCH_DEVICE_ID(XDPE192C4B_IC_DEVICE_ID, xdpe192c4b);
+	MATCH_DEVICE_ID(XDPE1B284B_IC_DEVICE_ID, xdpe1b284b);
+	MATCH_DEVICE_ID(XDPE1B2C4B_IC_DEVICE_ID, xdpe1b2c4b);
+	MATCH_DEVICE_ID(XDPE1E496B_IC_DEVICE_ID, xdpe1e496b);
 
-	return id;
+	dev_err(&client->dev, "Unsupported device\n");
+	return -ENODEV;
 }
+
+#undef MATCH_DEVICE_ID
 
 static int tda38740_probe(struct i2c_client *client)
 {

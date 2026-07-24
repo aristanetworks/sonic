@@ -200,6 +200,8 @@ class ECD1502008(DeltaPsu):
          ('primary hotspot', Position.OTHER, 110, 115, 120),
       ],
       maxRpm=25500,
+      outputMinVoltage=11.40,
+      outputMaxVoltage=12.60,
    )
    IDENTIFIERS = [
       PsuIdent('ECD15020083', 'PWR-2011-AC-RED', Airflow.INTAKE),

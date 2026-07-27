@@ -690,7 +690,7 @@ class CoolingEntityManager(object):
       objkeys = ['inv', 'api', 'dbent']
       for col in [self._fans, self._psus, self._thermals, self._xcvrs]:
          for obj in col.values():
-            attrs = (f'{a}={bool(getattr(obj, a))}' for a in objkeys)
+            attrs = (f'{a}={bool(getattr(obj, a, None))}' for a in objkeys)
             print(f'{obj.__class__.__name__} "{obj.name}" {" ".join(attrs)}')
 
    def gc(self):

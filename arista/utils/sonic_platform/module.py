@@ -305,7 +305,7 @@ class HostSwitchModule(Module):
       return self._sku.chassisEeprom.prefdl()
 
    def get_name(self):
-      return self.get_model()
+      return self.MODULE_TYPE_SWITCH_HOST
 
    def get_type(self):
       return self.MODULE_TYPE_SWITCH_HOST

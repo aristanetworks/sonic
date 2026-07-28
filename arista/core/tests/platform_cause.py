@@ -4,7 +4,7 @@ import pytest
 
 from .helpers import (
    classname,
-   getAllSystems,
+   getAllSystemClasses,
 )
 
 from ..cause import ReloadCausePriority
@@ -81,12 +81,13 @@ def assertPlatformReloadCauseProviderVersion(platform):
             "from at least two different standards. Please check definitions."
          )
 
-@pytest.mark.parametrize('platform', getAllSystems(), ids=classname)
-def testPlatformReloadCauseDescs(platform):
-   if not platform.SKU or not platform.SID:
+@pytest.mark.parametrize('platformCls', tuple(getAllSystemClasses()), ids=classname)
+def testPlatformReloadCauseDescs(platformCls):
+   if not platformCls.SKU or not platformCls.SID:
       return
-   if platform.PROTOTYPE:
+   if platformCls.PROTOTYPE:
       return
+   platform = platformCls()
    inventory = platform.getInventory()
    for provider in inventory.getReloadCauseProviders():
       descs = provider.getReloadCauseDescs()
@@ -107,15 +108,16 @@ def testPlatformReloadCauseDescs(platform):
             f'{classname(platform)}/{provider.getSourceName()}: '
             f'expected {len(provider.adm.causes)} descs, got {len(descs)}')
 
-@pytest.mark.parametrize('platform', getAllSystems(), ids=classname)
-def testPlatformReloadCauseProviderVersion(platform):
+@pytest.mark.parametrize('platformCls', tuple(getAllSystemClasses()), ids=classname)
+def testPlatformReloadCauseProviderVersion(platformCls):
    # Filter finalized classes with SID and SKU
-   if not platform.SKU or not platform.SID:
+   if not platformCls.SKU or not platformCls.SID:
       return
    # Allow test flexibility to prototype SKU
-   if platform.PROTOTYPE:
+   if platformCls.PROTOTYPE:
       return
 
+   platform = platformCls()
    assertPlatformReloadCauseProviderVersion(platform)
 
 @pytest.mark.parametrize(

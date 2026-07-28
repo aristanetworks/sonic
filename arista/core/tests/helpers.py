@@ -21,14 +21,20 @@ def getAllFixedSystems(ignoreSupervisor=False):
    for platformCls in _getFixedSystemClasses(ignoreSupervisor=ignoreSupervisor):
       yield platformCls()
 
+def getAllFixedSystemClasses(ignoreSupervisor=False):
+   yield from _getFixedSystemClasses(ignoreSupervisor=ignoreSupervisor)
+
 def getAllFixedSystemKeys(ignoreSupervisor=False):
    for platformCls in _getFixedSystemClasses(ignoreSupervisor=ignoreSupervisor):
       yield platformCls.SID[0] if platformCls.SID else platformCls.SKU[0]
 
 getAllSystems = getAllFixedSystems
+getAllSystemClasses = getAllFixedSystemClasses
 getAllSystemKeys = getAllFixedSystemKeys
 
 def classname(obj):
+   if isinstance(obj, type):
+      return obj.__name__
    return obj.__class__.__name__
 
 def isChildComponentOf(component, parent):

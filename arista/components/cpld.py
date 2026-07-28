@@ -78,6 +78,132 @@ class SysCpldReloadCauseRegistersV2(RegisterMap):
    )
    RTC = RegisterArray(0x40, 0x45, name='rtc', ro=False)
 
+class LeakDetectionCpldRegistersV1(RegisterMap):
+   """
+   Register map for leak detection registers in a CPLD that are accessed over an
+   8-bit bus (SMBus/I2C).
+   """
+
+   MAJOR_STATUS_0 = Register(0xB0,
+      RegBitField(0, 'majorRope0Present'),
+      RegBitField(1, 'majorRope1Present'),
+      RegBitField(2, 'majorRope2Present'),
+      RegBitField(3, 'majorRope3Present'),
+      RegBitField(4, 'majorRope0Break'),
+      RegBitField(5, 'majorRope1Break'),
+      RegBitField(6, 'majorRope2Break'),
+      RegBitField(7, 'majorRope3Break'),
+   )
+
+   MAJOR_STATUS_1 = Register(0xB1,
+      RegBitField(0, 'majorRope0Leak'),
+      RegBitField(1, 'majorRope1Leak'),
+      RegBitField(2, 'majorRope2Leak'),
+      RegBitField(3, 'majorRope3Leak'),
+      RegBitField(4, 'majorRope0Changed', ro=False),
+      RegBitField(5, 'majorRope1Changed', ro=False),
+      RegBitField(6, 'majorRope2Changed', ro=False),
+      RegBitField(7, 'majorRope3Changed', ro=False),
+   )
+
+   MAJOR_DEBOUNCE_ROPE0 = Register(0xB4, RegBitRange(0, 7, 'majorRope0DebounceS',
+                                                     ro=False))
+   MAJOR_DEBOUNCE_ROPE1 = Register(0xB5, RegBitRange(0, 7, 'majorRope1DebounceS',
+                                                     ro=False))
+   MAJOR_DEBOUNCE_ROPE2 = Register(0xB6, RegBitRange(0, 7, 'majorRope2DebounceS',
+                                                     ro=False))
+   MAJOR_DEBOUNCE_ROPE3 = Register(0xB7, RegBitRange(0, 7, 'majorRope3DebounceS',
+                                                     ro=False))
+
+   MAJOR_TEST = Register(0xB8,
+      RegBitField(0, 'majorRope0ForceLeak', ro=False),
+      RegBitField(1, 'majorRope1ForceLeak', ro=False),
+      RegBitField(2, 'majorRope2ForceLeak', ro=False),
+      RegBitField(3, 'majorRope3ForceLeak', ro=False),
+   )
+
+   MAJOR_ACTION_0 = Register(0xB9,
+      RegBitField(0, 'majorLiquidDomainPowerDownEnable', ro=False),
+      RegBitField(1, 'majorSystemPowerCycleEnable', ro=False),
+   )
+
+   MAJOR_ACTION_1 = Register(0xBA,
+      RegBitRange(0, 5, 'majorLeakActionDelayTimeS', ro=False),
+      RegBitField(7, 'majorLeakActionDelayTimeEnable', ro=False),
+   )
+
+   # Overrides MAJOR_ACTION_0 if MAJOR_WATCHDOG_TIMEOUT_ACTION_2.watchdog_enable is
+   # set.
+   MAJOR_WATCHDOG_TIMEOUT_ACTION_1 = Register(0xBD,
+      RegBitField(0, 'majorWatchdogLiquidDomainPowerDownEnable', ro=False),
+      RegBitField(1, 'majorWatchdogSystemPowerCycleEnable', ro=False),
+   )
+
+   MAJOR_WATCHDOG_TIMEOUT_ACTION_2 = Register(0xBE,
+      RegBitRange(0, 5, 'majorWatchdogTimeS', ro=False),
+      RegBitField(7, 'majorWatchdogEnable', ro=False),
+   )
+
+   MINOR_STATUS_0 = Register(0xC0,
+      RegBitField(0, 'minorRope0Present'),
+      RegBitField(1, 'minorRope1Present'),
+      RegBitField(2, 'minorRope2Present'),
+      RegBitField(3, 'minorRope3Present'),
+      RegBitField(4, 'minorRope0Break'),
+      RegBitField(5, 'minorRope1Break'),
+      RegBitField(6, 'minorRope2Break'),
+      RegBitField(7, 'minorRope3Break'),
+   )
+
+   MINOR_STATUS_1 = Register(0xC1,
+      RegBitField(0, 'minorRope0Leak'),
+      RegBitField(1, 'minorRope1Leak'),
+      RegBitField(2, 'minorRope2Leak'),
+      RegBitField(3, 'minorRope3Leak'),
+      RegBitField(4, 'minorRope0Changed', ro=False),
+      RegBitField(5, 'minorRope1Changed', ro=False),
+      RegBitField(6, 'minorRope2Changed', ro=False),
+      RegBitField(7, 'minorRope3Changed', ro=False),
+   )
+
+   MINOR_DEBOUNCE_ROPE0 = Register(0xC4, RegBitRange(0, 7, 'minorRope0DebounceS',
+                                                     ro=False))
+   MINOR_DEBOUNCE_ROPE1 = Register(0xC5, RegBitRange(0, 7, 'minorRope1DebounceS',
+                                                     ro=False))
+   MINOR_DEBOUNCE_ROPE2 = Register(0xC6, RegBitRange(0, 7, 'minorRope2DebounceS',
+                                                     ro=False))
+   MINOR_DEBOUNCE_ROPE3 = Register(0xC7, RegBitRange(0, 7, 'minorRope3DebounceS',
+                                                     ro=False))
+
+   MINOR_TEST = Register(0xC8,
+      RegBitField(0, 'minorRope0ForceLeak', ro=False),
+      RegBitField(1, 'minorRope1ForceLeak', ro=False),
+      RegBitField(2, 'minorRope2ForceLeak', ro=False),
+      RegBitField(3, 'minorRope3ForceLeak', ro=False),
+   )
+
+   MINOR_ACTION_0 = Register(0xC9,
+      RegBitField(0, 'minorLiquidDomainPowerDownEnable', ro=False),
+      RegBitField(1, 'minorSystemPowerCycleEnable', ro=False),
+   )
+
+   MINOR_ACTION_1 = Register(0xCA,
+      RegBitRange(0, 5, 'minorLeakActionDelayTimeS', ro=False),
+      RegBitField(7, 'minorLeakActionDelayTimeEnable', ro=False),
+   )
+
+   # Overrides MINOR_ACTION_0 if MINOR_WATCHDOG_TIMEOUT_ACTION_2.watchdog_enable is
+   # set.
+   MINOR_WATCHDOG_TIMEOUT_ACTION_1 = Register(0xCD,
+      RegBitField(0, 'minorWatchdogLiquidDomainPowerDownEnable', ro=False),
+      RegBitField(1, 'minorWatchdogSystemPowerCycleEnable', ro=False),
+   )
+
+   MINOR_WATCHDOG_TIMEOUT_ACTION_2 = Register(0xCE,
+      RegBitRange(0, 5, 'minorWatchdogTimeS', ro=False),
+      RegBitField(7, 'minorWatchdogEnable', ro=False),
+   )
+
 class SysCpldPowerCycle(PowerCycle):
    def __init__(self, parent):
       self.parent = parent

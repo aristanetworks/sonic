@@ -10,7 +10,12 @@ from .exception import UnknownPlatformError
 from .log import getLogger
 from .prefdl import Prefdl
 from .types import I2cBus
-from .utils import simulateWith, getCmdlineDict
+from .utils import (
+   simulateWith,
+   getCmdlineDict,
+   isBmcEnvironment,
+   readBmcDeviceTreeModel,
+)
 
 from ..libs.benchmark import timeit
 
@@ -52,6 +57,14 @@ class PlatformManager:
       return cls
 
    def detectPlatform(self):
+      if isBmcEnvironment():
+         sku = readBmcDeviceTreeModel()
+         if sku is not None:
+            platformCls = self.platformSkuIndex.get(sku)
+            if platformCls is not None:
+               return platformCls
+         return None
+
       # TODO: refactor by obtaining a Cpu object based on the platform= from
       #       cmdline implement getEeprom on all Cpu to get the prefdl from hw
       #       add a fallback mechanism to read /etc/sonic/.syseeprom like done
@@ -120,6 +133,10 @@ def readI2cPrefdlEeprom():
    raise UnknownPlatformError('Could not identify current platform')
 
 def readPrefdl():
+   if isBmcEnvironment():
+      logging.debug('reading system eeprom from bmcEeprom')
+      return getPlatform().bmcEeprom.readPrefdl()
+
    if os.path.isfile(fmted_prefdl_path) and os.path.getsize(fmted_prefdl_path) > 0:
       logging.debug('reading system eeprom from %s', fmted_prefdl_path)
       return Prefdl.fromTextFile(fmted_prefdl_path)
@@ -207,6 +224,9 @@ def getPlatformCls(*names):
 def getPlatform(name=None):
    platformCls = manager.getPlatformCls(name)
    platform = platformCls()
+   if isBmcEnvironment():
+      platform.setupEeproms()
+      platform.createHostCpu()
    platform.refresh()
    return platform
 

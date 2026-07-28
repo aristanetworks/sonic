@@ -88,7 +88,7 @@ class CliLegacyTest(unittest.TestCase):
       self._foreachPlatform('watchdog', '--arm')
 
    def testWatchdogArmTimeout(self):
-      self._foreachPlatform('watchdog', '--arm', '500')
+      self._foreachPlatform('watchdog', '--arm', '250')
 
    def testWatchdogStop(self):
       self._foreachPlatform('watchdog', '--stop')

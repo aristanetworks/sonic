@@ -28,6 +28,7 @@ def mock():
    sys.modules['sonic_platform_base.component_base'] = MagicMock()
    sys.modules['sonic_platform_base.fan_base'] = MagicMock()
    sys.modules['sonic_platform_base.fan_drawer_base'] = MagicMock()
+   sys.modules['sonic_platform_base.liquid_cooling_base'] = MagicMock()
    sys.modules['sonic_platform_base.module_base'] = MagicMock()
    sys.modules['sonic_platform_base.platform_base'] = MagicMock()
    sys.modules['sonic_platform_base.psu_base'] = MagicMock()

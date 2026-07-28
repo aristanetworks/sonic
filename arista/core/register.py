@@ -211,6 +211,26 @@ class SetClearRegister(Register):
       addr = self.addrSet if value else self.addrClear
       self.parent.write(addr, 1 << bitpos)
 
+class Rw1cRegister(Register):
+   """Register where writing 1 to a bit clears it (Read-Write-1-to-Clear).
+   Optionally takes a base address for memory-mapped register spaces."""
+   def __init__(self, addr, *fields, base=None, **kwargs):
+      super().__init__(addr, *fields, **kwargs)
+      self.base = base
+
+   def read(self):
+      if self.base is not None:
+         return self.parent.read(self.base, self.addr)
+      return super().read()
+
+   def write(self, value):
+      if self.base is not None:
+         return self.parent.write(self.base, self.addr, value)
+      return super().write(value)
+
+   def writeBit(self, bitpos, value):
+      return self.write(1 << bitpos)
+
 class RegisterArray(Register):
    def __init__(self, addrBegin, addrEnd, *fields, **kwargs):
       super().__init__(addrBegin, *fields, **kwargs)

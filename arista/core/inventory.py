@@ -57,6 +57,8 @@ class Inventory():
 
       self.rtcs = []
 
+      self.liquidCooling = []
+
    def getXcvrs(self):
       xcvrs = {}
       xcvrs.update(self.getEthernets())
@@ -254,6 +256,13 @@ class Inventory():
 
    def getWatchdogs(self):
       return self.watchdogs
+
+   def addLiquidCooling(self, liquidCooling):
+      self.liquidCooling.append(liquidCooling)
+      return liquidCooling
+
+   def getLiquidCooling(self):
+      return self.liquidCooling
 
    def addPowerCycle(self, powerCycle):
       self.powerCycles.append(powerCycle)

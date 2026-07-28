@@ -6,6 +6,7 @@ try:
    from sonic_platform_base.chassis_base import ChassisBase
    from sonic_platform_base.sfp_base import SfpBase
    from arista.core import thermal_control
+   from arista.core.bmc import BmcSubsystem
    from arista.core.card import Card
    from arista.core.cause import getReloadCauseManager
    from arista.core.config import Config
@@ -19,7 +20,9 @@ try:
       FanDrawer,
       FixedFanDrawer,
    )
+   from arista.utils.sonic_platform.liquid import LiquidCooling
    from arista.utils.sonic_platform.module import (
+      HostSwitchModule,
       SupervisorModule,
       FabricModule,
       LinecardModule,
@@ -87,7 +90,11 @@ class Chassis(ChassisBase):
       self._inventory = platform.getInventory()
       self._event_watcher = None
       self._chassis = None
-      if isinstance(self._platform, Supervisor):
+      if isinstance(self._platform, BmcSubsystem):
+         self._module_list.append(HostSwitchModule(self, self._platform))
+         for programmable in self._inventory.getProgrammables():
+            self._component_list.append(Component(self, programmable))
+      elif isinstance(self._platform, Supervisor):
          chassis = self._platform.getChassis()
          for supervisor in chassis.iterSupervisors(presentOnly=False):
             if supervisor is not None:
@@ -136,6 +143,14 @@ class Chassis(ChassisBase):
       watchdogs = self._inventory.getWatchdogs()
       if watchdogs:
          self._watchdog = Watchdog(watchdogs[0])
+
+      self._liquidCooling = None
+      liquidCooling = self._inventory.getLiquidCooling()
+      if liquidCooling:
+         if len(liquidCooling) != 1:
+            raise RuntimeError(
+               f"only one liquid cooling is supported, got {len(liquidCooling)}")
+         self._liquidCooling = LiquidCooling(liquidCooling[0])
 
    def get_name(self):
       sku = self.get_model()
@@ -208,6 +223,9 @@ class Chassis(ChassisBase):
    def is_modular_chassis(self):
       return isinstance(self._platform, (Supervisor, Card))
 
+   def is_bmc(self):
+      return isinstance(self._platform, BmcSubsystem)
+
    def _get_event_watcher(self):
       if self._event_watcher is None:
          self._event_watcher = EventWatcher(preserve=Config().persistent_presence_check)
@@ -232,6 +250,12 @@ class Chassis(ChassisBase):
 
    def getThermalControl(self):
       return thermal_control
+
+   def get_liquid_cooling(self):
+      return self._liquidCooling
+
+   def is_liquid_cooled(self):
+      return self._liquidCooling is not None
 
    def getPlatform(self):
       return self._platform
@@ -282,3 +306,6 @@ class Chassis(ChassisBase):
          if module.get_name() == module_name:
             return index
       return None
+
+   def get_switch_host_serial(self):
+      return self._platform.chassisEeprom.prefdl().get('SerialNumber')

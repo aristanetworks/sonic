@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 from __future__ import print_function, with_statement
 
 import copy
@@ -223,6 +224,105 @@ class ScdXcvrGroup:
 
    isHwLpModeAvail: bool = True
    isHwModSelAvail: bool = True
+
+class LeakDetectionPcieRegistersV1(RegisterMap):
+   """
+   Register map for SteamerLane leak detection registers via PCIe from CPU.
+   """
+
+   MAJOR_STATUS = Register(0x5500,
+      RegBitField(0, 'majorRope0Present'),
+      RegBitField(1, 'majorRope1Present'),
+      RegBitField(2, 'majorRope2Present'),
+      RegBitField(3, 'majorRope3Present'),
+      RegBitField(4, 'majorRope0Break'),
+      RegBitField(5, 'majorRope1Break'),
+      RegBitField(6, 'majorRope2Break'),
+      RegBitField(7, 'majorRope3Break'),
+      RegBitField(8, 'majorRope0Leak'),
+      RegBitField(9, 'majorRope1Leak'),
+      RegBitField(10, 'majorRope2Leak'),
+      RegBitField(11, 'majorRope3Leak'),
+      RegBitField(12, 'majorRope0Changed', ro=False),
+      RegBitField(13, 'majorRope1Changed', ro=False),
+      RegBitField(14, 'majorRope2Changed', ro=False),
+      RegBitField(15, 'majorRope3Changed', ro=False),
+   )
+
+   MAJOR_DEBOUNCE = Register(0x5510,
+      RegBitRange(0, 7, 'majorRope0DebounceS', ro=False),
+      RegBitRange(8, 15, 'majorRope1DebounceS', ro=False),
+      RegBitRange(16, 23, 'majorRope2DebounceS', ro=False),
+      RegBitRange(24, 31, 'majorRope3DebounceS', ro=False),
+   )
+
+   MAJOR_TEST = Register(0x5520,
+      RegBitField(0, 'majorRope0ForceLeak', ro=False),
+      RegBitField(1, 'majorRope1ForceLeak', ro=False),
+      RegBitField(2, 'majorRope2ForceLeak', ro=False),
+      RegBitField(3, 'majorRope3ForceLeak', ro=False),
+   )
+
+   MAJOR_ACTION = Register(0x5530,
+      RegBitField(0, 'majorLiquidDomainPowerDownEnable', ro=False),
+      RegBitField(1, 'majorSystemPowerCycleEnable', ro=False),
+      RegBitRange(8, 13, 'majorLeakActionDelayTimeS', ro=False),
+      RegBitField(15, 'majorLeakActionDelayTimeEnable', ro=False),
+   )
+
+   MAJOR_WATCHDOG = Register(0x5540,
+      RegBitField(0, 'majorWatchdogLiquidDomainPowerDownEnable', ro=False),
+      RegBitField(1, 'majorWatchdogSystemPowerCycleEnable', ro=False),
+      RegBitRange(8, 13, 'majorWatchdogTimeS', ro=False),
+      RegBitField(15, 'majorWatchdogEnable', ro=False),
+   )
+
+   MINOR_STATUS = Register(0x5550,
+      RegBitField(0, 'minorRope0Present'),
+      RegBitField(1, 'minorRope1Present'),
+      RegBitField(2, 'minorRope2Present'),
+      RegBitField(3, 'minorRope3Present'),
+      RegBitField(4, 'minorRope0Break'),
+      RegBitField(5, 'minorRope1Break'),
+      RegBitField(6, 'minorRope2Break'),
+      RegBitField(7, 'minorRope3Break'),
+      RegBitField(8, 'minorRope0Leak'),
+      RegBitField(9, 'minorRope1Leak'),
+      RegBitField(10, 'minorRope2Leak'),
+      RegBitField(11, 'minorRope3Leak'),
+      RegBitField(12, 'minorRope0Changed', ro=False),
+      RegBitField(13, 'minorRope1Changed', ro=False),
+      RegBitField(14, 'minorRope2Changed', ro=False),
+      RegBitField(15, 'minorRope3Changed', ro=False),
+   )
+
+   MINOR_DEBOUNCE = Register(0x5560,
+      RegBitRange(0, 7, 'minorRope0DebounceS', ro=False),
+      RegBitRange(8, 15, 'minorRope1DebounceS', ro=False),
+      RegBitRange(16, 23, 'minorRope2DebounceS', ro=False),
+      RegBitRange(24, 31, 'minorRope3DebounceS', ro=False),
+   )
+
+   MINOR_TEST = Register(0x5570,
+      RegBitField(0, 'minorRope0ForceLeak', ro=False),
+      RegBitField(1, 'minorRope1ForceLeak', ro=False),
+      RegBitField(2, 'minorRope2ForceLeak', ro=False),
+      RegBitField(3, 'minorRope3ForceLeak', ro=False),
+   )
+
+   MINOR_ACTION = Register(0x5580,
+      RegBitField(0, 'minorLiquidDomainPowerDownEnable', ro=False),
+      RegBitField(1, 'minorSystemPowerCycleEnable', ro=False),
+      RegBitRange(8, 13, 'minorLeakActionDelayTimeS', ro=False),
+      RegBitField(15, 'minorLeakActionDelayTimeEnable', ro=False),
+   )
+
+   MINOR_WATCHDOG = Register(0x5590,
+      RegBitField(0, 'minorWatchdogLiquidDomainPowerDownEnable', ro=False),
+      RegBitField(1, 'minorWatchdogSystemPowerCycleEnable', ro=False),
+      RegBitRange(8, 13, 'minorWatchdogTimeS', ro=False),
+      RegBitField(15, 'minorWatchdogEnable', ro=False),
+   )
 
 class Scd(PciComponent):
    BusTweak = namedtuple('BusTweak', 'addr, t, datr, datw, ed')

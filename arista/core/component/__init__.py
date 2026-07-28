@@ -6,6 +6,7 @@ from ..config import Config
 from ..inventory import Inventory
 from ..log import getLogger
 from ..quirk import Quirk
+from ...descs.liquid import LiquidCoolingDesc
 
 logging = getLogger(__name__)
 
@@ -101,6 +102,10 @@ class Component(object):
             key = getattr(drv, 'module', drv.__class__.__name__)
             if key not in self.drivers:
                self.drivers[key] = drv
+
+   def addLiquidCooling(self, desc: LiquidCoolingDesc) -> None:
+      desc.setAttrs(component=self)
+      self.inventory.addLiquidCooling(desc)
 
    def getInventory(self):
       return self.inventory

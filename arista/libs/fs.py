@@ -5,6 +5,10 @@ def readFileContent(path):
    with open(path) as f:
       return f.read()
 
+def writeFileContent(path, value, encoding='utf-8'):
+   with open(path, 'w', encoding=encoding) as f:
+      f.write(value)
+
 def touch(path, mode=0o644, times=None):
    try:
       with open(path, 'a'):

@@ -516,6 +516,26 @@ def locateHwmonPath(searchPath, prefix):
    logging.error('could not locate hwmon path for %s', searchPath)
    return None
 
+_isBmcEnvironment = None
+
+def isBmcEnvironment():
+   global _isBmcEnvironment
+   if _isBmcEnvironment is None:
+      try:
+         with open('/proc/device-tree/compatible', 'r', encoding='utf-8',
+                   errors='ignore') as f:
+            _isBmcEnvironment = 'aspeed' in f.read().lower()
+      except (IOError, OSError):
+         _isBmcEnvironment = False
+   return _isBmcEnvironment
+
+def readBmcDeviceTreeModel():
+   try:
+      with open('/proc/device-tree/model', 'r', encoding='utf-8') as f:
+         return f.read().strip('\x00').strip()
+   except (IOError, OSError):
+      return None
+
 class LastRebootType:
    COLD = 'cold'
    WARM = 'warm'

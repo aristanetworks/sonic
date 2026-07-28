@@ -1,0 +1,16 @@
+[Unit]
+Description=Arista NIC interface configuration
+After=platform-arista-swss.service
+After=config-setup.service
+Requires=platform-arista-swss.service
+PartOf=platform-arista.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+ExecStart=/usr/bin/arista -l /var/log/arista-nic.log platform nic --config
+ExecStop=/usr/bin/arista -l /var/log/arista-nic.log platform nic --clean
+
+[Install]
+RequiredBy=platform-arista.target

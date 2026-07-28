@@ -292,3 +292,51 @@ class LinecardSupervisorModule(SupervisorModule):
 
    def get_position_in_parent(self):
       return self._slotId
+
+class HostSwitchModule(Module):
+
+   # pylint: disable=super-init-not-called
+   def __init__(self, parent, bmc):
+      ModuleBase.__init__(self)
+      self._sku = bmc
+      self._parent = parent
+
+   def _get_eeprom(self):
+      return self._sku.chassisEeprom.prefdl()
+
+   def get_name(self):
+      return self.get_model()
+
+   def get_type(self):
+      return self.MODULE_TYPE_SWITCH_HOST
+
+   def get_slot(self):
+      return 1
+
+   def get_presence(self):
+      return self._sku.hostCpu is not None
+
+   def get_oper_status(self):
+      if not self.get_presence():
+         return self.MODULE_STATUS_EMPTY
+      regs = self._sku.hostCpu.cpld.driver.regs
+      if regs.hostCpuPwrStatus() and regs.swcPwrStatus():
+         return self.MODULE_STATUS_ONLINE
+      return self.MODULE_STATUS_OFFLINE
+
+   def set_admin_state(self, up):
+      regs = self._sku.hostCpu.cpld.driver.regs
+      regs.nonStandbyPwrCtrl(3 if up else 0)
+      return True
+
+   def do_power_cycle(self):
+      regs = self._sku.hostCpu.cpld.driver.regs
+      regs.nonStandbyPwrCtrl(3)
+      regs.nonStandbyPwrCycle(0xDE)
+      return True
+
+   def is_replaceable(self):
+      return False
+
+   def get_position_in_parent(self):
+      return self.get_slot()

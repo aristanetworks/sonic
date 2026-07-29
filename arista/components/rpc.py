@@ -7,8 +7,8 @@ from ..descs.cause import ReloadCausePriority
 from ..drivers.rpc import LinecardRpcClientDriver
 
 class RpcReloadCauseProviderImpl(HardwareReloadCauseProvider):
-   def __init__(self, rpc, priority=ReloadCausePriority.PRIMARY):
-      super().__init__(name=str(rpc), priority=priority)
+   def __init__(self, rpc, **kwargs):
+      super().__init__(name=str(rpc), **kwargs)
       self.rpc = rpc
       self.providers = []
 
@@ -24,9 +24,10 @@ class RpcReloadCauseProviderImpl(HardwareReloadCauseProvider):
 class LinecardRpcClient(Component):
    DRIVER = LinecardRpcClientDriver
 
-   def __init__(self, *args, **kwargs):
+   def __init__(self, *args, causePriority=ReloadCausePriority.PRIMARY, **kwargs):
       super().__init__(*args, **kwargs)
-      self.inventory.addReloadCauseProvider(RpcReloadCauseProviderImpl(self))
+      self.inventory.addReloadCauseProvider(
+         RpcReloadCauseProviderImpl(self, priority=causePriority))
 
    def getReloadCauseData(self):
       return self.driver.getReloadCauseData()

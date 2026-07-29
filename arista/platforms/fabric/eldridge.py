@@ -7,7 +7,7 @@ from ...core.utils import incrange
 from ...components.asic.dnx.ramon import Ramon
 from ...components.denali.desc import DenaliAsicDesc
 from ...components.denali.fabric import DenaliFabric
-from ...components.dpm.ucd import Ucd90320
+from ...components.dpm.ucd import Ucd90320, UcdPriority
 from ...components.max31790 import Max31790
 from ...components.max6658 import Max6658
 from ...components.pca9555 import Pca9555
@@ -153,4 +153,5 @@ class Eldridge(DenaliFabric):
          self.gpio2.polSmbusEnable(True)
 
    def createStandbyDpm(self):
-      self.control.newComponent(Ucd90320, addr=self.pca.i2cAddr(0x11))
+      self.control.newComponent(Ucd90320, addr=self.pca.i2cAddr(0x11),
+                                causePriority=UcdPriority.HARDWARE_SECONDARY)

@@ -9,7 +9,7 @@ from ...core.utils import incrange
 from ...components.asic.dnx.jericho2 import Jericho2
 from ...components.denali.desc import DenaliAsicDesc
 from ...components.denali.linecard import DenaliLinecard, GpioRegisterMap
-from ...components.dpm.ucd import Ucd90320, UcdGpi, UcdMon
+from ...components.dpm.ucd import Ucd90320, UcdGpi, UcdMon, UcdPriority
 from ...components.eeprom import At24C512
 from ...components.lm73 import Lm73
 from ...components.lm75 import Tmp75
@@ -142,7 +142,7 @@ class ClearwaterBase(DenaliLinecard):
          UcdGpi(10, ReloadCauseDesc.REBOOT),
          UcdGpi(12, ReloadCauseDesc.OVER_CURRENT, 'asic'),
          UcdMon(14, ReloadCauseDesc.POWERLOSS),
-      ])
+      ], causePriority=UcdPriority.HARDWARE_MAIN)
 
 
 @registerPlatform()

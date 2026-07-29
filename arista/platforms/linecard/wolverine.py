@@ -13,7 +13,7 @@ from ...components.denali.linecard import (
    GpioRegisterMap,
    StandbyScdRegisterMap,
 )
-from ...components.dpm.ucd import Ucd90320, UcdGpi
+from ...components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ...components.eeprom import At24C512
 from ...components.pca9555 import Pca9555
 from ...components.plx import PlxPortDesc
@@ -206,7 +206,7 @@ class Wolverine(DenaliLinecard):
          UcdGpi(12, ReloadCauseDesc.POWERLOSS),
          UcdGpi(13, ReloadCauseDesc.OVERTEMP, 'asic memory'),
          UcdGpi(14, ReloadCauseDesc.OVERTEMP, 'asic memory'),
-      ], quirks=quirks)
+      ], causePriority=UcdPriority.HARDWARE_MAIN, quirks=quirks)
 
    def standbyDomain(self):
       super(Wolverine, self).standbyDomain()

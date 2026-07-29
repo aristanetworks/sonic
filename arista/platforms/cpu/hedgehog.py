@@ -1,3 +1,4 @@
+from ...core.cause import ReloadCausePriority
 from ...core.component.i2c import Component
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
@@ -11,6 +12,7 @@ from ...components.dpm.adm1266 import (
    AdmCauseOneHot,
    AdmGpio,
    AdmPdio,
+   AdmPriority,
 )
 from ...components.pci import CompletionTimeoutPciQuirk
 from ...components.rpc import LinecardRpcClient
@@ -41,7 +43,8 @@ class HedgehogCpu(Cpu):
    )
 
    def __init__(self, **kwargs):
-      super(HedgehogCpu, self).__init__(**kwargs)
+      super(HedgehogCpu, self).__init__(
+         cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
       self.slot = None
       self.pciRoot = self.newComponent(PciRoot)
 
@@ -55,7 +58,8 @@ class HedgehogCpu(Cpu):
                     position=Position.OTHER, target=60, overheat=90, critical=95),
       ])
 
-      self.rpc = self.newComponent(LinecardRpcClient)
+      self.rpc = self.newComponent(LinecardRpcClient,
+                                   causePriority=ReloadCausePriority.HARDWARE_MAIN)
       self.rpc.addLed(
          LedDesc('status', colors=[LedColor.RED, LedColor.GREEN, LedColor.OFF]))
       self.rpc.addPowerCycle(None)
@@ -90,4 +94,4 @@ class HedgehogCpu(Cpu):
                         AdmPdio(13), AdmCauseOneHot.Direction.IN,    True, 15, 2),
          AdmCauseOneHot(AdmCauseOneHot.CPU_S5,
                         AdmPdio(14), AdmCauseOneHot.Direction.IN,    True, 15, 2)
-      ])
+      ], causePriority=AdmPriority.HARDWARE_SECONDARY)

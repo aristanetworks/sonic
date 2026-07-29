@@ -51,6 +51,7 @@ class BlackhawkO(FixedSystem):
       self.scd = scd
 
       scd.createWatchdog()
+      scd.addSmbusMasterRange(0x8000, 8, 0x80)
 
       scd.newComponent(Max6581, addr=scd.i2cAddr(8, 0x4d), sensors=[
          SensorDesc(diode=0, name='Board sensor',
@@ -66,8 +67,6 @@ class BlackhawkO(FixedSystem):
          SensorDesc(diode=7, name='Switch chip diode 2 sensor',
                     position=Position.OTHER, target=75, overheat=110, critical=125),
       ])
-
-      scd.addSmbusMasterRange(0x8000, 8, 0x80)
 
       scd.addLeds([
          (0x6050, 'status'),

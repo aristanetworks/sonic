@@ -26,6 +26,7 @@ from ..components.scd import Scd
 
 from ..descs.cause import ReloadCauseAltSource, ReloadCauseDesc
 from ..descs.gpio import GpioDesc
+from ..descs.rail import RailDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
 from ..descs.xcvr import Qsfp28, Sfp
@@ -92,12 +93,13 @@ class LodogaBase(FixedSystem):
       self.syscpld = cpu.syscpld
 
       port = cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
-      scd = port.newComponent(Scd, addr=port.addr)
-      self.scd = scd
+      self.scd = scd = port.newComponent(Scd, addr=port.addr)
+      scd.addSmbusMasterRange(0x8000, 6, 0x80)
 
       self.cpu.addScdComponents(scd)
 
       scd.createWatchdog()
+
 
       addrs = self.SmBusAddresses
       scd.newComponent(Max6658,
@@ -107,8 +109,6 @@ class LodogaBase(FixedSystem):
          SensorDesc(diode=1, name='Front-panel temp sensor',
                     position=Position.INLET, target=50, overheat=60, critical=65),
       ])
-
-      scd.addSmbusMasterRange(0x8000, 6, 0x80)
 
       self.addPlatformComponents()
 
@@ -215,9 +215,22 @@ class Lodoga(LodogaBase):
       self.scd.newComponent(Ucd90120A, addr=self.scd.i2cAddr(13, 0x4e, t=3), causes=[
          UcdGpi(1, ReloadCauseDesc.REBOOT),
          UcdGpi(2, ReloadCauseDesc.WATCHDOG),
+         UcdGpi(3, ReloadCauseDesc.SEU),
          UcdGpi(4, ReloadCauseDesc.OVERTEMP),
          UcdGpi(5, ReloadCauseDesc.POWERLOSS, 'PSU AC'),
          UcdGpi(6, ReloadCauseDesc.POWERLOSS, 'PSU DC'),
+      ], rails=[
+         RailDesc(railId=1, name='P0V8AR'),
+         RailDesc(railId=2, name='P0V8AL'),
+         RailDesc(railId=3, name='P0V9'),
+         RailDesc(railId=4, name='P1V2SCD'),
+         RailDesc(railId=5, name='P1V2TD'),
+         RailDesc(railId=6, name='P1V5CPLD'),
+         RailDesc(railId=7, name='P1V8'),
+         RailDesc(railId=8, name='P3V3'),
+         RailDesc(railId=9, name='P3V3STDBY'),
+         RailDesc(railId=10, name='P3V3_ISL_CTRL'),
+         RailDesc(railId=11, name='P12V'),
       ], causePriority=UcdPriority.HARDWARE_MAIN)
 
 @registerPlatform()

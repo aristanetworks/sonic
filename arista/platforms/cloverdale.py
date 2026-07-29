@@ -46,7 +46,8 @@ class Cloverdale(FixedSystem):
 
       self.newComponent(Trident2, PciAddr(bus=0x02))
 
-      scd = self.newComponent(Scd, PciAddr(bus=0x04))
+      self.scd = scd = self.newComponent(Scd, PciAddr(bus=0x04))
+      scd.addSmbusMasterRange(0x8000, 5)
 
       scd.createWatchdog()
 
@@ -123,8 +124,6 @@ class Cloverdale(FixedSystem):
                DS460,
             ],
          )
-
-      scd.addSmbusMasterRange(0x8000, 5)
 
       scd.addResets([
          ResetDesc('switch_chip_reset', addr=0x4000, bit=0),

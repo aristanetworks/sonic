@@ -44,7 +44,9 @@ class Clearlake(FixedSystem):
       self.syscpld = cpu.syscpld
 
       port = cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
-      scd = port.newComponent(Scd, addr=port.addr)
+      self.scd = scd = port.newComponent(Scd, addr=port.addr)
+
+      scd.addSmbusMasterRange(0x8000, 6)
 
       self.cpu.addScdComponents(scd, hwmonBus=1)
 
@@ -73,8 +75,6 @@ class Clearlake(FixedSystem):
                        amplitude=[0xaa, 0xaa, 0xaa, 0xaa, 0xa8, 0xa9, 0xa8, 0xa9])
       scd.newComponent(Ds125Br, addr=scd.i2cAddr(6, 0x5a)) # sfp1-2
       scd.newComponent(Ds125Br, addr=scd.i2cAddr(6, 0x5b)) # sfp3-4
-
-      scd.addSmbusMasterRange(0x8000, 6)
 
       scd.addLeds([
          (0x6050, 'status'),

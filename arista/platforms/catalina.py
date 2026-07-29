@@ -56,6 +56,7 @@ class CatalinaDD(FixedSystem):
       self.scd = scd
 
       scd.createWatchdog()
+      scd.addSmbusMasterRange(0x8000, 11, 0x80)
 
       scd.newComponent(Tmp464, addr=scd.i2cAddr(8, 0x48), sensors=[
          SensorDesc(diode=0, name='Switch card',
@@ -70,8 +71,6 @@ class CatalinaDD(FixedSystem):
          SensorDesc(diode=0, name='Front-panel temp sensor',
                     position=Position.OTHER, target=65, overheat=75, critical=85),
       ])
-
-      scd.addSmbusMasterRange(0x8000, 11, 0x80)
 
       scd.addResets([
          ResetDesc('phy3_reset', addr=0x4000, bit=7),

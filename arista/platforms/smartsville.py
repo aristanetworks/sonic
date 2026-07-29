@@ -54,6 +54,7 @@ class Smartsville(FixedSystem):
       self.scd = scd
 
       scd.createWatchdog()
+      scd.addSmbusMasterRange(0x8000, 5, 0x80)
 
       scd.newComponent(Tmp468, addr=scd.i2cAddr(0, 0x48), sensors=[
          SensorDesc(diode=0, name='Board Sensor',
@@ -67,8 +68,6 @@ class Smartsville(FixedSystem):
          SensorDesc(diode=8, name='Fap 0 Core 1',
                     position=Position.OTHER, target=85, overheat=100, critical=110),
       ])
-
-      scd.addSmbusMasterRange(0x8000, 5, 0x80)
 
       scd.addLeds([
          (0x6050, 'status'),

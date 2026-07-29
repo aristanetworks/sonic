@@ -103,14 +103,15 @@ class RookCpu(Cpu):
                                        registerCls=cpldRegisterCls,
                                        quirks=sysCpldQuirks or [])
 
-   def addCpuDpm(self, addr=None, causes=None):
+   def addCpuDpm(self, addr=None, causes=None, rails=None):
       addr = addr or self.cpuDpmAddr()
       return self.cpld.newComponent(Ucd90160, addr=addr, causes=causes or [
          UcdGpi(2, ReloadCauseDesc.CPU_S3),
          UcdGpi(3, ReloadCauseDesc.OVERTEMP),
          UcdGpi(4, ReloadCauseDesc.CPU_CATERR, priority=UcdPriority.LOW),
          UcdGpi(5, ReloadCauseDesc.NO_FANS),
-      ], causePriority=UcdPriority.HARDWARE_SECONDARY)
+      ], rails=rails,
+         causePriority=UcdPriority.HARDWARE_SECONDARY)
 
    def cpuDpmAddr(self, addr=0x4e, t=3, **kwargs):
       return self.cpld.i2cAddr(1, addr, t=t, **kwargs)

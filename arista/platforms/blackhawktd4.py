@@ -50,6 +50,7 @@ class BlackhawkTD4(FixedSystem):
       self.scd = scd
 
       scd.createWatchdog()
+      scd.addSmbusMasterRange(0x8000, 7, 0x80)
 
       scd.newComponent(Tmp468, addr=scd.i2cAddr(8, 0x48), sensors=[
          SensorDesc(diode=0, name='Center Rear',
@@ -65,8 +66,6 @@ class BlackhawkTD4(FixedSystem):
          SensorDesc(diode=7, name='Switch chip diode 2 sensor',
                     position=Position.OTHER, target=95, overheat=101, critical=105),
       ])
-
-      scd.addSmbusMasterRange(0x8000, 7, 0x80)
 
       scd.addResets([
          ResetDesc('switch_chip_reset', addr=0x4000, bit=2, auto=False),

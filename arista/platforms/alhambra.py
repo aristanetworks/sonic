@@ -50,6 +50,7 @@ class Alhambra(FixedSystem):
       self.scd = scd
 
       scd.createWatchdog()
+      scd.addSmbusMasterRange(0x8000, 9, 0x80)
 
       scd.newComponent(Max6658, addr=scd.i2cAddr(7, 0x4c), sensors=[
          SensorDesc(diode=0, name='Board sensor',
@@ -57,8 +58,6 @@ class Alhambra(FixedSystem):
          SensorDesc(diode=1, name='Switch Chip sensor',
                     position=Position.OTHER, target=85, overheat=100, critical=110),
       ])
-
-      scd.addSmbusMasterRange(0x8000, 9, 0x80)
 
       scd.addResets([
          ResetDesc('switch_chip_reset', addr=0x4000, bit=8, auto=False),

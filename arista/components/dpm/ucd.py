@@ -64,7 +64,8 @@ class UcdReloadCauseProvider(HardwareReloadCauseProvider):
       self.causes = self.ucd.getReloadCauses()
 
    def getReloadCauseDescs(self):
-      return tuple(
+      descs = ()
+      descs += tuple(
          ReloadCauseDesc(
             f'{c.TYPE}{c.bit}',
             c.causeDesc,
@@ -73,6 +74,14 @@ class UcdReloadCauseProvider(HardwareReloadCauseProvider):
             altSource=c.altSource,
          ) for c in self.ucd.causes
       )
+      descs += tuple(
+         ReloadCauseDesc(
+            f'rail{rail.railId}',
+            ReloadCauseDesc.RAIL,
+            description=self.ucd.formatRailName(rail),
+         ) for rail in self.ucd.rails
+      )
+      return descs
 
 class UcdFaultDesc():
    def __init__(self, paged, typ, description, unit=None, conv=None):
@@ -82,10 +91,12 @@ class UcdFaultDesc():
       self.conv = conv
       self.unit = unit
 
-   def getReason(self, page=None):
+   def getReason(self, page=None, railName=None):
       if not self.paged:
          return self.description
-      return '%s on rail %s' % (self.description, page)
+      if railName is not None:
+         return f'{self.description} on rail {page} - {railName}'
+      return f'{self.description} on rail {page}'
 
 class UcdFaultRegister():
    def __init__(self, np=1, gpi=1, fan=2, pages=9):
@@ -152,16 +163,32 @@ class Ucd(PmbusDpm):
    faultTimeBase = datetime.datetime(1970, 1, 1)
    daysOffset = 0
 
-   def __init__(self, addr=None, causes=None, causePriority=UcdPriority.PRIMARY,
-                altSource=None, **kwargs):
+   def __init__(self, addr=None, causes=None, rails=None,
+                causePriority=UcdPriority.PRIMARY, altSource=None, **kwargs):
       super().__init__(addr=addr, **kwargs)
       self.causes = causes if causes is not None else []
+      self.rails = tuple(rails) if rails else ()
       self.oldestTime = datetime.datetime(1970, 1, 1)
       self.inventory.addReloadCauseProvider(
          UcdReloadCauseProvider(self, priority=causePriority,
                                 altSource=altSource))
       self.inventory.addProgrammable(UcdProgrammable(self))
       self.inventory.addRtc(RealTimeClockImpl(self))
+
+   def formatRailName(self, rail):
+      if rail.name is not None:
+         return rail.name
+      if '%' not in rail.fmt:
+         return rail.fmt
+      values = rail.__dict__.copy()
+      values['direction'] = rail.direction or ''
+      return rail.fmt % values
+
+   def _getRailName(self, page):
+      for rail in self.rails:
+         if rail.railId == page:
+            return self.formatRailName(rail)
+      return None
 
    def setRealTimeClock(self, dt):
       diff = dt - self.oldestTime
@@ -264,7 +291,10 @@ class Ucd(PmbusDpm):
             cause = UcdReloadCauseEntry(
                cause=fault.description,
                rcTime=datetimeToStr(time),
-               rcDesc=fault.getReason(page),
+               rcDesc=fault.getReason(
+                  page=page,
+                  railName=self._getRailName(page),
+               ),
                score=ReloadCauseScore.EVENT | ReloadCauseScore.DETAILED |
                      ReloadCauseScore.getPriority(UcdPriority.NONE),
                priority=ReloadCausePriority.UNKNOWN,

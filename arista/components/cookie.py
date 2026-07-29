@@ -225,7 +225,8 @@ class PlatformCookieComponent(CookieComponentBase):
    def addLinecard(self, card):
       slot = card.slot
       slotCookies = card.newComponent(SlotCookieComponent, slotId=slot.slotId,
-                                      platformCookies=self)
+                                      platformCookies=self,
+                                      causePriority=ReloadCausePriority.PREREBOOT)
       self.slots[slot.slotId] = slotCookies
       card.cookies = slotCookies
 

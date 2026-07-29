@@ -60,17 +60,15 @@ class Gardena(FixedSystem):
       self.syscpld = cpu.syscpld
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
-      scd = port.newComponent(Scd, addr=port.addr)
-      self.scd = scd
+      self.scd = scd = port.newComponent(Scd, addr=port.addr)
 
       scd.createWatchdog()
+      scd.addSmbusMasterRange(0x8000, 8, 0x80)
 
       scd.newComponent(Max6658, addr=scd.i2cAddr(0, 0x4c), sensors=[
          SensorDesc(diode=0, name='Board sensor',
                     position=Position.OTHER, target=65, overheat=75, critical=85),
       ])
-
-      scd.addSmbusMasterRange(0x8000, 8, 0x80)
 
       scd.addResets([
          ResetDesc('switch_chip_reset', addr=0x4000, bit=0, auto=False),

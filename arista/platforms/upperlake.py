@@ -18,6 +18,7 @@ from ..components.scd import Scd
 
 from ..descs.cause import ReloadCauseDesc
 from ..descs.gpio import GpioDesc
+from ..descs.rail import RailDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
 from ..descs.xcvr import Qsfp28, Sfp
@@ -47,6 +48,8 @@ class Upperlake(FixedSystem):
       scd = port.newComponent(Scd, addr=port.addr)
       self.scd = scd
 
+      scd.addSmbusMasterRange(0x8000, 5, 0x80)
+
       self.cpu.addScdComponents(scd, hwmonBus=1)
 
       scd.createWatchdog()
@@ -64,8 +67,6 @@ class Upperlake(FixedSystem):
 
       self.configureCpuDpm()
       self.configureSwitchDpm()
-
-      scd.addSmbusMasterRange(0x8000, 5, 0x80)
 
       scd.addLeds([
          (0x6050, 'status'),
@@ -157,8 +158,23 @@ class Upperlake(FixedSystem):
       self.scd.newComponent(Ucd90120A, addr=self.scd.i2cAddr(5, 0x4e, t=3), causes=[
          UcdGpi(1, ReloadCauseDesc.REBOOT),
          UcdGpi(2, ReloadCauseDesc.WATCHDOG),
+         UcdGpi(3, ReloadCauseDesc.SEU, 'SCD SEU ERROR'),
          UcdGpi(4, ReloadCauseDesc.OVERTEMP),
          UcdGpi(5, ReloadCauseDesc.POWERLOSS),
+         UcdGpi(8, ReloadCauseDesc.SEU, 'CPLD SEU ERROR'),
+      ], rails=[
+         RailDesc(railId=1, name='12V System rail'),
+         RailDesc(railId=2, name='12V Standby'),
+         RailDesc(railId=3, name='5V Stanbdy'),
+         RailDesc(railId=4, name='3.3V Standby'),
+         RailDesc(railId=5, name='3.3V'),
+         RailDesc(railId=6, name='3.3V Ports'),
+         RailDesc(railId=7, name='2.5V'),
+         RailDesc(railId=8, name='1.8V'),
+         RailDesc(railId=9, name='1.25V'),
+         RailDesc(railId=10, name='1.2V'),
+         RailDesc(railId=11, name='1V Tomahawk core'),
+         RailDesc(railId=12, name='1V Tomahawk analog'),
       ], causePriority=UcdPriority.HARDWARE_MAIN)
 
 @registerPlatform()
@@ -176,20 +192,28 @@ class UpperlakeElite(Upperlake):
          super().configureCpuDpm()
 
    def configureSwitchDpm(self):
-      self.syscpld.addReloadCauseProvider(causes=[
-         SysCpldCause(0x00, 'unknown'),
-         SysCpldCause(0x01, 'reboot'),
-         SysCpldCause(0x02, 'watchdog'),
-         SysCpldCause(0x03, 'powerloss', 'PSU AC'),
-         SysCpldCause(0x04, 'overtemp'),
-         SysCpldCause(0x06, 'powerloss', 'PSU DC'),
-         SysCpldCause(0x08, 'rail', 'POS5V_STANDBY'),
-         SysCpldCause(0x09, 'rail', 'POS3V3'),
-         SysCpldCause(0x0a, 'rail', 'POS1V8'),
-         SysCpldCause(0x0b, 'rail', 'POS1V25'),
-         SysCpldCause(0x0c, 'rail', 'POS1V0_CORE'),
-         SysCpldCause(0x0d, 'rail', 'POS3V3_QSFP'),
-         SysCpldCause(0x0e, 'rail', 'POS1V0A'),
-         SysCpldCause(0x0f, 'rail', 'POS1V2'),
-         SysCpldCause(0x10, 'rail', 'POS2V5'),
-      ], priority=ReloadCausePriority.HARDWARE_MAIN)
+      causes = [
+         SysCpldCause(0x00, ReloadCauseDesc.UNKNOWN),
+         SysCpldCause(0x01, ReloadCauseDesc.REBOOT),
+         SysCpldCause(0x02, ReloadCauseDesc.WATCHDOG),
+         SysCpldCause(0x03, ReloadCauseDesc.POWERLOSS, 'PSU AC'),
+         SysCpldCause(0x04, ReloadCauseDesc.OVERTEMP),
+         SysCpldCause(0x05, ReloadCauseDesc.SEU, 'SCD SEU ERROR'),
+         SysCpldCause(0x06, ReloadCauseDesc.POWERLOSS, 'PSU DC'),
+         SysCpldCause(0x07, ReloadCauseDesc.SEU, 'CPLD SEU ERROR'),
+         SysCpldCause(0x08, ReloadCauseDesc.RAIL, 'POS5V_STANDBY'),
+         SysCpldCause(0x09, ReloadCauseDesc.RAIL, 'POS3V3'),
+         SysCpldCause(0x0a, ReloadCauseDesc.RAIL, 'POS1V8'),
+         SysCpldCause(0x0b, ReloadCauseDesc.RAIL, 'POS1V25'),
+         SysCpldCause(0x0c, ReloadCauseDesc.RAIL, 'POS1V0_CORE'),
+         SysCpldCause(0x0d, ReloadCauseDesc.RAIL, 'POS3V3_QSFP'),
+         SysCpldCause(0x0e, ReloadCauseDesc.RAIL, 'POS1V0A'),
+         SysCpldCause(0x0f, ReloadCauseDesc.RAIL, 'POS1V2'),
+         SysCpldCause(0x10, ReloadCauseDesc.RAIL, 'POS2V5'),
+      ]
+      if self.getHwApi() >= HwApi(2):
+         causes.append(SysCpldCause(0x11, ReloadCauseDesc.POWERLOSS, 'CPU'))
+      self.syscpld.addReloadCauseProvider(
+         causes=causes,
+         priority=ReloadCausePriority.HARDWARE_MAIN,
+      )

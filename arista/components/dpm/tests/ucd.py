@@ -9,6 +9,7 @@ from ....core.tests.helpers import (
    getAllSystems,
 )
 from ....descs.cause import ReloadCauseDesc, CauseDesc, ReloadCausePriority
+from ....descs.rail import RailDesc
 from ....drivers.dpm.ucd import UcdUserDriver
 from ....libs.date import datetimeToStr
 from ....tests.logging import getLogger
@@ -389,6 +390,66 @@ class TestUcdCause:
          return
       assert len(causes) == 1, f"Expected one cause, get {len(causes)}"
       self._assertCauseEqual(causes[0], expectedCause)
+
+   def testGetReloadCauseDescsIncludesFaultRails(self):
+      ucd = Ucd(
+         inventory=Inventory(),
+         causes=[UcdGpi(1, ReloadCauseDesc.REBOOT)],
+         rails=[
+            RailDesc(railId=2, name='P1V0_SWITCH'),
+            RailDesc(railId=3, name='P1V8_SERDES'),
+         ],
+      )
+      provider = ucd.inventory.getReloadCauseProviders()[0]
+      descs = provider.getReloadCauseDescs()
+
+      assert len(descs) == 3
+      self._assertEqual("code", descs[1].codeStr, 'rail2')
+      self._assertEqual("type", descs[1].typ, 'rail')
+      self._assertEqual(
+         "description", descs[1].description, 'Rail fault - P1V0_SWITCH')
+      self._assertEqual("code", descs[2].codeStr, 'rail3')
+      self._assertEqual(
+         "description", descs[2].description, 'Rail fault - P1V8_SERDES')
+
+   def testDetailedPagedFaultUsesRailName(self):
+      faultPage = 2
+      railName = 'P1V0_SWITCH'
+      ucd = Ucd(
+         inventory=Inventory(),
+         rails=[RailDesc(railId=faultPage, name=railName)],
+      )
+      reg = self._encodeDetailedFaultReg(Ucd, 1, 1, faultPage)
+      ucd.driver.setDetailedFaultCount(1)
+      ucd.driver.setDetailedFault(0, reg)
+
+      causes = ucd.getReloadCauses(False)
+
+      assert len(causes) == 1, f"Expected one cause, get {len(causes)}"
+      self._assertEqual(
+         "description",
+         causes[0].description,
+         f'under-voltage on rail {faultPage} - {railName}',
+      )
+
+   def testDetailedPagedFaultWithoutRailNameKeepsOldFormat(self):
+      faultPage = 2
+      ucd = Ucd(
+         inventory=Inventory(),
+         rails=[RailDesc(railId=1, name='P3V3_ALW')],
+      )
+      reg = self._encodeDetailedFaultReg(Ucd, 1, 1, faultPage)
+      ucd.driver.setDetailedFaultCount(1)
+      ucd.driver.setDetailedFault(0, reg)
+
+      causes = ucd.getReloadCauses(False)
+
+      assert len(causes) == 1, f"Expected one cause, get {len(causes)}"
+      self._assertEqual(
+         "description",
+         causes[0].description,
+         f'under-voltage on rail {faultPage}',
+      )
 
    # Test complex cases:
    # * if all faults are logged up to the storage limit

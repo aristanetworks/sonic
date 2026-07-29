@@ -18,10 +18,11 @@ from ....platforms.supervisor.otterlake import OtterLake
 from ....tests.testing import unittest
 
 class DenaliChassisTest(unittest.TestCase):
-   def _buildChassis(self, chassis, supervisors, fabrics, linecards):
-      chassis = chassis()
-      for slotId, cls in supervisors.items():
-         sup = cls(chassis=chassis, slot=None)
+   @classmethod
+   def buildChassis(cls, chassisCls, supervisors, fabrics, linecards):
+      chassis = chassisCls()
+      for slotId, supervisorCls in supervisors.items():
+         sup = supervisorCls(chassis=chassis, slot=None)
          sup.slotId = slotId
          chassis.insertSupervisor(sup, slotId=slotId, active=slotId == 1)
 
@@ -41,14 +42,15 @@ class DenaliChassisTest(unittest.TestCase):
 
       return chassis
 
-   def _buildBasicChassis(self, chassis, supervisor, fabric, linecards=None):
+   @classmethod
+   def buildBasicChassis(cls, chassis, supervisor, fabric, linecards=None):
       linecards = linecards or {
          1: Clearwater,
          2: ClearwaterMs,
          3: Clearwater2,
          4: Clearwater2Ms,
       }
-      return self._buildChassis(
+      return cls.buildChassis(
          chassis,
          supervisors={
             1: supervisor,
@@ -60,13 +62,13 @@ class DenaliChassisTest(unittest.TestCase):
       )
 
    def testCampChassis(self):
-      self._buildBasicChassis(Camp, OtterLake, Brooks)
+      self.buildBasicChassis(Camp, OtterLake, Brooks)
 
    def testNorthFaceEldridgeChassis(self):
-      self._buildBasicChassis(NorthFace, OtterLake, Eldridge)
+      self.buildBasicChassis(NorthFace, OtterLake, Eldridge)
 
    def testNorthFaceDragonflyChassis(self):
-      self._buildBasicChassis(NorthFace, OtterLake, Dragonfly, linecards={
+      self.buildBasicChassis(NorthFace, OtterLake, Dragonfly, linecards={
          1: Clearwater2,
          2: Clearwater2Ms,
          3: WolverineO,

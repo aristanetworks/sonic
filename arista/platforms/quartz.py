@@ -5,12 +5,12 @@ from ..core.psu import PsuSlot
 from ..core.utils import incrange
 
 from ..components.asic.dnx.jericho2c import Jericho2cPlus
-from ..components.dpm.ucd import Ucd90320, UcdGpi
+from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ..components.psu.liteon import PS2242
 from ..components.scd import Scd
 from ..components.tmp464 import Tmp464
 
-from ..descs.cause import ReloadCauseDesc
+from ..descs.cause import ReloadCauseDesc, ReloadCauseAltSource
 from ..descs.gpio import GpioDesc
 from ..descs.psu import PsuStatusPolicy
 from ..descs.reset import ResetDesc
@@ -45,8 +45,9 @@ class QuartzDd(FixedSystem):
             UcdGpi(4, ReloadCauseDesc.REBOOT),
             UcdGpi(5, ReloadCauseDesc.WATCHDOG),
             UcdGpi(6, ReloadCauseDesc.OVERTEMP),
-            UcdGpi(8, ReloadCauseDesc.CPU),
-      ])
+            UcdGpi(8, ReloadCauseDesc.CPU,
+                   altSource=ReloadCauseAltSource.CPU),
+      ], causePriority=UcdPriority.HARDWARE_MAIN)
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       scd = port.newComponent(Scd, addr=port.addr)

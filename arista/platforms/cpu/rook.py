@@ -1,3 +1,4 @@
+from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.fan import FanSlot
 from ...core.pci import PciPortDesc, PciRoot
@@ -21,6 +22,7 @@ from ...components.scd import Scd
 from ...descs.fan import FanDesc, FanPosition
 from ...descs.led import LedDesc, LedColor
 from ...descs.sensor import Position, SensorDesc
+from ...descs.cause import ReloadCauseDesc
 
 class RookCpu(Cpu):
 
@@ -32,7 +34,7 @@ class RookCpu(Cpu):
    def __init__(self, mgmtBus=15, fanCpldCls=LaFanCpld, hasLmSensor=True,
                 hasCpuLeds=True, cpldRegisterCls=RookSysCpldRegisters,
                 sysCpldQuirks=None, **kwargs):
-      super(RookCpu, self).__init__(**kwargs)
+      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 
@@ -103,12 +105,12 @@ class RookCpu(Cpu):
 
    def addCpuDpm(self, addr=None, causes=None):
       addr = addr or self.cpuDpmAddr()
-      return self.cpld.newComponent(Ucd90160, addr=addr, causes=causes or {
-         'cpu-s3': UcdGpi(2, priority=UcdPriority.LOW),
-         'overtemp': UcdGpi(3),
-         'procerror': UcdGpi(4, priority=UcdPriority.LOW),
-         'fansmissing': UcdGpi(5),
-      })
+      return self.cpld.newComponent(Ucd90160, addr=addr, causes=causes or [
+         UcdGpi(2, ReloadCauseDesc.CPU_S3, priority=UcdPriority.LOW),
+         UcdGpi(3, ReloadCauseDesc.OVERTEMP),
+         UcdGpi(4, ReloadCauseDesc.CPU, priority=UcdPriority.LOW),
+         UcdGpi(5, ReloadCauseDesc.NOFANS),
+      ], causePriority=UcdPriority.HARDWARE_SECONDARY)
 
    def cpuDpmAddr(self, addr=0x4e, t=3, **kwargs):
       return self.cpld.i2cAddr(1, addr, t=t, **kwargs)

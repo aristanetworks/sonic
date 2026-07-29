@@ -1,3 +1,4 @@
+from ...core.cause import ReloadCausePriority
 from ...components.cpu.amd.k10temp import K10Temp
 from ...components.cpu.shearwater import (
     ShearwaterReloadCauseRegisters,
@@ -9,6 +10,7 @@ from ...components.scd import Scd, ScdCause
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
+from ...descs.cause import ReloadCauseAltSource
 from ...descs.sensor import Position, SensorDesc
 
 class ShearwaterCpu(Cpu):
@@ -21,7 +23,7 @@ class ShearwaterCpu(Cpu):
    PCI_PORT_SCD0 = PciPortDesc(0x1, 3)
 
    def __init__(self, **kwargs):
-      super(ShearwaterCpu, self).__init__(**kwargs)
+      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 
@@ -68,7 +70,8 @@ class ShearwaterCpu(Cpu):
          ScdCause(0x29, ScdCause.RAIL, 'ALW_ON_PGOOD'),
          ScdCause(0x2a, ScdCause.RAIL, 'ISL0_CAT_FAULT'),
       ], regmap=ShearwaterReloadCauseRegisters,
-         priority=ScdCause.Priority.SECONDARY)
+         priority=ScdCause.Priority.HARDWARE_SECONDARY,
+         altSource=[ReloadCauseAltSource.CPU])
 
    def getPciPort(self, desc):
       bridge = self.pciRoot.pciBridge(device=desc.device, func=desc.func)

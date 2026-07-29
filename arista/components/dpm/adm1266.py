@@ -240,12 +240,13 @@ class Adm1266(PmbusDpm):
       USER_DATA = 0xe3
       POWERUP_COUNTER = 0xe4
 
-   def __init__(self, addr=None, causes=None, priority=AdmPriority.PRIMARY,
-                **kwargs):
+   def __init__(self, addr=None, causes=None, causePriority=AdmPriority.PRIMARY,
+                altSource=None, **kwargs):
       super().__init__(addr=addr, **kwargs)
       self.causes = causes
-      self.reloadCauseProvider = AdmReloadCauseProvider(self, priority=priority)
-      self.inventory.addReloadCauseProvider(self.reloadCauseProvider)
+      self.inventory.addReloadCauseProvider(
+         AdmReloadCauseProvider(self, priority=causePriority,
+                                altSource=altSource))
       self.inventory.addProgrammable(AdmProgrammable(self))
       self.inventory.addRtc(RealTimeClockImpl(self))
 

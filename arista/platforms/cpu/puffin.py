@@ -1,3 +1,4 @@
+from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
@@ -9,6 +10,7 @@ from ...components.cpld import (
 from ...components.max6658 import Max6658
 from ...components.scd import Scd, ScdCause, ScdReloadCauseRegisters
 
+from ...descs.cause import ReloadCauseAltSource
 from ...descs.sensor import Position, SensorDesc
 
 class PuffinPrimeSysCpld(SysCpld):
@@ -23,7 +25,7 @@ class PuffinPrimeCpu(Cpu):
 
    def __init__(self, registerCls=SysCpldCommonRegistersV2,
                 sysCpldQuirks=None, **kwargs):
-      super().__init__(**kwargs)
+      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 
@@ -67,7 +69,8 @@ class PuffinPrimeCpu(Cpu):
          ScdCause(0x27, ScdCause.RAIL, 'p2v6_vpp_mem'),
          ScdCause(0x28, ScdCause.RAIL, 'pos3v3'),
       ], regmap=ScdReloadCauseRegisters,
-         priority=ScdCause.Priority.SECONDARY)
+         priority=ScdCause.Priority.HARDWARE_SECONDARY,
+         altSource=[ReloadCauseAltSource.CPU])
 
       self.addFanGroup(self.parent.CHASSIS.FAN_SLOTS, self.parent.CHASSIS.FAN_COUNT)
 

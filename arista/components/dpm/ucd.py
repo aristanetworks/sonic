@@ -136,13 +136,14 @@ class Ucd(PmbusDpm):
    faultTimeBase = datetime.datetime(1970, 1, 1)
    daysOffset = 0
 
-   def __init__(self, addr=None, causes=None, priority=UcdPriority.PRIMARY,
-                **kwargs):
+   def __init__(self, addr=None, causes=None, causePriority=UcdPriority.PRIMARY,
+                altSource=None, **kwargs):
       super().__init__(addr=addr, **kwargs)
       self.causes = self._buildCauses(causes)
       self.oldestTime = datetime.datetime(1970, 1, 1)
-      self.reloadCauseProvider = UcdReloadCauseProvider(self, priority=priority)
-      self.inventory.addReloadCauseProvider(self.reloadCauseProvider)
+      self.inventory.addReloadCauseProvider(
+         UcdReloadCauseProvider(self, priority=causePriority,
+                                altSource=altSource))
       self.inventory.addProgrammable(UcdProgrammable(self))
       self.inventory.addRtc(RealTimeClockImpl(self))
 

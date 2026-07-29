@@ -1,3 +1,4 @@
+from ..core.cause import ReloadCausePriority
 from ..core.component.i2c import I2cByteQuirk
 from ..core.cooling import CoolingConfig, CoolingLogicIncPid
 from ..core.fixed import FixedSystem
@@ -16,6 +17,7 @@ from ..components.psu.delta import ECD1502005
 from ..components.scd import Scd
 from ..components.vrm.raa228228 import Raa228926
 
+from ..descs.cause import ReloadCauseAltSource
 from ..descs.gpio import GpioDesc
 from ..descs.led import LedDesc, LedKind
 from ..descs.reset import ResetDesc
@@ -212,7 +214,8 @@ class QuicksilverBase(FixedSystem):
          SysCpldCause(0x03, SysCpldCause.WATCHDOG,
                       priority=SysCpldCause.Priority.HIGH),
          SysCpldCause(0x04, SysCpldCause.CPU, 'CPU source or CPU PGOOD',
-                      priority=SysCpldCause.Priority.LOW),
+                      priority=SysCpldCause.Priority.LOW,
+                      altSource=ReloadCauseAltSource.CPU),
          SysCpldCause(0x08, SysCpldCause.REBOOT),
          SysCpldCause(0x09, SysCpldCause.POWERLOSS, 'PSU AC'),
          SysCpldCause(0x0a, SysCpldCause.POWERLOSS, 'PSU DC'),
@@ -234,7 +237,8 @@ class QuicksilverBase(FixedSystem):
          SysCpldCause(0x2c, SysCpldCause.RAIL, 'POS0V9_AVDD_1_FAULT'),
          SysCpldCause(0x2d, SysCpldCause.RAIL, 'POS3V3_OPTICS_A_FAULT'),
          SysCpldCause(0x2e, SysCpldCause.RAIL, 'POS3V3_OPTICS_B_FAULT'),
-      ], regmap=SysCpldReloadCauseRegistersV2)
+      ], regmap=SysCpldReloadCauseRegistersV2,
+         priority=ReloadCausePriority.HARDWARE_MAIN)
 
 @registerPlatform()
 class QuicksilverDd(QuicksilverBase):

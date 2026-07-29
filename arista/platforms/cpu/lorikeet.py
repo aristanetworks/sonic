@@ -1,3 +1,4 @@
+from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
@@ -17,6 +18,7 @@ from ...components.dpm.adm1266 import (
 from ...components.max6658 import Max6658
 from ...components.scd import Scd, ScdCause
 
+from ...descs.cause import ReloadCauseAltSource
 from ...descs.sensor import Position, SensorDesc
 
 class LorikeetCpu(Cpu):
@@ -27,7 +29,7 @@ class LorikeetCpu(Cpu):
    PCI_PORT_SCD0 = PciPortDesc(0x01, 1)
 
    def __init__(self, cpldRegisterCls=LorikeetCpldRegisters, **kwargs):
-      super(LorikeetCpu, self).__init__(**kwargs)
+      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 
@@ -82,7 +84,8 @@ class LorikeetCpu(Cpu):
          AdmCauseOH(AdmCauseOH.OVERTEMP,     AdmGpio(6)),
          AdmCauseOH(AdmCauseOH.CPU,          AdmGpio(7), priority=AdmPriority.LOW),
          AdmCauseOH(AdmCauseOH.CPU_OVERTEMP, AdmGpio(8), activeLow=True),
-      ])
+      ], causePriority=AdmPriority.HARDWARE_SECONDARY,
+         altSource=[ReloadCauseAltSource.CPU])
 
    def cpuDpmAddr(self, addr=0x4f, t=3, **kwargs):
       return self.cpld.i2cAddr(1, addr, t=t, **kwargs)
@@ -116,4 +119,5 @@ class LorikeetPrimeCpu(LorikeetCpu):
          ScdCause(0x29, ScdCause.RAIL, 'ALW_ON_PGOOD'),
          ScdCause(0x2a, ScdCause.RAIL, 'ISL0_CAT_FAULT'),
       ], regmap=LorikeetPrimeScdReloadCauseRegisters,
-         priority=ScdCause.Priority.SECONDARY)
+         priority=ScdCause.Priority.HARDWARE_SECONDARY,
+         altSource=[ReloadCauseAltSource.CPU])

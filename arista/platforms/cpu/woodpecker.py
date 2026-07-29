@@ -1,3 +1,4 @@
+from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
@@ -7,6 +8,7 @@ from ...components.max6658 import Max6658
 from ...components.scd import Scd
 
 from ...descs.sensor import Position, SensorDesc
+from ...descs.cause import ReloadCauseDesc, ReloadCauseAltSource
 
 class WoodpeckerCpu(Cpu):
 
@@ -18,7 +20,7 @@ class WoodpeckerCpu(Cpu):
    PCI_PORT_SCD1 = PciPortDesc(0x02, 2)
 
    def __init__(self, **kwargs):
-      super(WoodpeckerCpu, self).__init__(**kwargs)
+      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 
@@ -46,11 +48,12 @@ class WoodpeckerCpu(Cpu):
 
    def addCpuDpm(self, addr=None, causes=None):
       addr = addr or self.cpuDpmAddr()
-      return self.cpld.newComponent(Ucd90160, addr=addr, causes=causes or {
-         'fansmissing': UcdGpi(5),
-         'overtemp': UcdGpi(6),
-         'procerror': UcdGpi(7, priority=UcdPriority.LOW),
-      })
+      return self.cpld.newComponent(Ucd90160, addr=addr, causes=causes or [
+         UcdGpi(5, ReloadCauseDesc.NOFANS),
+         UcdGpi(6, ReloadCauseDesc.OVERTEMP),
+         UcdGpi(7, ReloadCauseDesc.CPU, priority=UcdPriority.LOW),
+      ], causePriority=UcdPriority.HARDWARE_SECONDARY,
+         altSource=[ReloadCauseAltSource.CPU])
 
    def cpuDpmAddr(self, addr=0x4e, t=3, **kwargs):
       return self.cpld.i2cAddr(1, addr, t=t, **kwargs)

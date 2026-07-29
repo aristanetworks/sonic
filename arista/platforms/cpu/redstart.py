@@ -1,3 +1,4 @@
+from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
@@ -9,6 +10,7 @@ from ...components.cpu.redstart import (
 from ...components.pci import EcrcPciQuirk
 from ...components.scd import Scd, ScdCause
 
+from ...descs.cause import ReloadCauseAltSource
 from ...descs.sensor import Position, SensorDesc
 
 class RedstartCpu(Cpu):
@@ -28,7 +30,7 @@ class RedstartCpu(Cpu):
    SMBUS_FC = 9
 
    def __init__(self, **kwargs):
-      super().__init__(**kwargs)
+      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 
@@ -89,7 +91,8 @@ class RedstartCpu(Cpu):
          ScdCause(0x3d, ScdCause.RAIL, 'BMC_PGOOD_FAULT'),
          ScdCause(0x3e, ScdCause.CPU, 'Bios SMN init timeout'),
       ], regmap=RedstartReloadCauseRegisters,
-         priority=ScdCause.Priority.SECONDARY)
+         priority=ScdCause.Priority.HARDWARE_SECONDARY,
+         altSource=[ReloadCauseAltSource.CPU])
 
    def getPciPort(self, desc):
       bridge = self.pciRoot.pciBridge(device=desc.device, func=desc.func)

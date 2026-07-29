@@ -5,7 +5,7 @@ from ..core.psu import PsuSlot
 from ..core.utils import incrange
 
 from ..components.asic.bfn.tofino import Tofino
-from ..components.dpm.ucd import Ucd90120A, UcdGpi
+from ..components.dpm.ucd import Ucd90120A, UcdGpi, UcdPriority
 from ..components.max6658 import Max6658
 from ..components.psu.delta import DPS750AB, DPS1900AB
 from ..components.psu.emerson import DS750PED
@@ -30,7 +30,7 @@ class Alhambra(FixedSystem):
    )
 
    def __init__(self, hasLmSensor=True, hasCpuLeds=True, psus=None):
-      super(Alhambra, self).__init__()
+      super().__init__()
 
       cpu = self.newComponent(RookCpu, hasLmSensor=hasLmSensor,
                               hasCpuLeds=hasCpuLeds)
@@ -40,7 +40,7 @@ class Alhambra(FixedSystem):
          'overtemp': UcdGpi(2),
          'reboot': UcdGpi(4),
          'watchdog': UcdGpi(5),
-      })
+      }, causePriority=UcdPriority.HARDWARE_MAIN)
       self.cpu = cpu
       self.syscpld = cpu.syscpld
 

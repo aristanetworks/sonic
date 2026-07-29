@@ -673,12 +673,14 @@ class Scd(PciComponent):
          self.addUartPort(addr, i)
 
    def addReloadCauseProvider(self, causes=None, regmap=None, addr=None,
-                              priority=ScdCause.Priority.PRIMARY):
+                              priority=ScdCause.Priority.PRIMARY, altSource=None):
       if isinstance(addr, int):
          # Initial DPM-less reboot cause support e.g PikeZ
-         rcp = SimpleScdReloadCauseProvider(self, addr, causes, priority=priority)
+         rcp = SimpleScdReloadCauseProvider(self, addr, causes, priority=priority,
+                                            altSource=altSource)
       else:
-         rcp = ScdReloadCauseProvider(self, regmap, causes, priority=priority)
+         rcp = ScdReloadCauseProvider(self, regmap, causes, priority=priority,
+                                      altSource=altSource)
          self.inventory.addRtc(ScdRealTimeClock(self, regmap))
       self.inventory.addReloadCauseProvider(rcp)
       return rcp

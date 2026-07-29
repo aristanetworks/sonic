@@ -1,3 +1,4 @@
+from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.fan import FanSlot
 from ...core.pci import PciPortDesc, PciRoot
@@ -27,7 +28,7 @@ class CrowCpu(Cpu):
 
    def __init__(self, registerCls=CrowCpldRegisters, sysCpldCls=CrowSysCpld,
                 **kwargs):
-      super(CrowCpu, self).__init__(**kwargs)
+      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 
@@ -69,4 +70,4 @@ class CrowCpu(Cpu):
       scd.newComponent(Ucd90120A, addr=scd.i2cAddr(i2cBus, 0x4e, t=3), causes={
          'cpu-s5': UcdGpi(1, priority=UcdPriority.LOW),
          'cpu-s3': UcdGpi(2, priority=UcdPriority.LOW),
-      })
+      }, causePriority=UcdPriority.HARDWARE_SECONDARY)

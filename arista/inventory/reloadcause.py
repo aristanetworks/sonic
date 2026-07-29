@@ -41,6 +41,10 @@ class ReloadCauseProvider(InventoryInterface):
    def getPriority(self):
       raise NotImplementedError
 
+   @diagmethod('altSource')
+   def getAltSource(self):
+      raise NotImplementedError
+
    @diagmethod('providers', diag=True)
    def getRemoteProviders(self):
       return []

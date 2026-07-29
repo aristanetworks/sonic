@@ -7,7 +7,7 @@ from ..core.register import Register, RegBitField, SetClearRegister
 from ..core.utils import incrange
 
 from ..components.asic.bfn.tofino2 import Tofino2
-from ..components.dpm.ucd import Ucd90320, UcdGpi
+from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ..components.phy.b52 import B52
 from ..components.psu.liteon import PS2242
 from ..components.scd import Scd
@@ -57,7 +57,7 @@ class Woodleaf(FixedSystem):
    )
 
    def __init__(self):
-      super(Woodleaf, self).__init__()
+      super().__init__()
 
       self.cpu = self.newComponent(LorikeetCpu,
                                    cpldRegisterCls=WoodleafCpldRegisters)
@@ -68,7 +68,7 @@ class Woodleaf(FixedSystem):
          'powerloss': UcdGpi(8),
          'reboot': UcdGpi(9),
          'watchdog': UcdGpi(10),
-      })
+      }, causePriority=UcdPriority.HARDWARE_MAIN)
 
       self.syscpld = self.cpu.syscpld
 

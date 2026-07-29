@@ -6,7 +6,7 @@ from ..core.utils import incrange
 
 from ..components.cpu.rook import TehamaFanCpld
 from ..components.asic.xgs.tomahawk3 import Tomahawk3
-from ..components.dpm.ucd import Ucd90320, UcdGpi
+from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ..components.max6581 import Max6581
 from ..components.psu.delta import DPS1600AB, DPS1600CB
 from ..components.scd import Scd
@@ -32,7 +32,7 @@ class BlackhawkO(FixedSystem):
    HW_LPMODE = True
 
    def __init__(self):
-      super(BlackhawkO, self).__init__()
+      super().__init__()
 
       cpu = self.newComponent(RookCpu, hasCpuLeds=False, fanCpldCls=TehamaFanCpld,
                               mgmtBus=14)
@@ -41,7 +41,7 @@ class BlackhawkO(FixedSystem):
          'powerloss': UcdGpi(3),
          'watchdog': UcdGpi(5),
          'reboot': UcdGpi(6),
-      })
+      }, causePriority=UcdPriority.HARDWARE_MAIN)
       self.cpu = cpu
       self.syscpld = cpu.syscpld
 

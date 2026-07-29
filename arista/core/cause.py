@@ -9,7 +9,7 @@ from .inventory import ReloadCause, ReloadCauseProvider
 from .log import getLogger
 from .utils import JsonStoredData
 
-from ..descs.cause import ReloadCausePriority, ReloadCauseScore
+from ..descs.cause import ReloadCausePriority, ReloadCauseScore, ReloadCauseAltSource
 
 from ..libs.date import datetimeToStr, strToDatetime, epochToDatetime
 from ..libs.procfs import bootDatetime
@@ -23,13 +23,13 @@ class ReloadCauseEntry(ReloadCause):
    def __init__(self, cause='unknown', rcTime='unknown', rcDesc='',
                       score=ReloadCauseScore.EVENT,
                       priority=ReloadCausePriority.NORMAL,
-                      altSource=''):
+                      altSource=None):
       self.cause = cause
       self.time = rcTime
       self.description = rcDesc
       self.score = score
       self.priority = priority
-      # The alternative source should be a valid ReloadCauseProvider name string
+      # The alternative source provider that should be checked if this cause presents
       self.altSource = altSource
 
    def __str__(self):
@@ -58,6 +58,17 @@ class ReloadCauseEntry(ReloadCause):
    def getAltSource(self):
       return self.altSource
 
+   def altSourceFromDict(self, data):
+      if 'altSource' not in data or not data['altSource']:
+         return None
+      altSource = None
+      try:
+         altSource = ReloadCauseAltSource(data['altSource'])
+      except ValueError:
+         logging.warning(
+            "%s:Unknown altSource %s found from json", self, data['altSource'])
+      return altSource
+
    def toDict(self):
       return {
          'cause': self.cause,
@@ -65,12 +76,12 @@ class ReloadCauseEntry(ReloadCause):
          'description': self.description,
          'score': self.score,
          'priority': self.priority,
-         'altSource': self.altSource,
+         'altSource': self.altSource.value if self.altSource else None,
       }
 
    @classmethod
    def fromDict(cls, data):
-      return cls(
+      res = cls(
          cause=data['cause'],
          rcTime=data['time'],
          rcDesc=data['description'],
@@ -79,16 +90,20 @@ class ReloadCauseEntry(ReloadCause):
          # reload cause entries might not have priority or altSource
          priority=(ReloadCausePriority.NORMAL if 'priority' not in data
                    else data['priority']),
-         altSource='' if 'altSource' not in data else data['altSource'],
       )
+      res.altSource=res.altSourceFromDict(data)
+      return res
 
 class ReloadCauseProviderHelper(ReloadCauseProvider):
    def __init__(self, name='unknown', causes=None, extra=None,
-                priority=ReloadCausePriority.PRIMARY):
+                priority=ReloadCausePriority.PRIMARY,
+                altSource=None):
       self.name = name
       self.causes = causes or []
       self.extra = extra or {}
       self.priority = priority
+      # The alternative source this provider is serving as
+      self.altSource = altSource or []
 
    def getSourceName(self):
       return self.name
@@ -102,6 +117,21 @@ class ReloadCauseProviderHelper(ReloadCauseProvider):
    def getPriority(self):
       return self.priority
 
+   def getAltSource(self):
+      return self.altSource
+
+   def altSourceFromDict(self, data):
+      if 'altSource' not in data or not data['altSource']:
+         return []
+      altSource = []
+      for source in data['altSource']:
+         try:
+            altSource.append(ReloadCauseAltSource(source))
+         except ValueError:
+            logging.warning(
+               "%s:Unknown altSource %s found from json", self, source)
+      return altSource
+
    def process(self):
       raise NotImplementedError
 
@@ -113,15 +143,23 @@ class ReloadCauseProviderHelper(ReloadCauseProvider):
          'name': self.getSourceName(),
          'causes': [c.toDict() for c in self.getCauses()],
          'extra': self.getExtra(),
+         'priority': self.priority,
+         'altSource': [altSource.value for altSource in self.altSource],
       }
 
    @classmethod
    def fromDict(cls, data):
-      return cls(
+      res = cls(
          name=data['name'],
          causes=[ReloadCauseEntry.fromDict(c) for c in data['causes']],
          extra=data['extra'],
+         # If we load a new image onto an old version SONiC switch, its saved
+         # reload cause providers might not have priority or altSource
+         priority=(ReloadCausePriority.PRIMARY if 'priority' not in data
+                   else data['priority']),
       )
+      res.altSource=res.altSourceFromDict(data)
+      return res
 
 # Following classes are to specify different providers on the priority levels
 # To keep the original behaviors unchanged, priority param needs to be set to
@@ -167,7 +205,7 @@ class ReloadCauseDataStore(JsonStoredData):
          if 'priority' not in item:
             item['priority'] = ReloadCausePriority.NORMAL
          if 'altSource' not in item:
-            item['altSource'] = ''
+            item['altSource'] = None
       return data
 
    def readCauses(self):
@@ -281,7 +319,7 @@ class ReloadCauseReport(object):
          mainHardwareProvider = mainHardwareProvider[:1]
       cause = self.analyzeCauseFromProviders(mainHardwareProvider,
                                              orderByScore=False)
-      # Loop to find the root cause through altSource
+      # If an altSource presents, check its reload cause
       checkedSource = []
       while cause and cause.getAltSource():
          if cause.getAltSource() in checkedSource:
@@ -298,7 +336,7 @@ class ReloadCauseReport(object):
          checkedSource.append(cause.getAltSource())
          nextSourceProvider = None
          for provider in self.providers:
-            if provider.getSourceName() == cause.getAltSource():
+            if cause.getAltSource() in provider.getAltSource():
                nextSourceProvider = provider
          if not nextSourceProvider:
             logging.warning("%s:Alternative source %s is not in the provider list",

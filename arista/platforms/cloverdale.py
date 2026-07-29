@@ -9,7 +9,7 @@ from ..core.utils import incrange
 from ..components.asic.xgs.trident2 import Trident2
 from ..components.cpu.amd.k10temp import K10Temp
 from ..components.cpu.raven import RavenFanComplex
-from ..components.dpm.ucd import Ucd90120A, Ucd90160, UcdGpi, UcdMon
+from ..components.dpm.ucd import Ucd90120A, Ucd90160, UcdGpi, UcdMon, UcdPriority
 from ..components.lm73 import Lm73
 from ..components.max6658 import Max6658
 from ..components.psu.artesyn import DS460
@@ -37,7 +37,7 @@ class Cloverdale(FixedSystem):
    )
 
    def __init__(self):
-      super(Cloverdale, self).__init__()
+      super().__init__()
 
       # FIXME: cleanup later
       self.qsfp40gAutoRange = incrange(1, 24)
@@ -86,12 +86,13 @@ class Cloverdale(FixedSystem):
       # transaction is done at the same moment of the poweroff, the handling of
       # the DPM is disabled. If you want rail information use it at your own risk
       # The current implementation will just read the firmware information once.
-      scd.newComponent(Ucd90120A, scd.i2cAddr(1, 0x4e, t=3))
+      scd.newComponent(Ucd90120A, scd.i2cAddr(1, 0x4e, t=3),
+                       causePriority=UcdPriority.HARDWARE_SECONDARY)
       scd.newComponent(Ucd90160, scd.i2cAddr(5, 0x4e, t=3), causes={
          'reboot': UcdGpi(2),
          'watchdog': UcdGpi(3),
          'powerloss': UcdMon(13),
-      })
+      }, causePriority=UcdPriority.HARDWARE_MAIN)
 
       scd.addLeds([
          (0x6050, 'status'),

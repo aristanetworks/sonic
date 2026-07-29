@@ -1,3 +1,4 @@
+from ..core.cause import ReloadCausePriority
 from ..core.hwapi import HwApi
 from ..core.fixed import FixedSystem
 from ..core.platform import registerPlatform
@@ -9,7 +10,7 @@ from ..core.utils import incrange
 from ..components.asic.xgs.tomahawk import Tomahawk
 from ..components.cpld import SysCpldCause
 from ..components.cpu.crow import KoiCpldRegisters, KoiSysCpld
-from ..components.dpm.ucd import Ucd90120A, UcdGpi
+from ..components.dpm.ucd import Ucd90120A, UcdGpi, UcdPriority
 from ..components.max6697 import Max6697
 from ..components.psu.delta import DPS495CB, DPS750AB
 from ..components.psu.artesyn import DS495SPE
@@ -157,7 +158,7 @@ class Upperlake(FixedSystem):
          'watchdog': UcdGpi(2),
          'overtemp': UcdGpi(4),
          'powerloss': UcdGpi(5),
-      })
+      }, causePriority=UcdPriority.HARDWARE_MAIN)
 
 @registerPlatform()
 class UpperlakePlus(Upperlake):
@@ -190,4 +191,4 @@ class UpperlakeElite(Upperlake):
          SysCpldCause(0x0e, 'rail', 'POS1V0A'),
          SysCpldCause(0x0f, 'rail', 'POS1V2'),
          SysCpldCause(0x10, 'rail', 'POS2V5'),
-      ])
+      ], priority=ReloadCausePriority.HARDWARE_MAIN)

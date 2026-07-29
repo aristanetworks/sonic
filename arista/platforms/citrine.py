@@ -12,7 +12,8 @@ from ..components.asic.dnx.jericho3 import Jericho3
 from ..components.dpm.adm1266 import (
    Adm1266,
    AdmCauseUnique as AdmCauseU,
-   AdmGpio
+   AdmGpio,
+   AdmPriority
 )
 from ..components.lm75 import Tmp75
 from ..components.max31732 import Max31732
@@ -69,24 +70,29 @@ class CitrineBase(FixedSystem):
    )
 
    def __init__(self):
-      super(CitrineBase, self).__init__()
+      super().__init__()
       self.cpu = self.newComponent(RedstartCpu)
       self.syscpld = self.cpu.syscpld
       gpioInMask = 0b000001111
       self.cpu.cpld.newComponent(Adm1266,
          addr=self.cpu.getSmbus(self.cpu.SMBUS_POL).i2cAddr(0x40),
          causes=[
-            AdmCauseU(AdmCauseU.OVERTEMP,  AdmGpio(1),             gpioInMask),
-            AdmCauseU(AdmCauseU.WATCHDOG,  AdmGpio.fromPins(1, 2), gpioInMask),
-            AdmCauseU(AdmCauseU.POWERLOSS, AdmGpio(3),             gpioInMask,
-                           description="CPU Power bad"),
-            AdmCauseU(AdmCauseU.REBOOT,    AdmGpio(4),             gpioInMask),
-            AdmCauseU(AdmCauseU.POWERLOSS, AdmGpio.fromPins(1, 4), gpioInMask,
-                           description="Both PSUs lost input power"),
-            AdmCauseU(AdmCauseU.POWERLOSS, AdmGpio.fromPins(2, 4), gpioInMask,
-                           description="Both PSUs lost DC output power"),
-            AdmCauseU(AdmCauseU.NOFANS, AdmGpio.fromPins(1, 2, 4), gpioInMask),
-      ])
+            AdmCauseU(AdmCauseU.OVERTEMP,  AdmGpio(1),                gpioInMask),
+            AdmCauseU(AdmCauseU.WATCHDOG,  AdmGpio.fromPins(1, 2),    gpioInMask),
+            AdmCauseU(AdmCauseU.POWERLOSS, AdmGpio(3),                gpioInMask,
+                      description="CPU Power bad"),
+            AdmCauseU(AdmCauseU.OVERTEMP,  AdmGpio.fromPins(1, 3),    gpioInMask,
+                      description='Critical system temperature on Q3D D0 HBM'),
+            AdmCauseU(AdmCauseU.OVERTEMP,  AdmGpio.fromPins(1, 2, 3), gpioInMask,
+                      description='Critical system temperature on Q3D D1 HBM'),
+            AdmCauseU(AdmCauseU.REBOOT,    AdmGpio(4),                gpioInMask),
+            AdmCauseU(AdmCauseU.POWERLOSS, AdmGpio.fromPins(1, 4),    gpioInMask,
+                      description="Both PSUs lost input power"),
+            AdmCauseU(AdmCauseU.POWERLOSS, AdmGpio.fromPins(2, 4),    gpioInMask,
+                      description="Both PSUs lost DC output power"),
+            AdmCauseU(AdmCauseU.NOFANS,    AdmGpio.fromPins(1, 2, 4), gpioInMask),
+            AdmCauseU(AdmCauseU.FAN_CARD,  AdmGpio.fromPins(3, 4),    gpioInMask),
+      ], causePriority=AdmPriority.HARDWARE_MAIN)
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       scd = port.newComponent(CitrineScd, addr=port.addr, ports=self.PORTS)

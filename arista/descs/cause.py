@@ -1,3 +1,8 @@
+from enum import Enum
+
+class ReloadCauseAltSource(Enum):
+   # The CPU main hardware controller
+   CPU = 'CPU'
 
 class ReloadCausePriority(object):
    NONE = 0
@@ -24,8 +29,10 @@ class ReloadCausePriority(object):
    # between detailed causes and undetailed/unknown ones
    # Any new priority value related to entries should be in [0, 9]
    UNKNOWN = 19
-   # Final values:
-   # NORMAL = 5 <--- using the duplicated definition above before the cleanup
+   # Final values: using the duplicated definition above before the cleanup
+   # HIGH = 9
+   # NORMAL = 5
+   # LOW = 1
    # UNKNOWN = 0
 
 class ReloadCauseScore(object):
@@ -60,6 +67,7 @@ class ReloadCauseDesc(object):
    NOFANS = 'no-fans'
    EXPANSION_CARD = 'expansion-card'
    SWITCH_CARD = 'switch-card'
+   FAN_CARD = 'fan-card'
    LEAK_ROPE_FAIL = 'leak-rope-fail'
    LEAK_DETECTED = 'leak-detected'
    RMC_REBOOT = 'rmcReboot'
@@ -80,6 +88,7 @@ class ReloadCauseDesc(object):
       NOFANS: 'No Fans fault',
       EXPANSION_CARD: 'Expansion card fault',
       SWITCH_CARD: 'Switch card fault',
+      FAN_CARD: 'Fan card fault',
       LEAK_ROPE_FAIL: 'No rope or rope broken',
       LEAK_DETECTED: 'Leak detected',
       RMC_REBOOT: 'Rebooted by RMC',
@@ -89,7 +98,7 @@ class ReloadCauseDesc(object):
 
    def __init__(self, code, typ, description=None,
                 priority=ReloadCausePriority.NORMAL,
-                altSource=''):
+                altSource=None):
       self.code = code
       self.typ = typ
       self.description = self.DEFAULT_DESCRIPTIONS.get(typ, str(typ))

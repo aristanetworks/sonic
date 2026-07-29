@@ -1,3 +1,4 @@
+from ..core.cause import ReloadCausePriority
 from ..core.fixed import FixedSystem
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
@@ -11,14 +12,14 @@ from ..core.utils import incrange
 
 from ..components.asic.xgs.trident3 import Trident3
 from ..components.cpld import SysCpldCause, SysCpldReloadCauseRegistersV2
-from ..components.dpm.ucd import Ucd90320, UcdGpi
+from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ..components.max6658 import Max6658
 from ..components.psu.delta import DPS500AB
 from ..components.psu.artesyn import CSU500DP
 from ..components.scd import Scd
 from ..components.tmp464 import Tmp464
 
-from ..descs.cause import ReloadCauseDesc
+from ..descs.cause import ReloadCauseDesc, ReloadCauseAltSource
 from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
@@ -147,8 +148,9 @@ class Marysville(MarysvilleBase):
             UcdGpi(3, ReloadCauseDesc.REBOOT),
             UcdGpi(4, ReloadCauseDesc.WATCHDOG),
             UcdGpi(6, ReloadCauseDesc.OVERTEMP),
-            UcdGpi(7, ReloadCauseDesc.CPU),
-      ])
+            UcdGpi(7, ReloadCauseDesc.CPU,
+                   altSource=ReloadCauseAltSource.CPU),
+      ], causePriority=UcdPriority.HARDWARE_MAIN)
 
       self.scd.newComponent(Tmp464, addr=self.scd.i2cAddr(2, 0x48), sensors=[
          SensorDesc(diode=0, name='Switch Card temp sensor', position=Position.OTHER,
@@ -216,7 +218,8 @@ class MarsvillePrime(MarysvilleBase):
          SysCpldCause(0x03, SysCpldCause.WATCHDOG,
                       priority=SysCpldCause.Priority.HIGH),
          SysCpldCause(0x04, SysCpldCause.CPU,
-                      priority=SysCpldCause.Priority.LOW),
+                      priority=SysCpldCause.Priority.LOW,
+                      altSource=ReloadCauseAltSource.CPU),
          SysCpldCause(0x05, SysCpldCause.RAIL, "PWR_OK_SW_CP Fault"),
          SysCpldCause(0x08, SysCpldCause.REBOOT, "Software Reboot"),
          SysCpldCause(0x09, SysCpldCause.POWERLOSS, "PSU AC"),
@@ -236,4 +239,5 @@ class MarsvillePrime(MarysvilleBase):
          SysCpldCause(0x27, SysCpldCause.RAIL, "POS1V8_TD FAULT"),
          SysCpldCause(0x28, SysCpldCause.RAIL, "POS0V8_A FAULT"),
          SysCpldCause(0x28, SysCpldCause.RAIL, "POS3V3_OPTICS FAULT"),
-      ], regmap=SysCpldReloadCauseRegistersV2)
+      ], regmap=SysCpldReloadCauseRegistersV2,
+         priority=ReloadCausePriority.HARDWARE_MAIN)

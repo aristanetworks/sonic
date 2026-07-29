@@ -1,3 +1,4 @@
+from ..core.cause import ReloadCausePriority
 from ..core.component.i2c import I2cByteQuirk
 from ..core.cooling import CoolingConfig
 from ..core.fixed import FixedSystem, FixedChassis
@@ -24,6 +25,7 @@ from ..components.scd import (
 )
 from ..components.xcvr import CmisEeprom
 
+from ..descs.cause import ReloadCauseAltSource
 from ..descs.led import LedDesc, LedKind
 from ..descs.gpio import GpioDesc
 from ..descs.psu import PsuStatusPolicy
@@ -241,7 +243,7 @@ class Moby(FixedSystem):
          ScdCause(0x26, ScdCause.RAIL, 'P3V3_OPTICS_PGOOD'),
          ScdCause(0x27, ScdCause.RAIL, 'PC_PGOOD'),
       ], regmap=ScdReloadCauseRegisters,
-         priority=ScdCause.Priority.SECONDARY)
+         priority=ScdCause.Priority.HARDWARE_SECONDARY)
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC0)
       self.asic = port.newComponent(Tomahawk5, addr=port.addr,
@@ -261,7 +263,8 @@ class Moby(FixedSystem):
          SysCpldCause(0x03, SysCpldCause.WATCHDOG,
                       priority=SysCpldCause.Priority.HIGH),
          SysCpldCause(0x04, SysCpldCause.CPU, 'CPU source or CPU PGOOD',
-                      priority=SysCpldCause.Priority.LOW),
+                      priority=SysCpldCause.Priority.LOW,
+                      altSource=ReloadCauseAltSource.CPU),
          SysCpldCause(0x08, SysCpldCause.REBOOT),
          SysCpldCause(0x09, SysCpldCause.POWERLOSS, 'PSU AC'),
          SysCpldCause(0x0a, SysCpldCause.POWERLOSS, 'PSU DC'),
@@ -284,4 +287,5 @@ class Moby(FixedSystem):
          SysCpldCause(0x2c, SysCpldCause.RAIL, 'P0V9_AVDD_0_PGOOD'),
          SysCpldCause(0x2d, SysCpldCause.RAIL, 'P0V9_AVDD_1_PGOOD'),
          SysCpldCause(0x2e, SysCpldCause.RAIL, 'PC_PGOOD'),
-      ], regmap=SysCpldReloadCauseRegistersV2)
+      ], regmap=SysCpldReloadCauseRegistersV2,
+         priority=ReloadCausePriority.HARDWARE_MAIN)

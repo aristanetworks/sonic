@@ -8,7 +8,7 @@ from ..core.utils import incrange
 
 from ..components.asic.xgs.tomahawk2 import Tomahawk2
 from ..components.cpld import SysCpldCommonRegistersV2
-from ..components.dpm.ucd import Ucd90120A, UcdGpi
+from ..components.dpm.ucd import Ucd90120A, UcdGpi, UcdPriority
 from ..components.max6658 import Max6658
 from ..components.psu.delta import DPS750AB, DPS1900AB
 from ..components.psu.emerson import DS750PED
@@ -44,7 +44,7 @@ class Gardena(FixedSystem):
    )
 
    def __init__(self):
-      super(Gardena, self).__init__()
+      super().__init__()
 
       cpu = self.newComponent(RookCpu, cpldRegisterCls=GardenaCpldRegisters,
                               sysCpldQuirks=[GardenaDpPwrFailQuirk()])
@@ -54,7 +54,7 @@ class Gardena(FixedSystem):
          'reboot': UcdGpi(2),
          'watchdog': UcdGpi(3),
          'overtemp': UcdGpi(4),
-      })
+      }, causePriority=UcdPriority.HARDWARE_MAIN)
       self.cpu = cpu
       self.syscpld = cpu.syscpld
 

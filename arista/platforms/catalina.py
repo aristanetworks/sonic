@@ -1,3 +1,4 @@
+from ..core.cause import ReloadCausePriority
 from ..core.fixed import FixedSystem
 from ..core.hwapi import HwApi
 from ..core.platform import registerPlatform
@@ -7,7 +8,7 @@ from ..core.utils import incrange
 
 from ..components.asic.xgs.tomahawk4 import Tomahawk4
 from ..components.cpld import SysCpldCause, SysCpldReloadCauseRegistersV2
-from ..components.dpm.ucd import Ucd90320, UcdGpi
+from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ..components.lm73 import Lm73
 from ..components.tmp464 import Tmp464
 from ..components.phy.babbagelp import BabbageLP
@@ -15,10 +16,12 @@ from ..components.psu.liteon import PS2242
 from ..components.scd import Scd
 from ..components.vrm.raa228228 import Raa228228, Raa228228GainQuirk
 
+from ..descs.cause import ReloadCauseAltSource
 from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
 from ..descs.xcvr import QsfpDD, Sfp
+from ..descs.cause import ReloadCauseDesc
 
 from .chassis.tuba import Tuba
 
@@ -40,13 +43,13 @@ class CatalinaDD(FixedSystem):
    )
 
    def __init__(self):
-      super(CatalinaDD, self).__init__()
+      super().__init__()
 
       cpuCls = LorikeetCpu if self.getHwApi() < HwApi(6) else LorikeetPrimeCpu
       self.cpu = self.newComponent(cpuCls)
       self.syscpld = self.cpu.syscpld
-      self.addSwitchDpm()
       self.cpu.addCpuDpm()
+      self.addSwitchDpm()
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       scd = port.newComponent(Scd, addr=port.addr)
@@ -164,13 +167,14 @@ class CatalinaDD(FixedSystem):
       if self.getHwApi() < HwApi(6):
          self.cpu.cpld.newComponent(Ucd90320, addr=self.cpu.switchDpmAddr(0x11),
                                     causes=[
-            UcdGpi(1, 'overtemp'),
-            UcdGpi(3, 'powerloss'),
-            UcdGpi(4, 'psufault'),
-            UcdGpi(5, 'watchdog'),
-            UcdGpi(6, 'cpu'),
-            UcdGpi(8, 'reboot'),
-         ])
+            UcdGpi(1, ReloadCauseDesc.OVERTEMP),
+            UcdGpi(3, ReloadCauseDesc.POWERLOSS, 'PSU AC'),
+            UcdGpi(4, ReloadCauseDesc.POWERLOSS, 'PSU DC out'),
+            UcdGpi(5, ReloadCauseDesc.WATCHDOG),
+            UcdGpi(6, ReloadCauseDesc.CPU,
+                   altSource=[ReloadCauseAltSource.CPU]),
+            UcdGpi(8, ReloadCauseDesc.REBOOT),
+         ], causePriority=UcdPriority.HARDWARE_MAIN)
       else:
          self.syscpld.addReloadCauseProvider(causes=[
             SysCpldCause(0x00, SysCpldCause.UNKNOWN),
@@ -179,7 +183,9 @@ class CatalinaDD(FixedSystem):
             SysCpldCause(0x03, SysCpldCause.WATCHDOG,
                          priority=SysCpldCause.Priority.HIGH),
             SysCpldCause(0x04, SysCpldCause.CPU, 'CPU source or CPU PGOOD',
-                         priority=SysCpldCause.Priority.LOW),
+                         priority=SysCpldCause.Priority.LOW,
+                         altSource=[ReloadCauseAltSource.CPU]
+                        ),
             SysCpldCause(0x08, SysCpldCause.REBOOT, 'Software Reboot'),
             SysCpldCause(0x09, SysCpldCause.POWERLOSS, 'PSU AC'),
             SysCpldCause(0x0a, SysCpldCause.POWERLOSS, 'PSU DC'),
@@ -190,4 +196,5 @@ class CatalinaDD(FixedSystem):
             SysCpldCause(0x0e, SysCpldCause.CPU_S3,
                          priority=SysCpldCause.Priority.LOW),
             SysCpldCause(0x0f, SysCpldCause.SEU, 'bitshadow rx parity error'),
-         ], regmap=SysCpldReloadCauseRegistersV2)
+         ], regmap=SysCpldReloadCauseRegistersV2,
+            priority=ReloadCausePriority.HARDWARE_MAIN)

@@ -14,8 +14,14 @@ from ..libs.date import datetimeToStr, strToDatetime
 
 logging = getLogger(__name__)
 
-REBOOT_CMD_MSG_RE = re.compile(
-   r"User issued '(?P<command>.+?)' command \[.*Time: (?P<time>.*)\]")
+SW_RC_MSG= [
+   (re.compile(r"User issued '(?P<command>.+?)' command \[.*Time: (?P<time>.*)\]"),
+    'reboot', 'user reboot', "User issued '{}' command"),
+   (re.compile(r"Kernel Panic \[Time: (?P<time>.*)\]"),
+    'watchdog', 'kernel panic', "kernel panic"),
+   (re.compile(r"Heartbeat with the Supervisor card lost"),
+    'watchdog', 'heartbeat loss', "heartbeat loss"),
+]
 
 class CookiePriority(ReloadCausePriority):
    pass
@@ -56,14 +62,18 @@ class SonicReloadCauseCookieComponent(Component):
 
    def _fixTime(self, timestamp):
       # FIXME: The date format is locale-dependent
-      try:
-         dt = strToDatetime(timestamp, fmt='%a %d %b %Y %I:%M:%S %p %Z')
-      except ValueError:
+      formats = [
+         "%a %b %d %I:%M:%S %p %Z %Y",
+         '%a %b %d %H:%M:%S %Z %Y',
+         '%a %d %b %Y %I:%M:%S %p %Z',
+      ]
+      for fmt in formats:
          try:
-            dt = strToDatetime(timestamp, fmt='%a %b %d %H:%M:%S %Z %Y')
+            dt = strToDatetime(timestamp, fmt=fmt)
+            return datetimeToStr(dt)
          except ValueError:
-            return 'unknown'
-      return datetimeToStr(dt)
+            continue
+      return 'unknown'
 
    def getReloadCauses(self):
       causeStr = self.driver.getSoftwareCause()
@@ -71,18 +81,21 @@ class SonicReloadCauseCookieComponent(Component):
       if not causeStr:
          return []
 
-      m = REBOOT_CMD_MSG_RE.match(causeStr)
-      if m:
-         logging.debug('Reboot cause is user reboot')
-         return [
-            CookieReloadCauseEntry(
-               'reboot', self._fixTime(m.group('time')),
-               rcDesc="User issued '{}' command".format(m.group('command')),
-               score=ReloadCauseScore.LOGGED |
-                     ReloadCauseScore.EVENT |
-                     ReloadCauseScore.DETAILED |
-                     ReloadCauseScore.getPriority(CookiePriority.HIGH))
-         ]
+      for regex, rcType, label, descTemplate in SW_RC_MSG:
+         m = regex.search(causeStr)
+         if m:
+            logging.debug(f'Reboot cause is {label}')
+            rcTime = (self._fixTime(m.group('time'))
+                      if 'time' in m.groupdict() else 'unknown')
+            rcDesc = (descTemplate.format(m.group('command'))
+                      if 'command' in m.groupdict() else descTemplate)
+            rcScore = (ReloadCauseScore.LOGGED |
+                       ReloadCauseScore.EVENT |
+                       ReloadCauseScore.DETAILED |
+                       ReloadCauseScore.getPriority(CookiePriority.HIGH))
+
+            return [CookieReloadCauseEntry(rcType, rcTime,
+                                           rcDesc=rcDesc, score=rcScore)]
       return []
 
 class CookieComponentBase(Component):

@@ -5,7 +5,7 @@ from ..core.psu import PsuSlot
 from ..core.utils import incrange
 
 from ..components.asic.dnx.jericho2 import Jericho2
-from ..components.dpm.ucd import Ucd90320, UcdGpi
+from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ..components.phy.babbage import Babbage
 from ..components.phy.b52 import B52
 from ..components.psu.delta import DPS1500AB, DPS1600CB, DPS500AB
@@ -46,7 +46,7 @@ class Smartsville(FixedSystem):
          'reboot': UcdGpi(2),
          'watchdog': UcdGpi(3),
          'overtemp': UcdGpi(4),
-      })
+      }, causePriority=UcdPriority.HARDWARE_MAIN)
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       scd = port.newComponent(Scd, addr=port.addr)

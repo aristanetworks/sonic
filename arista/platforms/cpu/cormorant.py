@@ -1,3 +1,4 @@
+from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
@@ -10,11 +11,13 @@ from ...components.cpu.cormorant import (
 from ...components.dpm.adm1266 import (
    Adm1266,
    AdmCauseUnique as AdmCauseU,
-   AdmGpio
+   AdmGpio,
+   AdmPriority
 )
 from ...components.max6658 import Max6658
 from ...components.scd import Scd
 
+from ...descs.cause import ReloadCauseAltSource
 from ...descs.gpio import GpioDesc
 from ...descs.sensor import Position, SensorDesc
 
@@ -28,7 +31,7 @@ class CormorantCpu(Cpu):
    PCI_PORT_SCD0 = PciPortDesc(0x01, 1)
 
    def __init__(self, cpldRegisterCls=CormorantCpldRegisters, **kwargs):
-      super(CormorantCpu, self).__init__(**kwargs)
+      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
 
       self.cpuGpios = self.newComponent(AmdGpioController)
       self.cpuGpios.addPowerCycle(GpioDesc('power_cycle', addr=4))
@@ -83,7 +86,8 @@ class CormorantCpu(Cpu):
          AdmCauseU(AdmCauseU.OVERTEMP,     AdmGpio.fromPins(4, 6),    gpioInMask),
          AdmCauseU(AdmCauseU.POWERLOSS,    AdmGpio.fromPins(2, 4, 6), gpioInMask),
          AdmCauseU(AdmCauseU.CPU,          AdmGpio.fromPins(3, 4, 6), gpioInMask),
-      ])
+      ], causePriority=AdmPriority.HARDWARE_SECONDARY,
+         altSource=[ReloadCauseAltSource.CPU])
 
    def cpuDpmAddr(self, addr=0x4f, t=3, **kwargs):
       return self.cpld.i2cAddr(1, addr, t=t, **kwargs)

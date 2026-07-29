@@ -1,3 +1,4 @@
+from ..core.cause import ReloadCausePriority
 from ..core.cooling import CoolingConfig
 from ..core.fixed import FixedSystem
 from ..core.platform import registerPlatform
@@ -16,13 +17,14 @@ from ..components.cpld import (
    SysCpldCause,
    SysCpldReloadCauseRegistersV2,
 )
-from ..components.dpm.ucd import Ucd90120A, UcdGpi
+from ..components.dpm.ucd import Ucd90120A, UcdGpi, UcdPriority
 from ..components.max6658 import Max6658
 from ..components.psu.delta import DPS495CB, DPS500AB
 from ..components.psu.artesyn import CSU500DP, DS495SPE
 from ..components.psu.arista import Pwr581
 from ..components.scd import Scd
 
+from ..descs.cause import ReloadCauseAltSource
 from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
@@ -216,7 +218,7 @@ class Lodoga(LodogaBase):
          UcdGpi(4, 'overtemp'),
          UcdGpi(5, 'powerloss', 'PSU AC'),
          UcdGpi(6, 'powerloss', 'PSU DC'),
-      ])
+      ], causePriority=UcdPriority.HARDWARE_MAIN)
 
 @registerPlatform()
 class LodogaPrime(LodogaBase):
@@ -260,8 +262,10 @@ class LodogaPrime(LodogaBase):
          SysCpldCause(0x03, SysCpldCause.WATCHDOG,
                       priority=SysCpldCause.Priority.HIGH),
          SysCpldCause(0x04, SysCpldCause.CPU, 'CPU source or CPU PGOOD',
-                      priority=SysCpldCause.Priority.LOW),
+                      priority=SysCpldCause.Priority.LOW,
+                      altSource=ReloadCauseAltSource.CPU),
          SysCpldCause(0x08, SysCpldCause.REBOOT, 'Software Reboot'),
          SysCpldCause(0x09, SysCpldCause.POWERLOSS, 'PSU AC'),
          SysCpldCause(0x0a, SysCpldCause.POWERLOSS, 'PSU DC'),
-      ], regmap=SysCpldReloadCauseRegistersV2)
+      ], regmap=SysCpldReloadCauseRegistersV2,
+         priority=ReloadCausePriority.HARDWARE_MAIN)

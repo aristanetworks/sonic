@@ -8,6 +8,7 @@ import tempfile
 from ...libs.fs import touch, rmfile
 from ...libs.date import datetimeToStr, strToDatetime
 from ...tests.testing import unittest
+from ...descs.cause import ReloadCauseAltSource
 
 from ..cause import (
    ReloadCauseDataStore,
@@ -42,7 +43,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
                'description': 'user triggered',
                'score': ReloadCauseScore.LOGGED,
                'priority': ReloadCausePriority.NORMAL,
-               'altSource': '',
+               'altSource': None,
             },
             "providers": [
                {
@@ -50,6 +51,8 @@ class ReloadCauseManagerTest(unittest.TestCase):
                   "causes": [
                   ],
                   "extra": {},
+                  'priority': ReloadCausePriority.PRIMARY,
+                  'altSource': [],
                },
                {
                   "name": "secondary provider",
@@ -60,10 +63,12 @@ class ReloadCauseManagerTest(unittest.TestCase):
                         'description': 'user triggered',
                         'score': ReloadCauseScore.LOGGED,
                         'priority': ReloadCausePriority.NORMAL,
-                        'altSource': '',
+                        'altSource': None,
                      }
                   ],
                   "extra": {},
+                  'priority': ReloadCausePriority.PRIMARY,
+                  'altSource': [],
                },
             ],
          },
@@ -153,7 +158,8 @@ class ReloadCauseManagerTest(unittest.TestCase):
                ) for cause, score, desc, priority, altSource in provider['causes']
             ],
             priority = (provider['priority'] if 'priority' in provider
-                        else ReloadCausePriority.PRIMARY)
+                        else ReloadCausePriority.PRIMARY),
+            altSource = provider['altSource'] if 'altSource' in provider else []
          ) for name, provider in data.items()
       ])
       self.rcm.loaded = False
@@ -189,7 +195,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
       self.storeJson(self.STORED_SIMPLE_OLD_VERSION)
       self.rcm.loadCauses()
       self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='powerloss',
-                                   priority=ReloadCausePriority.NORMAL, altSource='')
+                                   priority=ReloadCausePriority.NORMAL)
       self.rcm.storeCauses()
       self.assertCauseStoreEqual(self.EXPECTED_SIMPLE)
 
@@ -239,15 +245,15 @@ class ReloadCauseManagerTest(unittest.TestCase):
          'primary': {
             'causes' : [
                ('under-voltage', ReloadCauseScore.EVENT, 'Rail X',
-                ReloadCausePriority.NORMAL, ''),
+                ReloadCausePriority.NORMAL, None),
             ]
          },
          'secondary': {
             'causes' : [
                ('under-voltage', ReloadCauseScore.EVENT, 'Rail Y',
-                ReloadCausePriority.NORMAL, ''),
+                ReloadCausePriority.NORMAL, None),
                ('powerloss', ReloadCauseScore.LOGGED, 'user triggered',
-                ReloadCausePriority.NORMAL, ''),
+                ReloadCausePriority.NORMAL, None),
             ]
          },
       })
@@ -256,13 +262,13 @@ class ReloadCauseManagerTest(unittest.TestCase):
          'primary': {
             'causes' : [
                ('under-voltage', ReloadCauseScore.EVENT, 'Rail X',
-                ReloadCausePriority.NORMAL, ''),
+                ReloadCausePriority.NORMAL, None),
             ],
          },
          'secondary': {
             'causes' : [
                ('under-voltage', ReloadCauseScore.EVENT, 'Rail Y',
-                ReloadCausePriority.NORMAL, ''),
+                ReloadCausePriority.NORMAL, None),
             ],
          }
       })
@@ -281,9 +287,9 @@ class ReloadCauseManagerTest(unittest.TestCase):
             'causes' : [
                # set score to unknown to make sure priority is the real order factor
                ('under-voltage', ReloadCauseScore.UNKNOWN, 'Rail X',
-                ReloadCausePriority.NORMAL, ''),
+                ReloadCausePriority.NORMAL, None),
                ('unknown', ReloadCauseScore.EVENT, 'Rail Y',
-                ReloadCausePriority.NONE, ''),
+                ReloadCausePriority.NONE, None),
             ]
          }
       })
@@ -295,14 +301,14 @@ class ReloadCauseManagerTest(unittest.TestCase):
             'priority' : ReloadCausePriority.HARDWARE_SECONDARY,
             'causes' : [
                ('under-voltage', ReloadCauseScore.EVENT, 'Rail X',
-                ReloadCausePriority.NORMAL, ''),
+                ReloadCausePriority.NORMAL, None),
             ]
          },
          'secondary2' : {
             'priority' : ReloadCausePriority.HARDWARE_SECONDARY,
             'causes' : [
                ('unknown', ReloadCauseScore.EVENT, 'Rail Y',
-                ReloadCausePriority.NORMAL, ''),
+                ReloadCausePriority.NORMAL, None),
             ]
          }
       })
@@ -315,14 +321,14 @@ class ReloadCauseManagerTest(unittest.TestCase):
             'causes' : [
                # set score to unknown to make sure main controller prioritized
                ('powerloss', ReloadCauseScore.UNKNOWN, 'user triggered',
-                ReloadCausePriority.NORMAL, ''),
+                ReloadCausePriority.NORMAL, None),
             ]
          },
          'secondary' : {
             'priority' : ReloadCausePriority.HARDWARE_SECONDARY,
             'causes' : [
                ('under-voltage', ReloadCauseScore.EVENT, 'Rail Y',
-                ReloadCausePriority.NORMAL, ''),
+                ReloadCausePriority.NORMAL, None),
             ]
          }
       })
@@ -332,16 +338,17 @@ class ReloadCauseManagerTest(unittest.TestCase):
          'main' : {
             'priority' : ReloadCausePriority.HARDWARE_MAIN,
             'causes' : [
-               ('powerloss', ReloadCauseScore.EVENT, 'secondary reported',
-                ReloadCausePriority.NORMAL, 'secondary'),
+               ('cpu', ReloadCauseScore.EVENT, 'secondary reported',
+                ReloadCausePriority.NORMAL, ReloadCauseAltSource.CPU),
             ]
          },
-         'secondary' : {
+         'secondary-CPU' : {
             'priority' : ReloadCausePriority.HARDWARE_SECONDARY,
             'causes' : [
                ('under-voltage', ReloadCauseScore.EVENT, 'Rail Y',
-                ReloadCausePriority.NORMAL, ''),
-            ]
+                ReloadCausePriority.NORMAL, None),
+            ],
+            'altSource' : [ReloadCauseAltSource.CPU]
          }
       })
       self.assertReloadCauseEquals(self.rcm.lastReport().cause,
@@ -352,22 +359,23 @@ class ReloadCauseManagerTest(unittest.TestCase):
             'priority' : ReloadCausePriority.PREREBOOT,
             'causes' : [
                ('reboot', ReloadCauseScore.UNKNOWN, 'User issued reboot command',
-                ReloadCausePriority.NORMAL, ''),
+                ReloadCausePriority.NORMAL, None),
             ]
          },
          'main' : {
             'priority' : ReloadCausePriority.HARDWARE_MAIN,
             'causes' : [
-               ('powerloss', ReloadCauseScore.EVENT, 'secondary reported',
-                ReloadCausePriority.NORMAL, 'secondary'),
+               ('cpu', ReloadCauseScore.EVENT, 'secondary reported',
+                ReloadCausePriority.NORMAL, ReloadCauseAltSource.CPU),
             ]
          },
-         'secondary' : {
+         'secondary-CPU' : {
             'priority' : ReloadCausePriority.HARDWARE_SECONDARY,
             'causes' : [
                ('under-voltage', ReloadCauseScore.EVENT, 'Rail Y',
-                ReloadCausePriority.NORMAL, ''),
-            ]
+                ReloadCausePriority.NORMAL, None),
+            ],
+            'altSource' : [ReloadCauseAltSource.CPU]
          }
       })
       self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='reboot')

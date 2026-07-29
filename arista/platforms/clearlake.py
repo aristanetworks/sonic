@@ -5,7 +5,7 @@ from ..core.psu import PsuSlot
 from ..core.utils import incrange
 
 from ..components.asic.xgs.trident2 import Trident2
-from ..components.dpm.ucd import Ucd90120A, UcdGpi
+from ..components.dpm.ucd import Ucd90120A, UcdGpi, UcdPriority
 from ..components.max6658 import Max6658
 from ..components.psu.delta import DPS495CB
 from ..components.psu.artesyn import DS495SPE
@@ -32,7 +32,7 @@ class Clearlake(FixedSystem):
    )
 
    def __init__(self):
-      super(Clearlake, self).__init__()
+      super().__init__()
 
       # FIXME: cleanup later
       self.qsfp40gAutoRange = incrange(5, 28)
@@ -58,12 +58,13 @@ class Clearlake(FixedSystem):
                     position=Position.INLET, target=42, overheat=65, critical=75),
       ])
 
-      scd.newComponent(Ucd90120A, addr=scd.i2cAddr(1, 0x4e, t=3))
+      scd.newComponent(Ucd90120A, addr=scd.i2cAddr(1, 0x4e, t=3),
+                       causePriority=UcdPriority.HARDWARE_SECONDARY)
       scd.newComponent(Ucd90120A, addr=scd.i2cAddr(5, 0x4e, t=3), causes={
          'reboot': UcdGpi(2),
          'watchdog': UcdGpi(3),
          'powerloss': UcdGpi(7),
-      })
+      }, causePriority=UcdPriority.HARDWARE_MAIN)
 
       scd.newComponent(Ds125Br, addr=scd.i2cAddr(6, 0x58), # qsfp36
                        amplitude=[0xaa, 0xaa, 0xaa, 0xaa, 0xa9, 0xa9, 0xa9, 0xaa])

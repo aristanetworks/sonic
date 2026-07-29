@@ -1,3 +1,4 @@
+from ..core.cause import ReloadCausePriority
 from ..core.fixed import FixedChassis, FixedSystem
 from ..core.hwapi import HwApi
 from ..core.platform import registerPlatform
@@ -73,7 +74,7 @@ class PikeZ(FixedSystem):
             ScdCause(0x0e, ScdCause.OVERTEMP),
             ScdCause(0x0f, ScdCause.REBOOT, 'Software Reboot'),
             ScdCause(0x10, ScdCause.KILLSWITCH),
-        ])
+        ], priority=ReloadCausePriority.HARDWARE_MAIN)
 
         scd.addResets([
             ResetDesc('ext_mux_reset', addr=0x4000, bit=8),

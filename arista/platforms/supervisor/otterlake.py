@@ -5,6 +5,8 @@ from ...components.dpm.ucd import Ucd90120A, Ucd90160, UcdMon, UcdGpi
 from ...components.eeprom import At24C512
 from ...components.microsemi import MicrosemiPortDesc
 
+from ...descs.cause import ReloadCauseDesc
+
 from ...core.platform import registerPlatform
 
 from ..cpu.sprucefish import SprucefishCpu
@@ -58,12 +60,12 @@ class OtterLake(DenaliSupervisor):
       self.cpu = self.newComponent(SprucefishCpu)
 
       self.cpu.cpld.newComponent(Ucd90160, self.cpu.cpuDpmAddr())
-      self.cpu.cpld.newComponent(Ucd90120A, self.cpu.shimDpmAddr(), causes={
-         'peer': UcdGpi(4),
-         'reboot': UcdGpi(5),
-         'watchdog': UcdGpi(6),
-         'powerloss': UcdMon(9),
-      })
+      self.cpu.cpld.newComponent(Ucd90120A, self.cpu.shimDpmAddr(), causes=[
+         UcdGpi(4, ReloadCauseDesc.REBOOT, 'Rebooted by peer supervisor'),
+         UcdGpi(5, ReloadCauseDesc.REBOOT),
+         UcdGpi(6, ReloadCauseDesc.WATCHDOG),
+         UcdMon(9, ReloadCauseDesc.POWERLOSS),
+      ])
 
       self.eeprom = self.cpu.cpld.newComponent(At24C512, label='supervisor_shim',
                                                addr=self.cpu.shimEepromAddr())

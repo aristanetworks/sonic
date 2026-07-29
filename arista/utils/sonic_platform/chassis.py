@@ -68,6 +68,7 @@ class Chassis(ChassisBase):
       'no-fans': ChassisBase.REBOOT_CAUSE_INSUFFICIENT_FAN_SPEED,
       'expansion-card': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
       'switch-card': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
+      'fan-card': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
       'leak-rope-fail': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
       'leak-detected': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
       'rmcReboot': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,

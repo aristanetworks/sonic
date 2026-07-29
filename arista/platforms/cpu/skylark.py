@@ -1,3 +1,4 @@
+from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
@@ -9,6 +10,7 @@ from ...components.cpld import (
 from ...components.lm75 import Tmp75
 from ...components.scd import Scd, ScdCause, ScdReloadCauseRegisters
 
+from ...descs.cause import ReloadCauseAltSource
 from ...descs.sensor import Position, SensorDesc
 
 class SkylarkSysCpld(SysCpld):
@@ -22,7 +24,7 @@ class SkylarkCpu(Cpu):
    PCI_PORT_SCD0 = PciPortDesc(0x02, 4)
 
    def __init__(self, registerCls=SysCpldCommonRegistersV2, **kwargs):
-      super().__init__(**kwargs)
+      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 
@@ -91,7 +93,8 @@ class SkylarkCpu(Cpu):
          ScdCause(0x3c, ScdCause.RAIL, 'CPUError'),
          ScdCause(0x3d, ScdCause.RAIL, 'BMC pgood'),
       ], regmap=ScdReloadCauseRegisters,
-         priority=ScdCause.Priority.SECONDARY)
+         priority=ScdCause.Priority.HARDWARE_SECONDARY,
+         altSource=[ReloadCauseAltSource.CPU])
 
       self.addFanGroup(self.parent.CHASSIS.FAN_SLOTS, self.parent.CHASSIS.FAN_COUNT)
 

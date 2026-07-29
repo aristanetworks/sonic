@@ -11,7 +11,7 @@ from ..components.psu.liteon import PS2242
 from ..components.scd import Scd
 from ..components.tmp464 import Tmp464
 from ..components.asic.xgs.tomahawk4 import Tomahawk4
-from ..components.dpm.ucd import Ucd90320, UcdGpi
+from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 
 from ..descs.gpio import GpioDesc
 from ..descs.sensor import Position, SensorDesc
@@ -38,7 +38,7 @@ class SilverstrandP(FixedSystem):
    )
 
    def __init__(self):
-      super(SilverstrandP, self).__init__()
+      super().__init__()
 
       self.cpu = self.newComponent(LorikeetCpu)
       self.cpu.addCpuDpm()
@@ -51,7 +51,7 @@ class SilverstrandP(FixedSystem):
             UcdGpi(6, 'reboot'),
             UcdGpi(7, 'reboot'),
             UcdGpi(8, 'reboot'),
-      ])
+      ], causePriority=UcdPriority.HARDWARE_MAIN)
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       scd = port.newComponent(Scd, addr=port.addr)

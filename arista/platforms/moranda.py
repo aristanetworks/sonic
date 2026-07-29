@@ -1,3 +1,4 @@
+from ..core.cause import ReloadCausePriority
 from ..core.fixed import FixedSystem
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
@@ -12,6 +13,7 @@ from ..components.lm75 import Tmp75
 from ..components.vrm.isl68137 import Isl68226
 from ..components.vrm.raa228228 import Raa228926
 
+from ..descs.cause import ReloadCauseAltSource
 from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
@@ -142,12 +144,14 @@ class MorandaBase(FixedSystem):
          SysCpldCause(0x03, SysCpldCause.WATCHDOG,
                       priority=SysCpldCause.Priority.HIGH),
          SysCpldCause(0x04, SysCpldCause.CPU, 'CPU source or CPU PGOOD',
-                      priority=SysCpldCause.Priority.LOW),
+                      priority=SysCpldCause.Priority.LOW,
+                      altSource=ReloadCauseAltSource.CPU),
          SysCpldCause(0x08, SysCpldCause.REBOOT),
          SysCpldCause(0x09, SysCpldCause.POWERLOSS, 'PSU AC'),
          SysCpldCause(0x0a, SysCpldCause.POWERLOSS, 'PSU DC'),
          SysCpldCause(0x0f, SysCpldCause.SEU, 'bitshadow rx parity error'),
-      ], regmap=SysCpldReloadCauseRegistersV2)
+      ], regmap=SysCpldReloadCauseRegistersV2,
+         priority=ReloadCausePriority.HARDWARE_MAIN)
 
 @registerPlatform()
 class MorandaP(MorandaBase):

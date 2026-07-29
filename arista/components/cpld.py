@@ -284,8 +284,10 @@ class SysCpld(I2cComponent):
       return gpios
 
    def addReloadCauseProvider(self, causes, regmap=SysCpldReloadCauseRegisters,
-                              priority=ReloadCausePriority.PRIMARY):
-      provider = SysCpldReloadCauseProvider(self, regmap, causes, priority=priority)
+                              priority=ReloadCausePriority.PRIMARY,
+                              altSource=None):
+      provider = SysCpldReloadCauseProvider(self, regmap, causes, priority=priority,
+                                            altSource=altSource)
       self.inventory.addReloadCauseProvider(provider)
       self.inventory.addRtc(SysCpldRealTimeClock(self, regmap))
       return provider

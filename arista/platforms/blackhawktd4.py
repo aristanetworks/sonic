@@ -5,7 +5,7 @@ from ..core.psu import PsuSlot
 from ..core.utils import incrange
 
 from ..components.asic.xgs.trident4 import Trident4
-from ..components.dpm.adm1266 import Adm1266, AdmCauseOneHot, AdmGpio
+from ..components.dpm.adm1266 import Adm1266, AdmCauseOneHot, AdmGpio, AdmPriority
 from ..components.psu.delta import DPS1500AB, DPS1600AB, DPS1600CB
 from ..components.scd import Scd
 from ..components.tmp468 import Tmp468
@@ -32,7 +32,7 @@ class BlackhawkTD4(FixedSystem):
    )
 
    def __init__(self):
-      super(BlackhawkTD4, self).__init__()
+      super().__init__()
 
       self.cpu = self.newComponent(LorikeetCpu)
       self.cpu.addCpuDpm()
@@ -43,7 +43,7 @@ class BlackhawkTD4(FixedSystem):
                   description="Both PSUs lost input power"),
          AdmCauseOneHot(AdmCauseOneHot.POWERLOSS, AdmGpio(5),
                   description="Both PSUs lost DC output power")
-         ])
+         ], causePriority=AdmPriority.HARDWARE_MAIN)
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       scd = port.newComponent(Scd, addr=port.addr)

@@ -15,6 +15,14 @@ class ReloadCause(InventoryInterface):
    def getScore(self):
       raise NotImplementedError
 
+   @diagmethod('priority')
+   def getPriority(self):
+      raise NotImplementedError
+
+   @diagmethod('altSource')
+   def getAltSource(self):
+      raise NotImplementedError
+
 @diagcls
 class ReloadCauseProvider(InventoryInterface):
    @diagmethod('source')

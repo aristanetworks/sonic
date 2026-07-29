@@ -3,7 +3,7 @@ import time
 
 from ..core.cause import (
    ReloadCauseEntry,
-   ReloadCauseProviderHelper,
+   HardwareReloadCauseProvider,
    ReloadCauseScore,
 )
 from ..core.component import Priority
@@ -19,7 +19,7 @@ from ..core.register import (
 )
 from ..core.utils import inSimulation
 
-from ..descs.cause import ReloadCauseDesc
+from ..descs.cause import ReloadCauseDesc, ReloadCausePriority
 
 from ..drivers.cpld import SysCpldI2cDriver
 
@@ -122,12 +122,12 @@ class SysCpldCause(ReloadCauseDesc):
 class SysCpldReloadCauseEntry(ReloadCauseEntry):
    pass
 
-class SysCpldReloadCauseProvider(ReloadCauseProviderHelper):
+class SysCpldReloadCauseProvider(HardwareReloadCauseProvider):
 
    FAULT_TIME_BASE = datetime.datetime(2000, 1, 1)
 
-   def __init__(self, cpld, regmap, causes):
-      super().__init__()
+   def __init__(self, cpld, regmap, causes, **kwargs):
+      super().__init__(**kwargs)
       self.cpld = cpld
       self.regmap = regmap
       self.causes = causes
@@ -205,6 +205,8 @@ class SysCpldReloadCauseProvider(ReloadCauseProviderHelper):
             rcDesc=cause.description,
             score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
                   ReloadCauseScore.getPriority(cause.priority),
+            priority=cause.priority,
+            altSource=cause.altSource,
          )
 
       logging.debug('unhandled cause %02x', code)
@@ -213,6 +215,7 @@ class SysCpldReloadCauseProvider(ReloadCauseProviderHelper):
          rcTime=rcTime,
          rcDesc=f'unknown logged fault {code:#04x}',
          score=ReloadCauseScore.LOGGED,
+         priority=ReloadCausePriority.NORMAL,
       )
 
 class SysCpld(I2cComponent):
@@ -260,6 +263,8 @@ class SysCpld(I2cComponent):
             gpios.append(self.addGpio(info))
       return gpios
 
-   def addReloadCauseProvider(self, causes, regmap=SysCpldReloadCauseRegisters):
-      provider = SysCpldReloadCauseProvider(self, regmap, causes)
-      return self.inventory.addReloadCauseProvider(provider)
+   def addReloadCauseProvider(self, causes, regmap=SysCpldReloadCauseRegisters,
+                              priority=ReloadCausePriority.PRIMARY):
+      provider = SysCpldReloadCauseProvider(self, regmap, causes, priority=priority)
+      self.inventory.addReloadCauseProvider(provider)
+      return provider

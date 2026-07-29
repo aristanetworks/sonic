@@ -4,13 +4,14 @@ import datetime
 
 from ...core.cause import (
    ReloadCauseEntry,
-   ReloadCausePriority,
-   ReloadCauseProviderHelper,
+   HardwareReloadCauseProvider,
    ReloadCauseScore,
 )
 from ...core.component import Priority
 from ...core.utils import inSimulation
 from ...core.log import getLogger
+
+from ...descs.cause import ReloadCausePriority
 
 from ...drivers.dpm.ucd import UcdUserDriver
 
@@ -49,9 +50,9 @@ class UcdMon(UcdGpi):
 class UcdReloadCauseEntry(ReloadCauseEntry):
    pass
 
-class UcdReloadCauseProvider(ReloadCauseProviderHelper):
-   def __init__(self, ucd):
-      super().__init__(name=str(ucd))
+class UcdReloadCauseProvider(HardwareReloadCauseProvider):
+   def __init__(self, ucd, **kwargs):
+      super().__init__(name=str(ucd), **kwargs)
       self.ucd = ucd
 
    def process(self):
@@ -136,11 +137,12 @@ class Ucd(PmbusDpm):
    faultTimeBase = datetime.datetime(1970, 1, 1)
    daysOffset = 0
 
-   def __init__(self, addr=None, causes=None, **kwargs):
+   def __init__(self, addr=None, causes=None, priority=UcdPriority.PRIMARY,
+                **kwargs):
       super().__init__(addr=addr, **kwargs)
       self.causes = self._buildCauses(causes)
       self.oldestTime = datetime.datetime(1970, 1, 1)
-      self.inventory.addReloadCauseProvider(UcdReloadCauseProvider(self))
+      self.reloadCauseProvider = UcdReloadCauseProvider(self, priority=priority)
       self.inventory.addProgrammable(UcdProgrammable(self))
 
    def _buildCauses(self, causes):
@@ -220,6 +222,8 @@ class Ucd(PmbusDpm):
                rcDesc=cause.getReason(page=page, detailed=True),
                score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
                      ReloadCauseScore.getPriority(cause.priority),
+               priority=cause.priority,
+               altSource=cause.altSource,
             ))
          else:
             logging.debug('found unknown detailed gpi: %s', page)
@@ -229,6 +233,8 @@ class Ucd(PmbusDpm):
                 rcDesc='gpi %s detailed fault' % page,
                 score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
                       ReloadCauseScore.getPriority(UcdPriority.NONE),
+               priority=cause.priority,
+               altSource=cause.altSource,
             ))
          found = True
       elif paged:
@@ -241,6 +247,8 @@ class Ucd(PmbusDpm):
                rcDesc=cause.getReason(page=page, detailed=True),
                score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
                      ReloadCauseScore.getPriority(cause.priority),
+               priority=cause.priority,
+               altSource=cause.altSource,
             ))
             found = True
 
@@ -253,6 +261,7 @@ class Ucd(PmbusDpm):
                rcDesc=fault.getReason(page),
                score=ReloadCauseScore.EVENT | ReloadCauseScore.DETAILED |
                      ReloadCauseScore.getPriority(UcdPriority.NONE),
+               priority=ReloadCausePriority.UNKNOWN,
             )
             logging.debug('found detailed fault: %s', cause.description)
             causes.append(cause)
@@ -317,6 +326,8 @@ class Ucd(PmbusDpm):
                   rcDesc=cause.getReason(page=bitpos),
                   score=ReloadCauseScore.LOGGED |
                         ReloadCauseScore.getPriority(cause.priority),
+                  priority=cause.priority,
+                  altSource=cause.altSource,
                ))
             else:
                logging.debug('found unknown gpi: %s', bitpos)
@@ -325,6 +336,7 @@ class Ucd(PmbusDpm):
                   rcDesc='unknown gpi fault',
                   score=ReloadCauseScore.LOGGED |
                         ReloadCauseScore.getPriority(UcdPriority.NONE),
+                  priority=ReloadCausePriority.UNKNOWN
                ))
 
       logging.debug('found %d faults', len(causes))

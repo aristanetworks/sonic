@@ -673,10 +673,11 @@ class Scd(PciComponent):
                               priority=ScdCause.Priority.PRIMARY):
       if isinstance(addr, int):
          # Initial DPM-less reboot cause support e.g PikeZ
-         rcp = SimpleScdReloadCauseProvider(self, addr, causes)
+         rcp = SimpleScdReloadCauseProvider(self, addr, causes, priority=priority)
       else:
          rcp = ScdReloadCauseProvider(self, regmap, causes, priority=priority)
-      return self.inventory.addReloadCauseProvider(rcp)
+      self.inventory.addReloadCauseProvider(rcp)
+      return rcp
 
    def addSeuReporter(self, regmap):
       return self.inventory.addSeuReporter(ScdSeuReporter(self, regmap))

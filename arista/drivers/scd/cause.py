@@ -2,14 +2,13 @@ import datetime
 
 from ...core.cause import (
    ReloadCauseEntry,
-   ReloadCausePriority,
-   ReloadCauseProviderHelper,
+   HardwareReloadCauseProvider,
    ReloadCauseScore,
 )
 from ...core.log import getLogger
 from ...core.utils import inSimulation
 
-from ...descs.cause import ReloadCauseDesc
+from ...descs.cause import ReloadCauseDesc, ReloadCausePriority
 
 from ...libs.date import datetimeToStr
 
@@ -21,9 +20,9 @@ class ScdCause(ReloadCauseDesc):
 class ScdReloadCauseEntry(ReloadCauseEntry):
    pass
 
-class SimpleScdReloadCauseProvider(ReloadCauseProviderHelper):
-   def __init__(self, scd, addr, causes):
-      super().__init__(name=str(scd))
+class SimpleScdReloadCauseProvider(HardwareReloadCauseProvider):
+   def __init__(self, scd, addr, causes, **kwargs):
+      super().__init__(name=str(scd), **kwargs)
       self.scd = scd
       self.addr = addr
       self.causes = causes
@@ -58,6 +57,8 @@ class SimpleScdReloadCauseProvider(ReloadCauseProviderHelper):
                #       nicely with devices that do report detailed faults.
                score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
                      ReloadCauseScore.getPriority(ReloadCausePriority.NORMAL),
+               priority=cause.priority,
+               altSource=cause.altSource,
             )
 
       logging.debug('unhandled cause %#02x', code)
@@ -65,10 +66,11 @@ class SimpleScdReloadCauseProvider(ReloadCauseProviderHelper):
          cause='unknown',
          rcDesc=f'unknown logged fault {code:#04x}',
          score=ReloadCauseScore.LOGGED,
+         priority=ReloadCausePriority.UNKNOWN,
       )
 
 
-class ScdReloadCauseProvider(ReloadCauseProviderHelper):
+class ScdReloadCauseProvider(HardwareReloadCauseProvider):
 
    FAULT_TIME_BASE = datetime.datetime(2000, 1, 1)
 
@@ -145,6 +147,8 @@ class ScdReloadCauseProvider(ReloadCauseProviderHelper):
             #       nicely with devices that do report detailed faults.
             score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
                   ReloadCauseScore.getPriority(cause.priority),
+            priority=cause.priority,
+            altSource=cause.altSource,
          )
 
       logging.debug('unhandled cause %#02x', code)
@@ -152,4 +156,5 @@ class ScdReloadCauseProvider(ReloadCauseProviderHelper):
          cause='unknown',
          rcDesc=f'unknown logged fault {code:#04x}',
          score=ReloadCauseScore.LOGGED,
+         priority=ReloadCausePriority.UNKNOWN,
       )

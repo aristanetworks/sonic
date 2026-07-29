@@ -6,13 +6,14 @@ from ...libs.integer import isBitSet
 
 from ...core.cause import (
    ReloadCauseEntry,
-   ReloadCausePriority,
-   ReloadCauseProviderHelper,
+   HardwareReloadCauseProvider,
    ReloadCauseScore,
 )
 from ...core.component import Priority
 from ...core.log import getLogger
 from ...core.utils import inSimulation
+
+from ...descs.cause import ReloadCausePriority
 
 from ...drivers.dpm.adm1266 import Adm1266UserDriver
 
@@ -195,9 +196,9 @@ class AdmCauseUnique(AdmCauseBase):
 class AdmReloadCauseEntry(ReloadCauseEntry):
    pass
 
-class AdmReloadCauseProvider(ReloadCauseProviderHelper):
-   def __init__(self, adm):
-      super().__init__(name=str(adm))
+class AdmReloadCauseProvider(HardwareReloadCauseProvider):
+   def __init__(self, adm, **kwargs):
+      super().__init__(name=str(adm), **kwargs)
       self.adm = adm
 
    def process(self):
@@ -241,10 +242,12 @@ class Adm1266(PmbusDpm):
       USER_DATA = 0xe3
       POWERUP_COUNTER = 0xe4
 
-   def __init__(self, addr=None, causes=None, **kwargs):
+   def __init__(self, addr=None, causes=None, priority=AdmPriority.PRIMARY,
+                **kwargs):
       super().__init__(addr=addr, **kwargs)
       self.causes = causes
-      self.inventory.addReloadCauseProvider(AdmReloadCauseProvider(self))
+      self.reloadCauseProvider = AdmReloadCauseProvider(self, priority=priority)
+      self.inventory.addReloadCauseProvider(self.reloadCauseProvider)
       self.inventory.addProgrammable(AdmProgrammable(self))
 
    def getPowerupCounter(self):
@@ -272,6 +275,8 @@ class Adm1266(PmbusDpm):
                   rcDesc='detailed fault powerup=%d' % fault.powerup,
                   score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
                         ReloadCauseScore.getPriority(cause.priority),
+                  priority=cause.priority,
+                  altSource=cause.altSource,
                ))
       return causes
 

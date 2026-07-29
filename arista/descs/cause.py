@@ -8,6 +8,26 @@ class ReloadCausePriority(object):
    PRIMARY = 0
    SECONDARY = 1
 
+   # All priorities defined above will be eventually cleared out
+   # All below priorities will be set a bit weirdly high before the cleanup
+   # Priorities will be used in two ways:
+   # 1) Specify the significance of providers
+   # Any new priority value related to providers should be in [10, 50]
+   PREREBOOT = 23
+   HARDWARE_MAIN = 22
+   HARDWARE_SECONDARY = 21
+   # Final values:
+   # PREREBOOT = 40
+   # HARDWARE_MAIN = 30
+   # HARDWARE_SECONDARY = 20
+   # 2) Specify the importancy of reload causes from the same provider, majorly
+   # between detailed causes and undetailed/unknown ones
+   # Any new priority value related to entries should be in [0, 9]
+   UNKNOWN = 19
+   # Final values:
+   # NORMAL = 5 <--- using the duplicated definition above before the cleanup
+   # UNKNOWN = 0
+
 class ReloadCauseScore(object):
    # DO NOT CHANGE EXISTING VALUES UNLESS YOU UNDERSTAND THE IMPLICATIONS
    # format:
@@ -38,6 +58,10 @@ class ReloadCauseDesc(object):
    CPU_S5 = 'cpu-s5'
    SEU = 'seu'
    NOFANS = 'no-fans'
+   EXPANSION_CARD = 'expansion-card'
+   SWITCH_CARD = 'switch-card'
+   LEAK_ROPE_FAIL = 'leak-rope-fail'
+   LEAK_DETECTED = 'leak-detected'
 
    DEFAULT_DESCRIPTIONS = {
       UNKNOWN: 'Unknown',
@@ -53,15 +77,21 @@ class ReloadCauseDesc(object):
       CPU_S5: 'CPU state S5',
       SEU: 'SEU fault',
       NOFANS: 'No Fans fault',
+      EXPANSION_CARD: 'Expansion card fault',
+      SWITCH_CARD: 'Switch card fault',
+      LEAK_ROPE_FAIL: 'No rope or rope broken',
+      LEAK_DETECTED: 'Leak detected'
    }
 
    Priority = ReloadCausePriority
 
    def __init__(self, code, typ, description=None,
-                priority=ReloadCausePriority.NORMAL):
+                priority=ReloadCausePriority.NORMAL,
+                altSource=''):
       self.code = code
       self.typ = typ
       self.description = self.DEFAULT_DESCRIPTIONS.get(typ, str(typ))
       self.priority = priority
+      self.altSource = altSource
       if description is not None:
          self.description = f'{self.description} - {description}'

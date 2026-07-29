@@ -3,12 +3,14 @@ from .bootloader import Aboot
 from .sku import Sku
 
 from ..components.cookie import PlatformCookieComponent
+from ..descs.cause import ReloadCausePriority
 
 class Cpu(Sku):
-   def __init__(self, *args, **kwargs):
+   def __init__(self, *args, cookiesPriority=ReloadCausePriority.PRIMARY, **kwargs):
       super(Cpu, self).__init__(*args, **kwargs)
       self.bootloader = self.newComponent(Aboot)
-      self.cookies = self.newComponent(PlatformCookieComponent)
+      self.cookies = self.newComponent(PlatformCookieComponent,
+                                       priority=cookiesPriority)
 
    def getPciPort(self, desc):
       if desc.root:

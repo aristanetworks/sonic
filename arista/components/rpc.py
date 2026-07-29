@@ -1,11 +1,14 @@
 
-from ..core.cause import ReloadCauseProviderHelper
+from ..core.cause import HardwareReloadCauseProvider, ReloadCauseProviderHelper
 from ..core.component.component import Component
+
+from ..descs.cause import ReloadCausePriority
+
 from ..drivers.rpc import LinecardRpcClientDriver
 
-class RpcReloadCauseProviderImpl(ReloadCauseProviderHelper):
-   def __init__(self, rpc):
-      super().__init__(name=str(rpc))
+class RpcReloadCauseProviderImpl(HardwareReloadCauseProvider):
+   def __init__(self, rpc, priority=ReloadCausePriority.PRIMARY):
+      super().__init__(name=str(rpc), priority=priority)
       self.rpc = rpc
       self.providers = []
 

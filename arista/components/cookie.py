@@ -4,7 +4,7 @@ import os
 import json
 import re
 
-from ..core.cause import ReloadCauseEntry, ReloadCauseProviderHelper
+from ..core.cause import ReloadCauseEntry, PreRebootReloadCauseProvider
 from ..core.component.component import Component
 from ..core.config import flashPath
 from ..core.log import getLogger
@@ -23,12 +23,12 @@ class CookiePriority(ReloadCausePriority):
 class CookieReloadCauseEntry(ReloadCauseEntry):
    pass
 
-class CookieReloadCauseProvider(ReloadCauseProviderHelper):
-   def __init__(self, cookies, slotId):
+class CookieReloadCauseProvider(PreRebootReloadCauseProvider):
+   def __init__(self, cookies, slotId, **kwargs):
       assert slotId is not None and isinstance(slotId, int), \
          "invalid slotId"
       sourceName = f'cookie-slot{slotId}' if slotId else 'cookie-platform'
-      super().__init__(sourceName)
+      super().__init__(name=sourceName, **kwargs)
       self.cookies = cookies
       self.slotId = slotId
       self.callbacks = []
@@ -38,9 +38,9 @@ class CookieReloadCauseProvider(ReloadCauseProviderHelper):
       self.causes = self.cookies.getReloadCauses()
       self.cookies.reset()
 
-class SonicReloadCauseProvider(ReloadCauseProviderHelper):
-   def __init__(self, cookie):
-      super().__init__(str(cookie))
+class SonicReloadCauseProvider(PreRebootReloadCauseProvider):
+   def __init__(self, cookie, **kwargs):
+      super().__init__(name=str(cookie), **kwargs)
       self.cookie = cookie
 
    def process(self):
@@ -49,9 +49,10 @@ class SonicReloadCauseProvider(ReloadCauseProviderHelper):
 class SonicReloadCauseCookieComponent(Component):
    DRIVER = SonicReloadCauseCookieDriver
 
-   def __init__(self, *args, **kwargs):
+   def __init__(self, *args, priority=ReloadCausePriority.PRIMARY, **kwargs):
       super().__init__(*args, **kwargs)
-      self.inventory.addReloadCauseProvider(SonicReloadCauseProvider(self))
+      self.inventory.addReloadCauseProvider(
+         SonicReloadCauseProvider(self, priority=priority))
 
    def _fixTime(self, timestamp):
       # FIXME: The date format is locale-dependent
@@ -92,10 +93,11 @@ class CookieComponentBase(Component):
       'slots': {},
    }
 
-   def __init__(self, slotId=None, **kwargs):
+   def __init__(self, slotId=None, priority=ReloadCausePriority.PRIMARY, **kwargs):
       super().__init__(**kwargs)
       self.slotId = slotId
-      self.inventory.addReloadCauseProvider(CookieReloadCauseProvider(self, slotId))
+      self.inventory.addReloadCauseProvider(
+         CookieReloadCauseProvider(self, slotId, priority=priority))
       self.callbacks = []
       self.causeData = {}
 

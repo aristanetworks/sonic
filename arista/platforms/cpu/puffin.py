@@ -55,7 +55,7 @@ class PuffinPrimeCpu(Cpu):
          ScdCause(0x01, ScdCause.OVERTEMP),
          ScdCause(0x08, ScdCause.REBOOT, 'Software Reboot'),
          ScdCause(0x0a, ScdCause.POWERLOSS, 'PSU DC to CPU'),
-         ScdCause(0x0b, ScdCause.NOFANS),
+         ScdCause(0x0b, ScdCause.NO_FANS),
          ScdCause(0x0c, ScdCause.CPU),
          ScdCause(0x0d, ScdCause.CPU_S3),
          ScdCause(0x0e, ScdCause.CPU_S5),

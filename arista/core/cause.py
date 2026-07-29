@@ -303,6 +303,8 @@ class ReloadCauseReport(object):
             providerDict[ReloadCausePriority.HARDWARE_MAIN].append(provider)
          elif provider.getPriority() == ReloadCausePriority.HARDWARE_SECONDARY:
             providerDict[ReloadCausePriority.HARDWARE_SECONDARY].append(provider)
+         elif provider.getPriority() == ReloadCausePriority.BERT:
+            providerDict[ReloadCausePriority.BERT].append(provider)
          else:
             logging.warning("%s:Old version / unknown reload cause provider "
                             "priority %s found", self, provider.getPriority())
@@ -359,6 +361,11 @@ class ReloadCauseReport(object):
       if cause:
          self.cause = cause
          return
+      bertProvider = providerDict[ReloadCausePriority.BERT]
+      cause = self.analyzeCauseFromProviders(bertProvider, orderByScore=False)
+      if cause:
+         self.cause = cause
+         return
 
       self.cause = ReloadCauseEntry(
          cause='unknown',
@@ -389,7 +396,8 @@ class ReloadCauseManager(object):
 
    NEW_VERSION_PRIORITIES = [ReloadCausePriority.PREREBOOT,
                              ReloadCausePriority.HARDWARE_MAIN,
-                             ReloadCausePriority.HARDWARE_SECONDARY]
+                             ReloadCausePriority.HARDWARE_SECONDARY,
+                             ReloadCausePriority.BERT]
 
    def __init__(self, name=None, path=None):
       self.name = name
@@ -409,6 +417,11 @@ class ReloadCauseManager(object):
       # if this function should be kept
       res = None
       for provider in providers:
+         # BERT is injected on all platforms regardless of their priority scheme,
+         # so it cannot be used as a version indicator. Remove this skip once all
+         # platforms have migrated to the new priority scheme.
+         if provider.getPriority() == ReloadCausePriority.BERT:
+            continue
          isNewVersion = provider.getPriority() in self.NEW_VERSION_PRIORITIES
          if res is None:
             res = isNewVersion

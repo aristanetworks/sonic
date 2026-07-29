@@ -13,6 +13,7 @@ from ..components.tmp464 import Tmp464
 from ..components.asic.xgs.tomahawk4 import Tomahawk4
 from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 
+from ..descs.cause import ReloadCauseDesc
 from ..descs.gpio import GpioDesc
 from ..descs.sensor import Position, SensorDesc
 from ..descs.reset import ResetDesc
@@ -44,13 +45,13 @@ class SilverstrandP(FixedSystem):
       self.cpu.addCpuDpm()
       self.cpu.cpld.newComponent(Ucd90320, addr=self.cpu.switchDpmAddr(0x11),
          causes=[
-            UcdGpi(1, 'overtemp'),
-            UcdGpi(3, 'powerloss', 'PSU AC'),
-            UcdGpi(4, 'powerloss', 'PSU DC'),
-            UcdGpi(5, 'watchdog'),
-            UcdGpi(6, 'reboot'),
-            UcdGpi(7, 'reboot'),
-            UcdGpi(8, 'reboot'),
+            UcdGpi(1, ReloadCauseDesc.OVERTEMP),
+            UcdGpi(3, ReloadCauseDesc.POWERLOSS, 'PSU AC'),
+            UcdGpi(4, ReloadCauseDesc.POWERLOSS, 'PSU DC'),
+            UcdGpi(5, ReloadCauseDesc.WATCHDOG),
+            UcdGpi(6, ReloadCauseDesc.REBOOT),
+            UcdGpi(7, ReloadCauseDesc.REBOOT),
+            UcdGpi(8, ReloadCauseDesc.REBOOT),
       ], causePriority=UcdPriority.HARDWARE_MAIN)
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)

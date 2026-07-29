@@ -59,11 +59,13 @@ class AdmCauseBase(ReloadCauseDesc):
    def __init__(self, current=None, action=None, pins=None,
                 name=ReloadCauseDesc.UNKNOWN,
                 description=None,
-                priority=AdmPriority.NORMAL):
+                priority=AdmPriority.NORMAL,
+                **kwargs):
       self._pins = pins or []
       if not isinstance(self._pins, list):
          self._pins = [self._pins]
-      super().__init__((current, action, self._pins), name, description, priority)
+      super().__init__(
+         (current, action, self._pins), name, description, priority, **kwargs)
 
    @cached_property
    def gpios(self):
@@ -91,10 +93,10 @@ class AdmCauseOneHot(AdmCauseBase):
 
    def __init__(self, name, pin, direction=Direction.IN, activeLow=False,
                 current=None, action=None, description=None,
-                priority=AdmPriority.NORMAL):
+                priority=AdmPriority.NORMAL, **kwargs):
       self.direction = direction
       self.activeLow = activeLow
-      super().__init__(current, action, pin, name, description, priority)
+      super().__init__(current, action, pin, name, description, priority, **kwargs)
 
    def _isPinActive(self, bit, inBits, outBits):
       isActiveIn = isBitSet(bit, inBits) != self.activeLow
@@ -126,14 +128,15 @@ class AdmCauseUnique(AdmCauseBase):
                 pdioInMask=0, pdioOutMask=0, pdioActiveLowMask=0,
                 current=None, action=None,
                 description=None,
-                priority=AdmPriority.NORMAL):
+                priority=AdmPriority.NORMAL,
+                **kwargs):
       self.gpioInMask = gpioInMask
       self.gpioOutMask = gpioOutMask
       self.gpioActiveLowMask = gpioActiveLowMask
       self.pdioInMask = pdioInMask
       self.pdioOutMask = pdioOutMask
       self.pdioActiveLowMask = pdioActiveLowMask
-      super().__init__(current, action, pins, name, description, priority)
+      super().__init__(current, action, pins, name, description, priority, **kwargs)
 
    @cached_property
    def gpioPinSet(self):
@@ -272,7 +275,7 @@ class Adm1266(PmbusDpm):
                causes.append(AdmReloadCauseEntry(
                   cause=cause.name,
                   rcTime=datetimeToStr(fault.getTime()),
-                  rcDesc='detailed fault powerup=%d' % fault.powerup,
+                  rcDesc='%s (powerup=%d)' % (cause.description, fault.powerup),
                   score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
                         ReloadCauseScore.getPriority(cause.priority),
                   priority=cause.priority,

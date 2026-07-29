@@ -4,7 +4,9 @@ import os
 import json
 import re
 
-from ..core.cause import ReloadCauseEntry, PreRebootReloadCauseProvider
+from ..core.cause import (ReloadCauseEntry, PreRebootReloadCauseProvider,
+                          ReloadCauseProviderHelper)
+from ..libs.bert import getBertDetail
 from ..core.component.component import Component
 from ..core.config import flashPath
 from ..core.log import getLogger
@@ -22,6 +24,20 @@ SW_RC_MSG= [
    (re.compile(r"Heartbeat with the Supervisor card lost"),
     'watchdog', 'heartbeat loss', "heartbeat loss"),
 ]
+
+class BertReloadCauseProvider(ReloadCauseProviderHelper):
+   def __init__(self, **kwargs):
+      super().__init__(name='bert', priority=ReloadCausePriority.BERT, **kwargs)
+
+   def process(self):
+      bertLines = getBertDetail()
+      if bertLines:
+         self.causes = [ReloadCauseEntry(
+            cause='cpu',
+            rcDesc=' | '.join(bertLines),
+            score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED,
+            priority=ReloadCausePriority.BERT,
+         )]
 
 class CookiePriority(ReloadCausePriority):
    pass
@@ -164,6 +180,7 @@ class SlotCookieComponent(CookieComponentBase):
 class PlatformCookieComponent(CookieComponentBase):
    def __init__(self, path=None, **kwargs):
       super().__init__(slotId=0, **kwargs)
+      self.inventory.addReloadCauseProvider(BertReloadCauseProvider())
       self.path = path or flashPath('reboot-cause', 'platform', 'cookies.json')
       self.slots = {}
       self.lastStoredData = {}

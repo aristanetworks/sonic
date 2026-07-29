@@ -16,6 +16,7 @@ from ..components.tmp468 import Tmp468
 from .chassis.yuba import Yuba
 from .cpu.woodpecker import WoodpeckerCpu
 
+from ..descs.cause import ReloadCauseDesc
 from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
@@ -41,12 +42,12 @@ class Smartsville(FixedSystem):
 
       self.cpu = self.newComponent(WoodpeckerCpu)
       self.cpu.addCpuDpm()
-      self.cpu.cpld.newComponent(Ucd90320, addr=self.cpu.switchDpmAddr(), causes={
-         'powerloss': UcdGpi(1),
-         'reboot': UcdGpi(2),
-         'watchdog': UcdGpi(3),
-         'overtemp': UcdGpi(4),
-      }, causePriority=UcdPriority.HARDWARE_MAIN)
+      self.cpu.cpld.newComponent(Ucd90320, addr=self.cpu.switchDpmAddr(), causes=[
+         UcdGpi(1, ReloadCauseDesc.POWERLOSS),
+         UcdGpi(2, ReloadCauseDesc.REBOOT),
+         UcdGpi(3, ReloadCauseDesc.WATCHDOG),
+         UcdGpi(4, ReloadCauseDesc.OVERTEMP),
+      ], causePriority=UcdPriority.HARDWARE_MAIN)
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       scd = port.newComponent(Scd, addr=port.addr)

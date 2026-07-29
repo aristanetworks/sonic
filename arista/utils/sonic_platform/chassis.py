@@ -64,6 +64,7 @@ class Chassis(ChassisBase):
       'cpu-overtemp': ChassisBase.REBOOT_CAUSE_THERMAL_OVERLOAD_CPU,
       'cpu-s3': ChassisBase.REBOOT_CAUSE_HARDWARE_CPU,
       'cpu-s5': ChassisBase.REBOOT_CAUSE_HARDWARE_CPU,
+      'cpu-caterr': ChassisBase.REBOOT_CAUSE_HARDWARE_CPU,
       'over-current': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
       'no-fans': ChassisBase.REBOOT_CAUSE_INSUFFICIENT_FAN_SPEED,
       'expansion-card': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
@@ -71,7 +72,7 @@ class Chassis(ChassisBase):
       'fan-card': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
       'leak-rope-fail': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
       'leak-detected': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
-      'rmcReboot': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
+      'rmc-reboot': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
    }
 
    # Intervals in milliseconds

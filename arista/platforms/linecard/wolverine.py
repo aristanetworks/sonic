@@ -198,14 +198,14 @@ class Wolverine(DenaliLinecard):
       ] if self.getHwApi() > HwApi(41) else []
 
       self.control.newComponent(Ucd90320, addr=self.pca.i2cAddr(0x11), causes=[
-         UcdGpi(1, 'powerloss'),
-         UcdGpi(5, 'asic-overtemp', 'asic'),
-         UcdGpi(6, 'reboot'),
-         UcdGpi(7, 'hotswap', 'lc eject'),
-         UcdGpi(11, 'powerloss'),
-         UcdGpi(12, 'powerloss'),
-         UcdGpi(13, 'overtemp', 'asic memory'),
-         UcdGpi(14, 'overtemp', 'asic memory'),
+         UcdGpi(1, ReloadCauseDesc.POWERLOSS),
+         UcdGpi(5, ReloadCauseDesc.ASIC_OVERTEMP, 'asic'),
+         UcdGpi(6, ReloadCauseDesc.REBOOT),
+         UcdGpi(7, ReloadCauseDesc.POWERLOSS, 'lc eject'),
+         UcdGpi(11, ReloadCauseDesc.POWERLOSS),
+         UcdGpi(12, ReloadCauseDesc.POWERLOSS),
+         UcdGpi(13, ReloadCauseDesc.OVERTEMP, 'asic memory'),
+         UcdGpi(14, ReloadCauseDesc.OVERTEMP, 'asic memory'),
       ], quirks=quirks)
 
    def standbyDomain(self):

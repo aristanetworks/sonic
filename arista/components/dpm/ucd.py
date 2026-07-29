@@ -30,10 +30,10 @@ class UcdPriority(ReloadCausePriority):
 
 class UcdGpi():
    TYPE = 'gpi'
-   def __init__(self, bit, name='unknown', description=None,
+   def __init__(self, bit, causeDesc, description=None,
                 priority=UcdPriority.NORMAL, altSource=None):
       self.bit = bit
-      self.name = name
+      self.causeDesc = causeDesc
       self.description = description
       self.priority = priority
       self.altSource = altSource
@@ -41,7 +41,7 @@ class UcdGpi():
    def getReason(self, page=None, detailed=False):
       ptype = self.TYPE if page is None else f'{self.TYPE} {page}'
       ftype = 'detailed fault' if detailed else 'fault'
-      reason = f'{ptype} {ftype} - {self.name}'
+      reason = f'{ptype} {ftype} - {self.causeDesc.desc}'
       if self.description is not None:
          reason += f' - {self.description}'
       return reason
@@ -139,25 +139,13 @@ class Ucd(PmbusDpm):
    def __init__(self, addr=None, causes=None, causePriority=UcdPriority.PRIMARY,
                 altSource=None, **kwargs):
       super().__init__(addr=addr, **kwargs)
-      self.causes = self._buildCauses(causes)
+      self.causes = causes if causes is not None else []
       self.oldestTime = datetime.datetime(1970, 1, 1)
       self.inventory.addReloadCauseProvider(
          UcdReloadCauseProvider(self, priority=causePriority,
                                 altSource=altSource))
       self.inventory.addProgrammable(UcdProgrammable(self))
       self.inventory.addRtc(RealTimeClockImpl(self))
-
-   def _buildCauses(self, causes):
-      if causes is None:
-         return []
-      if isinstance(causes, list):
-         return causes
-
-      res = []
-      for name, cause in causes.items():
-         cause.name = name
-         res.append(cause)
-      return res
 
    def setRealTimeClock(self, dt):
       diff = dt - self.oldestTime
@@ -215,9 +203,9 @@ class Ucd(PmbusDpm):
       if not paged and ftype == 9:
          cause = self._getCause(page)
          if cause is not None:
-            logging.debug('found detailed gpi: %s', cause.name)
+            logging.debug('found detailed gpi: %s', cause.causeDesc.typ)
             causes.append(UcdReloadCauseEntry(
-               cause=cause.name,
+               cause=cause.causeDesc.typ,
                rcTime=datetimeToStr(time),
                rcDesc=cause.getReason(page=page, detailed=True),
                score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
@@ -239,9 +227,9 @@ class Ucd(PmbusDpm):
       elif paged:
          cause = self._getCause(page, typ=UcdMon)
          if cause is not None:
-            logging.debug('found detailed mon: %s', cause.name)
+            logging.debug('found detailed mon: %s', cause.causeDesc.typ)
             causes.append(UcdReloadCauseEntry(
-               cause=cause.name,
+               cause=cause.causeDesc.typ,
                rcTime=datetimeToStr(time),
                rcDesc=cause.getReason(page=page, detailed=True),
                score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
@@ -322,9 +310,9 @@ class Ucd(PmbusDpm):
                continue
             cause = self._getCause(bitpos)
             if cause is not None:
-               logging.debug('found gpi: %s', cause.name)
+               logging.debug('found gpi: %s', cause.causeDesc.typ)
                causes.append(UcdReloadCauseEntry(
-                  cause=cause.name,
+                  cause=cause.causeDesc.typ,
                   rcDesc=cause.getReason(page=bitpos),
                   score=ReloadCauseScore.LOGGED |
                         ReloadCauseScore.getPriority(cause.priority),
@@ -408,7 +396,7 @@ class Ucd90320(Ucd):
       paged = (fid >> 31) & 0x1
       ftype = (fid >> 27) & 0xf
       days = (fid >> 11) & 0xffff
-      value = (reg[9] << 8) | reg[8]
+      value = (reg[11] << 24) | (reg[10] << 16) | (reg[9] << 8) | reg[8]
       return paged, ftype, page, value, days, msecs
 
 class Ucd9090A(Ucd):

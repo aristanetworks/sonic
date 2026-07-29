@@ -14,6 +14,7 @@ from ...components.cpu.crow import (
 from ...components.dpm.ucd import Ucd90120A, UcdGpi, UcdPriority
 from ...components.max6658 import Max6658
 
+from ...descs.cause import ReloadCauseDesc
 from ...descs.fan import FanDesc, FanPosition
 from ...descs.led import LedDesc, LedColor
 from ...descs.sensor import Position, SensorDesc
@@ -67,7 +68,7 @@ class CrowCpu(Cpu):
          )
 
    def addCpuDpm(self, scd, i2cBus):
-      scd.newComponent(Ucd90120A, addr=scd.i2cAddr(i2cBus, 0x4e, t=3), causes={
-         'cpu-s5': UcdGpi(1, priority=UcdPriority.LOW),
-         'cpu-s3': UcdGpi(2, priority=UcdPriority.LOW),
-      }, causePriority=UcdPriority.HARDWARE_SECONDARY)
+      scd.newComponent(Ucd90120A, addr=scd.i2cAddr(i2cBus, 0x4e, t=3), causes=[
+         UcdGpi(1, ReloadCauseDesc.CPU_S5),
+         UcdGpi(2, ReloadCauseDesc.CPU_S3),
+         ], causePriority=UcdPriority.HARDWARE_SECONDARY)

@@ -11,6 +11,7 @@ from ..components.max6581 import Max6581
 from ..components.psu.delta import DPS1600AB, DPS1600CB
 from ..components.scd import Scd
 
+from ..descs.cause import ReloadCauseDesc
 from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
@@ -36,12 +37,12 @@ class BlackhawkO(FixedSystem):
 
       cpu = self.newComponent(RookCpu, hasCpuLeds=False, fanCpldCls=TehamaFanCpld,
                               mgmtBus=14)
-      cpu.cpld.newComponent(Ucd90320, addr=cpu.switchDpmAddr(0x11), causes={
-         'overtemp': UcdGpi(1),
-         'powerloss': UcdGpi(3),
-         'watchdog': UcdGpi(5),
-         'reboot': UcdGpi(6),
-      }, causePriority=UcdPriority.HARDWARE_MAIN)
+      cpu.cpld.newComponent(Ucd90320, addr=cpu.switchDpmAddr(0x11), causes=[
+         UcdGpi(1, ReloadCauseDesc.OVERTEMP),
+         UcdGpi(3, ReloadCauseDesc.POWERLOSS),
+         UcdGpi(5, ReloadCauseDesc.WATCHDOG),
+         UcdGpi(6, ReloadCauseDesc.REBOOT),
+      ], causePriority=UcdPriority.HARDWARE_MAIN)
       self.cpu = cpu
       self.syscpld = cpu.syscpld
 

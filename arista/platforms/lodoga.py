@@ -24,7 +24,7 @@ from ..components.psu.artesyn import CSU500DP, DS495SPE
 from ..components.psu.arista import Pwr581
 from ..components.scd import Scd
 
-from ..descs.cause import ReloadCauseAltSource
+from ..descs.cause import ReloadCauseAltSource, ReloadCauseDesc
 from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
@@ -213,11 +213,11 @@ class Lodoga(LodogaBase):
          (0x6090, 'beacon'),
       ])
       self.scd.newComponent(Ucd90120A, addr=self.scd.i2cAddr(13, 0x4e, t=3), causes=[
-         UcdGpi(1, 'reboot'),
-         UcdGpi(2, 'watchdog'),
-         UcdGpi(4, 'overtemp'),
-         UcdGpi(5, 'powerloss', 'PSU AC'),
-         UcdGpi(6, 'powerloss', 'PSU DC'),
+         UcdGpi(1, ReloadCauseDesc.REBOOT),
+         UcdGpi(2, ReloadCauseDesc.WATCHDOG),
+         UcdGpi(4, ReloadCauseDesc.OVERTEMP),
+         UcdGpi(5, ReloadCauseDesc.POWERLOSS, 'PSU AC'),
+         UcdGpi(6, ReloadCauseDesc.POWERLOSS, 'PSU DC'),
       ], causePriority=UcdPriority.HARDWARE_MAIN)
 
 @registerPlatform()

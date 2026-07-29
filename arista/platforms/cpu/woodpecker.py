@@ -49,7 +49,7 @@ class WoodpeckerCpu(Cpu):
    def addCpuDpm(self, addr=None, causes=None):
       addr = addr or self.cpuDpmAddr()
       return self.cpld.newComponent(Ucd90160, addr=addr, causes=causes or [
-         UcdGpi(5, ReloadCauseDesc.NOFANS),
+         UcdGpi(5, ReloadCauseDesc.NO_FANS),
          UcdGpi(6, ReloadCauseDesc.OVERTEMP),
          UcdGpi(7, ReloadCauseDesc.CPU, priority=UcdPriority.LOW),
       ], causePriority=UcdPriority.HARDWARE_SECONDARY,

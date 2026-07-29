@@ -14,6 +14,7 @@ from ..components.psu.delta import DPS750AB, DPS1900AB
 from ..components.psu.emerson import DS750PED
 from ..components.scd import Scd
 
+from ..descs.cause import ReloadCauseDesc
 from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
@@ -49,12 +50,12 @@ class Gardena(FixedSystem):
       cpu = self.newComponent(RookCpu, cpldRegisterCls=GardenaCpldRegisters,
                               sysCpldQuirks=[GardenaDpPwrFailQuirk()])
       cpu.addCpuDpm()
-      cpu.cpld.newComponent(Ucd90120A, addr=cpu.switchDpmAddr(0x34), causes={
-         'powerloss': UcdGpi(1),
-         'reboot': UcdGpi(2),
-         'watchdog': UcdGpi(3),
-         'overtemp': UcdGpi(4),
-      }, causePriority=UcdPriority.HARDWARE_MAIN)
+      cpu.cpld.newComponent(Ucd90120A, addr=cpu.switchDpmAddr(0x34), causes=[
+         UcdGpi(1, ReloadCauseDesc.POWERLOSS),
+         UcdGpi(2, ReloadCauseDesc.REBOOT),
+         UcdGpi(3, ReloadCauseDesc.WATCHDOG),
+         UcdGpi(4, ReloadCauseDesc.OVERTEMP),
+      ], causePriority=UcdPriority.HARDWARE_MAIN)
       self.cpu = cpu
       self.syscpld = cpu.syscpld
 

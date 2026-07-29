@@ -16,6 +16,7 @@ from ..components.psu.delta import DPS495CB, DPS750AB
 from ..components.psu.artesyn import DS495SPE
 from ..components.scd import Scd
 
+from ..descs.cause import ReloadCauseDesc
 from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
@@ -153,12 +154,12 @@ class Upperlake(FixedSystem):
       self.cpu.addCpuDpm(self.scd, 1)
 
    def configureSwitchDpm(self):
-      self.scd.newComponent(Ucd90120A, addr=self.scd.i2cAddr(5, 0x4e, t=3), causes={
-         'reboot': UcdGpi(1),
-         'watchdog': UcdGpi(2),
-         'overtemp': UcdGpi(4),
-         'powerloss': UcdGpi(5),
-      }, causePriority=UcdPriority.HARDWARE_MAIN)
+      self.scd.newComponent(Ucd90120A, addr=self.scd.i2cAddr(5, 0x4e, t=3), causes=[
+         UcdGpi(1, ReloadCauseDesc.REBOOT),
+         UcdGpi(2, ReloadCauseDesc.WATCHDOG),
+         UcdGpi(4, ReloadCauseDesc.OVERTEMP),
+         UcdGpi(5, ReloadCauseDesc.POWERLOSS),
+      ], causePriority=UcdPriority.HARDWARE_MAIN)
 
 @registerPlatform()
 class UpperlakePlus(Upperlake):

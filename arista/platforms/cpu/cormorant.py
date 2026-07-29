@@ -80,7 +80,7 @@ class CormorantCpu(Cpu):
       addr = addr or self.cpuDpmAddr()
       gpioInMask = 0b000111110
       return self.cpld.newComponent(Adm1266, addr=addr, causes=causes or [
-         AdmCauseU(AdmCauseU.NOFANS,       AdmGpio.fromPins(2, 6),    gpioInMask),
+         AdmCauseU(AdmCauseU.NO_FANS,      AdmGpio.fromPins(2, 6),    gpioInMask),
          AdmCauseU(AdmCauseU.REBOOT,       AdmGpio.fromPins(3, 6),    gpioInMask),
          AdmCauseU(AdmCauseU.CPU_OVERTEMP, AdmGpio.fromPins(2, 3, 6), gpioInMask),
          AdmCauseU(AdmCauseU.OVERTEMP,     AdmGpio.fromPins(4, 6),    gpioInMask),

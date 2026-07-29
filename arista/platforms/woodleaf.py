@@ -13,6 +13,7 @@ from ..components.psu.liteon import PS2242
 from ..components.scd import Scd
 from ..components.tmp468 import Tmp468
 
+from ..descs.cause import ReloadCauseDesc
 from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
@@ -63,12 +64,12 @@ class Woodleaf(FixedSystem):
                                    cpldRegisterCls=WoodleafCpldRegisters)
       self.cpu.addCpuDpm()
       self.cpu.cpld.newComponent(Ucd90320, addr=self.cpu.switchDpmAddr(0x11),
-                                 causes={
-         'overtemp': UcdGpi(4),
-         'powerloss': UcdGpi(8),
-         'reboot': UcdGpi(9),
-         'watchdog': UcdGpi(10),
-      }, causePriority=UcdPriority.HARDWARE_MAIN)
+                                 causes=[
+         UcdGpi(4, ReloadCauseDesc.OVERTEMP),
+         UcdGpi(8, ReloadCauseDesc.POWERLOSS),
+         UcdGpi(9, ReloadCauseDesc.REBOOT),
+         UcdGpi(10, ReloadCauseDesc.WATCHDOG),
+      ], causePriority=UcdPriority.HARDWARE_MAIN)
 
       self.syscpld = self.cpu.syscpld
 

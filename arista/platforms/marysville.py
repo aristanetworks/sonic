@@ -224,7 +224,7 @@ class MarsvillePrime(MarysvilleBase):
          SysCpldCause(0x08, SysCpldCause.REBOOT, "Software Reboot"),
          SysCpldCause(0x09, SysCpldCause.POWERLOSS, "PSU AC"),
          SysCpldCause(0x0a, SysCpldCause.POWERLOSS, "PSU DC"),
-         SysCpldCause(0x0b, SysCpldCause.NOFANS),
+         SysCpldCause(0x0b, SysCpldCause.NO_FANS),
          SysCpldCause(0x0c, SysCpldCause.CPU, "CPU_CAT_ERR"),
          SysCpldCause(0x0d, SysCpldCause.CPU_S3),
          SysCpldCause(0x0e, SysCpldCause.CPU_S5),

@@ -21,6 +21,7 @@ from ..components.phy.screamingeagle import ScreamingEagle
 from ..components.vrm.isl68137 import Isl68223, Isl68226
 from ..components.vrm.raa228228 import Raa228926
 
+from ..descs.cause import ReloadCauseAltSource
 from ..descs.gpio import GpioDesc
 from ..descs.led import LedDesc, LedKind
 from ..descs.psu import PsuStatusPolicy
@@ -80,7 +81,8 @@ class CitrineBase(FixedSystem):
             AdmCauseU(AdmCauseU.OVERTEMP,  AdmGpio(1),                gpioInMask),
             AdmCauseU(AdmCauseU.WATCHDOG,  AdmGpio.fromPins(1, 2),    gpioInMask),
             AdmCauseU(AdmCauseU.POWERLOSS, AdmGpio(3),                gpioInMask,
-                      description="CPU Power bad"),
+                      description="CPU Power bad",
+                      altSource=ReloadCauseAltSource.CPU),
             AdmCauseU(AdmCauseU.OVERTEMP,  AdmGpio.fromPins(1, 3),    gpioInMask,
                       description='Critical system temperature on Q3D D0 HBM'),
             AdmCauseU(AdmCauseU.OVERTEMP,  AdmGpio.fromPins(1, 2, 3), gpioInMask,
@@ -90,7 +92,7 @@ class CitrineBase(FixedSystem):
                       description="Both PSUs lost input power"),
             AdmCauseU(AdmCauseU.POWERLOSS, AdmGpio.fromPins(2, 4),    gpioInMask,
                       description="Both PSUs lost DC output power"),
-            AdmCauseU(AdmCauseU.NOFANS,    AdmGpio.fromPins(1, 2, 4), gpioInMask),
+            AdmCauseU(AdmCauseU.NO_FANS,   AdmGpio.fromPins(1, 2, 4), gpioInMask),
             AdmCauseU(AdmCauseU.FAN_CARD,  AdmGpio.fromPins(3, 4),    gpioInMask),
       ], causePriority=AdmPriority.HARDWARE_MAIN)
 

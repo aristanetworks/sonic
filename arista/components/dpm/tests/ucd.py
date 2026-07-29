@@ -1,6 +1,6 @@
 import pytest
 
-from ....descs.cause import ReloadCauseDesc
+from ....descs.cause import ReloadCauseDesc, CauseDesc
 from ....core.tests.helpers import (
    classname,
    getAllSystems,
@@ -15,8 +15,8 @@ from ..ucd import (
 def testUcdGpiTypeCheck(platform):
 
    validValues = [
-      value for name, value in vars(ReloadCauseDesc).items()
-      if not name.startswith('__') and isinstance(value, str)
+      value.typ for value in vars(ReloadCauseDesc).values()
+      if isinstance(value, CauseDesc)
    ]
 
    rcProviders = platform.getInventory().getReloadCauseProviders()
@@ -25,8 +25,8 @@ def testUcdGpiTypeCheck(platform):
    def checkCauses(causes):
       for cause in causes:
          assert isinstance(cause, (UcdGpi, UcdMon))
-         if cause.name not in validValues:
-            errors.append(f"Reload cause name '{cause.name}' on "
+         if cause.causeDesc.typ not in validValues:
+            errors.append(f"Reload cause name '{cause.causeDesc.typ}' on "
                           f"{platform} is not valid.")
    for rcp in rcProviders:
       if isinstance(rcp, UcdReloadCauseProvider):

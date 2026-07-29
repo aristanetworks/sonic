@@ -4,12 +4,14 @@ import datetime
 import json
 import os
 import tempfile
+from unittest.mock import patch
 
 from ...libs.fs import touch, rmfile
 from ...libs.date import datetimeToStr, strToDatetime
 from ...tests.testing import unittest
 from ...descs.cause import ReloadCauseAltSource
 
+from ...components.cookie import BertReloadCauseProvider
 from ..cause import (
    ReloadCauseDataStore,
    ReloadCauseEntry,
@@ -70,6 +72,13 @@ class ReloadCauseManagerTest(unittest.TestCase):
                   'priority': ReloadCausePriority.PRIMARY,
                   'altSource': [],
                },
+               {
+                  "name": "bert",
+                  "causes": [],
+                  "extra": {},
+                  'priority': ReloadCausePriority.BERT,
+                  'altSource': [],
+               },
             ],
          },
       ],
@@ -105,6 +114,12 @@ class ReloadCauseManagerTest(unittest.TestCase):
                   ],
                   "extra": {},
                },
+               {
+                  "name": "bert",
+                  "causes": [],
+                  "extra": {},
+                  'priority': ReloadCausePriority.BERT,
+               },
             ],
          },
       ],
@@ -125,6 +140,11 @@ class ReloadCauseManagerTest(unittest.TestCase):
                score=ReloadCauseScore.LOGGED,
             ),
          ],
+      ),
+      MockReloadCauseProvider(
+         name='bert',
+         causes=[],
+         priority=ReloadCausePriority.BERT,
       ),
    ]
 
@@ -223,6 +243,32 @@ class ReloadCauseManagerTest(unittest.TestCase):
       self.rcm.readCauses(inv, date=strToDatetime(self.EXPECTED_DATE))
       self.rcm.storeCauses()
       self.assertCauseStoreEqual(self.EXPECTED_SIMPLE)
+
+   BERT_LINES = [
+      'Processor Generic error, severity: Fatal',
+      'Memory error, severity: Corrected, FRU: DIMM_A1',
+   ]
+
+   def _runBertProvider(self, bertLines):
+      provider = BertReloadCauseProvider()
+      with patch('arista.components.cookie.getBertDetail', return_value=bertLines):
+         provider.process()
+      return provider
+
+   def testBertNoBertData(self):
+      provider = self._runBertProvider(None)
+      self.assertEqual(provider.getCauses(), [])
+
+   def testBertDataProducesEntry(self):
+      provider = self._runBertProvider(self.BERT_LINES)
+      causes = provider.getCauses()
+      self.assertEqual(len(causes), 1)
+      cause = causes[0]
+      self.assertEqual(cause.getCause(), 'cpu')
+      self.assertEqual(cause.getDescription(), ' | '.join(self.BERT_LINES))
+      self.assertEqual(cause.getScore(),
+                       ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED)
+      self.assertEqual(cause.getPriority(), ReloadCausePriority.BERT)
 
    def assertReloadCauseEquals(self, rc, cause=None, description=None, score=None,
                                time=None, priority=None, altSource=None):
@@ -382,7 +428,26 @@ class ReloadCauseManagerTest(unittest.TestCase):
       # 6) test unknown cause
       self._loadReloadCauses({})
       self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='unknown')
-      self.assertEqual(len(self.rcm.reports), 6)
+      # 7) bert present alongside a prereboot cause: prereboot wins
+      self._loadReloadCauses({
+         'cookies' : {
+            'priority' : ReloadCausePriority.PREREBOOT,
+            'causes' : [
+               ('reboot', ReloadCauseScore.EVENT, 'User issued reboot command',
+                ReloadCausePriority.NORMAL, None),
+            ]
+         },
+         'bert' : {
+            'priority' : ReloadCausePriority.BERT,
+            'causes' : [
+               ('cpu', ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED,
+                'Processor Generic error, severity: Fatal',
+                ReloadCausePriority.BERT, None),
+            ]
+         },
+      })
+      self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='reboot')
+      self.assertEqual(len(self.rcm.reports), 7)
 
    @contextlib.contextmanager
    def _processLegacyReloadCauses(self, causes):

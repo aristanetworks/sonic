@@ -9,7 +9,8 @@ from ..cause import ReloadCausePriority
 
 NEW_VERSION_PRIORITIES = [ReloadCausePriority.PREREBOOT,
                           ReloadCausePriority.HARDWARE_MAIN,
-                          ReloadCausePriority.HARDWARE_SECONDARY]
+                          ReloadCausePriority.HARDWARE_SECONDARY,
+                          ReloadCausePriority.BERT]
 
 def isProviderPriorityVersionNew(provider):
    if provider.getPriority() in NEW_VERSION_PRIORITIES:
@@ -28,6 +29,11 @@ def testPlatformReloadCauseProviderVersion(platform):
    inventory = platform.getInventory()
    providerList = inventory.getReloadCauseProviders()
    for provider in providerList:
+      # BERT is injected on all platforms regardless of their priority scheme,
+      # so it cannot be used as a version indicator. Remove this skip once all
+      # platforms have migrated to the new priority scheme.
+      if provider.getPriority() == ReloadCausePriority.BERT:
+         continue
       if providerVersion is None:
          providerVersion = isProviderPriorityVersionNew(provider)
       else:

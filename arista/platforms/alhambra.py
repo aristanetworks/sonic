@@ -11,6 +11,7 @@ from ..components.psu.delta import DPS750AB, DPS1900AB
 from ..components.psu.emerson import DS750PED
 from ..components.scd import Scd
 
+from ..descs.cause import ReloadCauseDesc
 from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
@@ -35,12 +36,12 @@ class Alhambra(FixedSystem):
       cpu = self.newComponent(RookCpu, hasLmSensor=hasLmSensor,
                               hasCpuLeds=hasCpuLeds)
       cpu.addCpuDpm()
-      cpu.cpld.newComponent(Ucd90120A, addr=cpu.switchDpmAddr(), causes={
-         'powerloss': UcdGpi(1),
-         'overtemp': UcdGpi(2),
-         'reboot': UcdGpi(4),
-         'watchdog': UcdGpi(5),
-      }, causePriority=UcdPriority.HARDWARE_MAIN)
+      cpu.cpld.newComponent(Ucd90120A, addr=cpu.switchDpmAddr(), causes=[
+         UcdGpi(1, ReloadCauseDesc.POWERLOSS),
+         UcdGpi(2, ReloadCauseDesc.OVERTEMP),
+         UcdGpi(4, ReloadCauseDesc.REBOOT),
+         UcdGpi(5, ReloadCauseDesc.WATCHDOG),
+      ], causePriority=UcdPriority.HARDWARE_MAIN)
       self.cpu = cpu
       self.syscpld = cpu.syscpld
 

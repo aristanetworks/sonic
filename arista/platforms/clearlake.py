@@ -12,6 +12,7 @@ from ..components.psu.artesyn import DS495SPE
 from ..components.scd import Scd
 from ..components.ds125br import Ds125Br
 
+from ..descs.cause import ReloadCauseDesc
 from ..descs.gpio import GpioDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
@@ -60,11 +61,11 @@ class Clearlake(FixedSystem):
 
       scd.newComponent(Ucd90120A, addr=scd.i2cAddr(1, 0x4e, t=3),
                        causePriority=UcdPriority.HARDWARE_SECONDARY)
-      scd.newComponent(Ucd90120A, addr=scd.i2cAddr(5, 0x4e, t=3), causes={
-         'reboot': UcdGpi(2),
-         'watchdog': UcdGpi(3),
-         'powerloss': UcdGpi(7),
-      }, causePriority=UcdPriority.HARDWARE_MAIN)
+      scd.newComponent(Ucd90120A, addr=scd.i2cAddr(5, 0x4e, t=3), causes=[
+         UcdGpi(2, ReloadCauseDesc.REBOOT),
+         UcdGpi(3, ReloadCauseDesc.WATCHDOG),
+         UcdGpi(7, ReloadCauseDesc.POWERLOSS),
+      ], causePriority=UcdPriority.HARDWARE_MAIN)
 
       scd.newComponent(Ds125Br, addr=scd.i2cAddr(6, 0x58), # qsfp36
                        amplitude=[0xaa, 0xaa, 0xaa, 0xaa, 0xa9, 0xa9, 0xa9, 0xaa])

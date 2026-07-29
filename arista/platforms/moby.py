@@ -268,7 +268,7 @@ class Moby(FixedSystem):
          SysCpldCause(0x08, SysCpldCause.REBOOT),
          SysCpldCause(0x09, SysCpldCause.POWERLOSS, 'PSU AC'),
          SysCpldCause(0x0a, SysCpldCause.POWERLOSS, 'PSU DC'),
-         SysCpldCause(0x0b, SysCpldCause.NOFANS),
+         SysCpldCause(0x0b, SysCpldCause.NO_FANS),
          SysCpldCause(0x0f, SysCpldCause.SEU, 'bitshadow rx parity error'),
          SysCpldCause(0x10, SysCpldCause.REBOOT, 'Powercycle via CPLD'),
          SysCpldCause(0x11, SysCpldCause.POWERLOSS, 'Supervisor unseated'),

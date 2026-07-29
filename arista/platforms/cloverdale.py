@@ -15,6 +15,7 @@ from ..components.max6658 import Max6658
 from ..components.psu.artesyn import DS460
 from ..components.scd import Scd
 
+from ..descs.cause import ReloadCauseDesc
 from ..descs.fan import FanDesc, FanPosition
 from ..descs.led import LedDesc, LedColor
 from ..descs.gpio import GpioDesc
@@ -88,11 +89,11 @@ class Cloverdale(FixedSystem):
       # The current implementation will just read the firmware information once.
       scd.newComponent(Ucd90120A, scd.i2cAddr(1, 0x4e, t=3),
                        causePriority=UcdPriority.HARDWARE_SECONDARY)
-      scd.newComponent(Ucd90160, scd.i2cAddr(5, 0x4e, t=3), causes={
-         'reboot': UcdGpi(2),
-         'watchdog': UcdGpi(3),
-         'powerloss': UcdMon(13),
-      }, causePriority=UcdPriority.HARDWARE_MAIN)
+      scd.newComponent(Ucd90160, scd.i2cAddr(5, 0x4e, t=3), causes=[
+         UcdGpi(2, ReloadCauseDesc.REBOOT),
+         UcdGpi(3, ReloadCauseDesc.WATCHDOG),
+         UcdMon(13, ReloadCauseDesc.POWERLOSS),
+      ], causePriority=UcdPriority.HARDWARE_MAIN)
 
       scd.addLeds([
          (0x6050, 'status'),

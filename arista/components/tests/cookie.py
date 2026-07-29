@@ -60,7 +60,7 @@ class CookieTest(unittest.TestCase):
       p.process()
       assert len(card.cookies.causeData.keys()) == 0
       assert len(p.getCauses()) == 1
-      assert p.getCauses()[0].cause == ReloadCauseDesc.WATCHDOG
+      assert p.getCauses()[0].cause == ReloadCauseDesc.WATCHDOG.typ
 
 if __name__ == '__main__':
    unittest.main()

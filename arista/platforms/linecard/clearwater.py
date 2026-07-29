@@ -19,6 +19,7 @@ from ...components.phy.babbage import Babbage
 from ...components.plx import PlxPortDesc
 from ...components.tmp464 import Tmp464
 
+from ...descs.cause import ReloadCauseDesc
 from ...descs.sensor import Position, SensorDesc
 from ...descs.reset import ResetDesc
 from ...descs.xcvr import Qsfp28
@@ -133,14 +134,14 @@ class ClearwaterBase(DenaliLinecard):
 
    def createStandbyDpm(self):
       self.control.newComponent(Ucd90320, addr=self.pca.i2cAddr(0x11), causes=[
-         UcdGpi(4, 'hotswap', 'lc eject'),
-         UcdGpi(5, 'asic-overtemp'),
-         UcdGpi(6, 'overtemp', 'system'),
-         UcdGpi(7, 'watchdog', 'lcpu'),
-         UcdGpi(8, 'mem-overtemp', 'asic memory'),
-         UcdGpi(10, 'reboot'),
-         UcdGpi(12, 'over-current', 'asic'),
-         UcdMon(14, 'powerloss'),
+         UcdGpi(4, ReloadCauseDesc.POWERLOSS, 'lc eject'),
+         UcdGpi(5, ReloadCauseDesc.ASIC_OVERTEMP),
+         UcdGpi(6, ReloadCauseDesc.OVERTEMP, 'system'),
+         UcdGpi(7, ReloadCauseDesc.WATCHDOG, 'lcpu'),
+         UcdGpi(8, ReloadCauseDesc.ASIC_OVERTEMP, 'asic memory'),
+         UcdGpi(10, ReloadCauseDesc.REBOOT),
+         UcdGpi(12, ReloadCauseDesc.OVER_CURRENT, 'asic'),
+         UcdMon(14, ReloadCauseDesc.POWERLOSS),
       ])
 
 

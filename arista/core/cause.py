@@ -105,7 +105,7 @@ class ReloadCauseEntry(ReloadCause):
 
 class ReloadCauseProviderHelper(ReloadCauseProvider):
    def __init__(self, name='unknown', causes=None, extra=None,
-                priority=ReloadCausePriority.PRIMARY,
+                priority=ReloadCausePriority.HARDWARE_SECONDARY,
                 altSource=None, descs=None):
       self.name = name
       self.causes = causes or []
@@ -162,33 +162,37 @@ class ReloadCauseProviderHelper(ReloadCauseProvider):
 
    @classmethod
    def fromDict(cls, data):
+      if 'priority' in data:
+         priority = data['priority']
+      elif data['name'] == 'bert':
+         priority = ReloadCausePriority.BERT
+      elif data['name'].startswith('cookie-'):
+         priority = ReloadCausePriority.PREREBOOT
+      else:
+         priority = ReloadCausePriority.HARDWARE_SECONDARY
       res = cls(
          name=data['name'],
          causes=[ReloadCauseEntry.fromDict(c) for c in data['causes']],
          extra=data['extra'],
          # If we load a new image onto an old version SONiC switch, its saved
          # reload cause providers might not have priority or altSource
-         priority=(ReloadCausePriority.PRIMARY if 'priority' not in data
-                   else data['priority']),
+         priority=priority,
       )
       res.altSource=res.altSourceFromDict(data)
       return res
 
-# Following classes are to specify different providers on the priority levels
-# To keep the original behaviors unchanged, priority param needs to be set to
-# PRIMARY in all child classes. They will eventually be replaced with **kwargs
-# after all platforms are adapted to the design changes.
 class PreRebootReloadCauseProvider(ReloadCauseProviderHelper):
-   def __init__(self, priority=ReloadCausePriority.PREREBOOT, **kwargs):
-      super().__init__(priority=priority, **kwargs)
+   def __init__(self, **kwargs):
+      super().__init__(priority=ReloadCausePriority.PREREBOOT, **kwargs)
 
    def process(self):
       raise NotImplementedError
 
 class HardwareReloadCauseProvider(ReloadCauseProviderHelper):
-   def __init__(self, priority=ReloadCausePriority.HARDWARE_SECONDARY, **kwargs):
+   def __init__(self, **kwargs):
       # if not mentioned, a hardware provider is not the main power controller
-      super().__init__(priority=priority, **kwargs)
+      kwargs.setdefault('priority', ReloadCausePriority.HARDWARE_SECONDARY)
+      super().__init__(**kwargs)
 
    def process(self):
       raise NotImplementedError

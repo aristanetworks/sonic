@@ -2,8 +2,6 @@
 from ..core.cause import HardwareReloadCauseProvider, ReloadCauseProviderHelper
 from ..core.component.component import Component
 
-from ..descs.cause import ReloadCausePriority
-
 from ..drivers.rpc import LinecardRpcClientDriver
 
 class RpcReloadCauseProviderImpl(HardwareReloadCauseProvider):
@@ -24,10 +22,14 @@ class RpcReloadCauseProviderImpl(HardwareReloadCauseProvider):
 class LinecardRpcClient(Component):
    DRIVER = LinecardRpcClientDriver
 
-   def __init__(self, *args, causePriority=ReloadCausePriority.PRIMARY, **kwargs):
+   def __init__(self, *args, **kwargs):
       super().__init__(*args, **kwargs)
       self.inventory.addReloadCauseProvider(
-         RpcReloadCauseProviderImpl(self, priority=causePriority))
+         RpcReloadCauseProviderImpl(
+            self,
+            **({'priority': kwargs['causePriority']}
+               if 'causePriority' in kwargs else {}),
+         ))
 
    def getReloadCauseData(self):
       return self.driver.getReloadCauseData()

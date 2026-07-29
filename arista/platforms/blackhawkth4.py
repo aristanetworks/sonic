@@ -169,7 +169,7 @@ class BlackhawkTH4DD(FixedSystem):
                       priority=SysCpldCause.Priority.HIGH),
          SysCpldCause(0x04, SysCpldCause.CPU, 'CPU source or CPU PGOOD',
                       priority=SysCpldCause.Priority.LOW,
-                      altSource=[ReloadCauseAltSource.CPU]),
+                      altSource=ReloadCauseAltSource.CPU),
          SysCpldCause(0x08, SysCpldCause.REBOOT),
          SysCpldCause(0x09, SysCpldCause.POWERLOSS, 'PSU AC'),
          SysCpldCause(0x0a, SysCpldCause.POWERLOSS, 'PSU DC'),

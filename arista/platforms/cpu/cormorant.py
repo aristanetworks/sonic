@@ -1,4 +1,3 @@
-from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
@@ -31,7 +30,7 @@ class CormorantCpu(Cpu):
    PCI_PORT_SCD0 = PciPortDesc(0x01, 1)
 
    def __init__(self, cpldRegisterCls=CormorantCpldRegisters, **kwargs):
-      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
+      super().__init__(**kwargs)
 
       self.cpuGpios = self.newComponent(AmdGpioController)
       self.cpuGpios.addPowerCycle(GpioDesc('power_cycle', addr=4))

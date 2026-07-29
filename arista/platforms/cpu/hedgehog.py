@@ -1,4 +1,3 @@
-from ...core.cause import ReloadCausePriority
 from ...core.component.i2c import Component
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
@@ -18,6 +17,7 @@ from ...components.pci import CompletionTimeoutPciQuirk
 from ...components.rpc import LinecardRpcClient
 from ...components.scd import Scd
 
+from ...descs.cause import ReloadCausePriority
 from ...descs.led import LedDesc, LedColor
 from ...descs.sensor import SensorDesc, Position
 
@@ -43,8 +43,7 @@ class HedgehogCpu(Cpu):
    )
 
    def __init__(self, **kwargs):
-      super(HedgehogCpu, self).__init__(
-         cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
+      super(HedgehogCpu, self).__init__(**kwargs)
       self.slot = None
       self.pciRoot = self.newComponent(PciRoot)
 

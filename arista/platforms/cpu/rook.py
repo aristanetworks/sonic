@@ -1,4 +1,3 @@
-from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.fan import FanSlot
 from ...core.pci import PciPortDesc, PciRoot
@@ -34,7 +33,7 @@ class RookCpu(Cpu):
    def __init__(self, mgmtBus=15, fanCpldCls=LaFanCpld, hasLmSensor=True,
                 hasCpuLeds=True, cpldRegisterCls=RookSysCpldRegisters,
                 sysCpldQuirks=None, **kwargs):
-      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
+      super().__init__(**kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 

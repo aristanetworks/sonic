@@ -163,15 +163,18 @@ class Ucd(PmbusDpm):
    faultTimeBase = datetime.datetime(1970, 1, 1)
    daysOffset = 0
 
-   def __init__(self, addr=None, causes=None, rails=None,
-                causePriority=UcdPriority.PRIMARY, altSource=None, **kwargs):
+   def __init__(self, addr=None, causes=None, rails=None, altSource=None, **kwargs):
       super().__init__(addr=addr, **kwargs)
       self.causes = causes if causes is not None else []
       self.rails = tuple(rails) if rails else ()
       self.oldestTime = datetime.datetime(1970, 1, 1)
       self.inventory.addReloadCauseProvider(
-         UcdReloadCauseProvider(self, priority=causePriority,
-                                altSource=altSource))
+         UcdReloadCauseProvider(
+            self,
+            altSource=altSource,
+            **({'priority': kwargs['causePriority']}
+               if 'causePriority' in kwargs else {}),
+         ))
       self.inventory.addProgrammable(UcdProgrammable(self))
       self.inventory.addRtc(RealTimeClockImpl(self))
 
@@ -264,7 +267,7 @@ class Ucd(PmbusDpm):
                 rcTime=datetimeToStr(time),
                 rcDesc='gpi %s detailed fault' % page,
                 score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
-                      ReloadCauseScore.getPriority(UcdPriority.NONE),
+                      ReloadCauseScore.getPriority(UcdPriority.UNKNOWN),
                 priority=ReloadCausePriority.UNKNOWN,
                 debugInfo=debugInfo,
             ))
@@ -296,7 +299,7 @@ class Ucd(PmbusDpm):
                   railName=self._getRailName(page),
                ),
                score=ReloadCauseScore.EVENT | ReloadCauseScore.DETAILED |
-                     ReloadCauseScore.getPriority(UcdPriority.NONE),
+                     ReloadCauseScore.getPriority(UcdPriority.UNKNOWN),
                priority=ReloadCausePriority.UNKNOWN,
                debugInfo=debugInfo,
             )
@@ -378,8 +381,8 @@ class Ucd(PmbusDpm):
                   cause='gpi-%d' % bitpos,
                   rcDesc='unknown gpi fault',
                   score=ReloadCauseScore.LOGGED |
-                        ReloadCauseScore.getPriority(UcdPriority.NONE),
-                  priority=ReloadCausePriority.UNKNOWN,
+                        ReloadCauseScore.getPriority(UcdPriority.UNKNOWN),
+                  priority=UcdPriority.UNKNOWN,
                   debugInfo=debugInfo,
                ))
 

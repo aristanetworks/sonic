@@ -1,4 +1,3 @@
-from ...core.cause import ReloadCausePriority
 from ...components.cpu.amd.k10temp import K10Temp
 from ...components.cpu.shearwater import (
     ShearwaterReloadCauseRegisters,
@@ -23,7 +22,7 @@ class ShearwaterCpu(Cpu):
    PCI_PORT_SCD0 = PciPortDesc(0x1, 3)
 
    def __init__(self, **kwargs):
-      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
+      super().__init__(**kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 

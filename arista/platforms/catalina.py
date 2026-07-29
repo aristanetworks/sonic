@@ -171,7 +171,7 @@ class CatalinaDD(FixedSystem):
             UcdGpi(4, ReloadCauseDesc.POWERLOSS, 'PSU DC out'),
             UcdGpi(5, ReloadCauseDesc.WATCHDOG),
             UcdGpi(6, ReloadCauseDesc.CPU,
-                   altSource=[ReloadCauseAltSource.CPU]),
+                   altSource=ReloadCauseAltSource.CPU),
             UcdGpi(8, ReloadCauseDesc.REBOOT),
          ], causePriority=UcdPriority.HARDWARE_MAIN)
       else:
@@ -183,7 +183,7 @@ class CatalinaDD(FixedSystem):
                          priority=SysCpldCause.Priority.HIGH),
             SysCpldCause(0x04, SysCpldCause.CPU, 'CPU source or CPU PGOOD',
                          priority=SysCpldCause.Priority.LOW,
-                         altSource=[ReloadCauseAltSource.CPU]
+                         altSource=ReloadCauseAltSource.CPU
                         ),
             SysCpldCause(0x08, SysCpldCause.REBOOT, 'Software Reboot'),
             SysCpldCause(0x09, SysCpldCause.POWERLOSS, 'PSU AC'),

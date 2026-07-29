@@ -6,16 +6,12 @@ from ..components.cookie import (
    PlatformCookieComponent,
    SonicReloadCauseCookieComponent
 )
-from ..descs.cause import ReloadCausePriority
-
 class Cpu(Sku):
-   def __init__(self, *args, cookiesPriority=ReloadCausePriority.PRIMARY, **kwargs):
+   def __init__(self, *args, **kwargs):
       super(Cpu, self).__init__(*args, **kwargs)
       self.bootloader = self.newComponent(Aboot)
-      self.cookies = self.newComponent(PlatformCookieComponent,
-                                       causePriority=cookiesPriority)
-      self.sonicOsCookie = self.newComponent(SonicReloadCauseCookieComponent,
-                                             causePriority=cookiesPriority)
+      self.cookies = self.newComponent(PlatformCookieComponent)
+      self.sonicOsCookie = self.newComponent(SonicReloadCauseCookieComponent)
 
    def getPciPort(self, desc):
       if desc.root:

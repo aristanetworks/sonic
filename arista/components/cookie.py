@@ -10,7 +10,12 @@ from ..libs.bert import getBertDetail
 from ..core.component.component import Component
 from ..core.config import flashPath
 from ..core.log import getLogger
-from ..descs.cause import ReloadCausePriority, ReloadCauseScore, ReloadCauseDesc
+from ..descs.cause import (
+   CauseDesc,
+   ReloadCauseDesc,
+   ReloadCausePriority,
+   ReloadCauseScore,
+)
 from ..drivers.cookie import SonicReloadCauseCookieDriver
 from ..libs.date import datetimeToStr, strToDatetime
 
@@ -71,10 +76,10 @@ class SonicReloadCauseProvider(PreRebootReloadCauseProvider):
 class SonicReloadCauseCookieComponent(Component):
    DRIVER = SonicReloadCauseCookieDriver
 
-   def __init__(self, *args, causePriority=ReloadCausePriority.PRIMARY, **kwargs):
+   def __init__(self, *args, **kwargs):
       super().__init__(*args, **kwargs)
       self.inventory.addReloadCauseProvider(
-         SonicReloadCauseProvider(self, priority=causePriority))
+         SonicReloadCauseProvider(self))
 
    def _fixTime(self, timestamp):
       # FIXME: The date format is locale-dependent
@@ -122,12 +127,11 @@ class CookieComponentBase(Component):
       'slots': {},
    }
 
-   def __init__(self, slotId=None, causePriority=ReloadCausePriority.PRIMARY,
-                **kwargs):
+   def __init__(self, slotId=None, **kwargs):
       super().__init__(**kwargs)
       self.slotId = slotId
       self.inventory.addReloadCauseProvider(
-         CookieReloadCauseProvider(self, slotId, priority=causePriority))
+         CookieReloadCauseProvider(self, slotId))
       self.callbacks = []
       self.causeData = {}
 
@@ -159,7 +163,10 @@ class CookieComponentBase(Component):
          self.causeData[cause] = ReloadCauseEntry.fromDict(entry)
 
    def causesToDict(self):
-      return {c : e.toDict() for c, e in self.causeData.items()}
+      return {
+         cause.typ if isinstance(cause, CauseDesc) else cause: entry.toDict()
+         for cause, entry in self.causeData.items()
+      }
 
    def getReloadCauses(self):
       return list(self.causeData.values())

@@ -1,4 +1,3 @@
-from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.driver.user.i2c import I2cDevDriver
 from ...core.fan import FanSlot
@@ -50,7 +49,7 @@ class CrowCpu(Cpu):
 
    def __init__(self, registerCls=CrowCpldRegisters, sysCpldCls=CrowSysCpld,
                 **kwargs):
-      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
+      super().__init__(**kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 

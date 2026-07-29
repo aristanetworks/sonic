@@ -1,4 +1,3 @@
-from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
@@ -20,7 +19,7 @@ class WoodpeckerCpu(Cpu):
    PCI_PORT_SCD1 = PciPortDesc(0x02, 2)
 
    def __init__(self, **kwargs):
-      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
+      super().__init__(**kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 

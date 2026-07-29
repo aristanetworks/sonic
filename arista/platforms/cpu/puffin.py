@@ -1,4 +1,3 @@
-from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
@@ -25,7 +24,7 @@ class PuffinPrimeCpu(Cpu):
 
    def __init__(self, registerCls=SysCpldCommonRegistersV2,
                 sysCpldQuirks=None, **kwargs):
-      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
+      super().__init__(**kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 

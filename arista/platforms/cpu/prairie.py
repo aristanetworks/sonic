@@ -1,4 +1,3 @@
-from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
@@ -16,7 +15,7 @@ class PrairieCpu(Cpu):
    PCI_PORT_SCD0 = PciPortDesc(0x18, 7, root=True)
 
    def __init__(self, tempBus=1, **kwargs):
-      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
+      super().__init__(**kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 

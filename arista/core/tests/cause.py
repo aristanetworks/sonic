@@ -50,11 +50,18 @@ class ReloadCauseManagerTest(unittest.TestCase):
             },
             "providers": [
                {
+                  "name": "bert",
+                  "causes": [],
+                  "extra": {},
+                  'priority': ReloadCausePriority.BERT,
+                  'altSource': [],
+               },
+               {
                   "name": "primary provider",
                   "causes": [
                   ],
                   "extra": {},
-                  'priority': ReloadCausePriority.PRIMARY,
+                  'priority': ReloadCausePriority.HARDWARE_SECONDARY,
                   'altSource': [],
                },
                {
@@ -70,14 +77,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
                      }
                   ],
                   "extra": {},
-                  'priority': ReloadCausePriority.PRIMARY,
-                  'altSource': [],
-               },
-               {
-                  "name": "bert",
-                  "causes": [],
-                  "extra": {},
-                  'priority': ReloadCausePriority.BERT,
+                  'priority': ReloadCausePriority.HARDWARE_SECONDARY,
                   'altSource': [],
                },
             ],
@@ -98,6 +98,11 @@ class ReloadCauseManagerTest(unittest.TestCase):
             },
             "providers": [
                {
+                  "name": "bert",
+                  "causes": [],
+                  "extra": {},
+               },
+               {
                   "name": "primary provider",
                   "causes": [
                   ],
@@ -114,12 +119,6 @@ class ReloadCauseManagerTest(unittest.TestCase):
                      }
                   ],
                   "extra": {},
-               },
-               {
-                  "name": "bert",
-                  "causes": [],
-                  "extra": {},
-                  'priority': ReloadCausePriority.BERT,
                },
             ],
          },
@@ -179,7 +178,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
                ) for cause, score, desc, priority, altSource in provider['causes']
             ],
             priority = (provider['priority'] if 'priority' in provider
-                        else ReloadCausePriority.PRIMARY),
+                        else ReloadCausePriority.HARDWARE_SECONDARY),
             altSource = provider['altSource'] if 'altSource' in provider else []
          ) for name, provider in data.items()
       ])
@@ -286,45 +285,6 @@ class ReloadCauseManagerTest(unittest.TestCase):
          self.assertEqual(rc.getPriority(), priority)
       if altSource is not None:
          self.assertEqual(rc.getAltSource(), altSource)
-
-   def testReloadCauseAlgorithm(self):
-      self._loadReloadCauses({
-         'primary': {
-            'causes' : [
-               ('under-voltage', ReloadCauseScore.EVENT, 'Rail X',
-                ReloadCausePriority.NORMAL, None),
-            ]
-         },
-         'secondary': {
-            'causes' : [
-               ('under-voltage', ReloadCauseScore.EVENT, 'Rail Y',
-                ReloadCausePriority.NORMAL, None),
-               ('powerloss', ReloadCauseScore.LOGGED, 'user triggered',
-                ReloadCausePriority.NORMAL, None),
-            ]
-         },
-      })
-      self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='powerloss')
-      self._loadReloadCauses({
-         'primary': {
-            'causes' : [
-               ('under-voltage', ReloadCauseScore.EVENT, 'Rail X',
-                ReloadCausePriority.NORMAL, None),
-            ],
-         },
-         'secondary': {
-            'causes' : [
-               ('under-voltage', ReloadCauseScore.EVENT, 'Rail Y',
-                ReloadCausePriority.NORMAL, None),
-            ],
-         }
-      })
-      self.assertReloadCauseEquals(self.rcm.lastReport().cause,
-                                   cause='under-voltage')
-      # test unknown cause
-      self._loadReloadCauses({})
-      self.assertReloadCauseEquals(self.rcm.lastReport().cause, cause='unknown')
-      self.assertEqual(len(self.rcm.reports), 3)
 
    def testReloadCauseAlgorithmNew(self):
       # 1) insert 1 secondary hardware with 2 causes, see prioritized cause selected

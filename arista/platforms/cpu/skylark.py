@@ -1,4 +1,3 @@
-from ...core.cause import ReloadCausePriority
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
@@ -24,7 +23,7 @@ class SkylarkCpu(Cpu):
    PCI_PORT_SCD0 = PciPortDesc(0x02, 4)
 
    def __init__(self, registerCls=SysCpldCommonRegistersV2, **kwargs):
-      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
+      super().__init__(**kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
 

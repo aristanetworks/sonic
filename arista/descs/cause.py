@@ -62,6 +62,7 @@ class ReloadCauseDesc(object):
    SWITCH_CARD = 'switch-card'
    LEAK_ROPE_FAIL = 'leak-rope-fail'
    LEAK_DETECTED = 'leak-detected'
+   RMC_REBOOT = 'rmcReboot'
 
    DEFAULT_DESCRIPTIONS = {
       UNKNOWN: 'Unknown',
@@ -80,7 +81,8 @@ class ReloadCauseDesc(object):
       EXPANSION_CARD: 'Expansion card fault',
       SWITCH_CARD: 'Switch card fault',
       LEAK_ROPE_FAIL: 'No rope or rope broken',
-      LEAK_DETECTED: 'Leak detected'
+      LEAK_DETECTED: 'Leak detected',
+      RMC_REBOOT: 'Rebooted by RMC',
    }
 
    Priority = ReloadCausePriority

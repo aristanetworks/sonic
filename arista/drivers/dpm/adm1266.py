@@ -1,7 +1,6 @@
 
 import datetime
 import struct
-import time
 
 from ...core.log import getLogger
 from ...core.utils import incrange, inSimulation
@@ -156,8 +155,8 @@ class Adm1266UserDriver(PmbusUserDriver):
       data = self.read_block_data(self.registers.REAL_TIME_CLOCK)
       return admToDatetime(data)
 
-   def setRealTimeClock(self):
-      now = time.time()
+   def setRealTimeClock(self, dt):
+      now = dt.timestamp()
       secs = int(now)
       usecs = int((now - secs) * 2**16)
       data = [0] * 6

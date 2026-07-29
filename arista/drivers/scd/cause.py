@@ -69,10 +69,7 @@ class SimpleScdReloadCauseProvider(HardwareReloadCauseProvider):
          priority=ReloadCausePriority.UNKNOWN,
       )
 
-
 class ScdReloadCauseProvider(HardwareReloadCauseProvider):
-
-   FAULT_TIME_BASE = datetime.datetime(2000, 1, 1)
 
    def __init__(self, scd, regmap, causes, **kwargs):
       super().__init__(name=str(scd), **kwargs)
@@ -96,21 +93,13 @@ class ScdReloadCauseProvider(HardwareReloadCauseProvider):
 
    def _getRtcTime(self, ticks, secs):
       msecs = ticks / 2**16
-      date = self.FAULT_TIME_BASE + datetime.timedelta(seconds=secs + msecs)
+      date = self.scd.FAULT_TIME_BASE + datetime.timedelta(seconds=secs + msecs)
       return datetimeToStr(date)
 
    def getReloadCauseTime(self):
       ticks = self.regs.lastFractional()
       secs = self.regs.lastSeconds()
       return self._getRtcTime(ticks, secs)
-
-   def setRealTimeClock(self):
-      delta = datetime.datetime.now() - self.FAULT_TIME_BASE
-      now = delta.total_seconds()
-      secs = int(now)
-      ticks = int(2**16 * (now - secs))
-      self.regs.rtcFractional(ticks)
-      self.regs.rtcSeconds(secs)
 
    def faultsCleared(self):
       return not self.regs.clearFault()
@@ -122,8 +111,6 @@ class ScdReloadCauseProvider(HardwareReloadCauseProvider):
    def getReloadCause(self):
       if inSimulation():
          return None
-
-      self.setRealTimeClock()
 
       if self.faultsCleared():
          logging.debug('reboot cause already cleared')

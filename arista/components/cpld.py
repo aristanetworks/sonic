@@ -25,6 +25,7 @@ from ..drivers.cpld import SysCpldI2cDriver
 
 from ..inventory.powercycle import PowerCycle
 from ..inventory.programmable import Programmable
+from ..inventory.rtc import RealTimeClock
 from ..inventory.seu import SeuReporter
 
 from ..libs.date import datetimeToStr
@@ -122,9 +123,43 @@ class SysCpldCause(ReloadCauseDesc):
 class SysCpldReloadCauseEntry(ReloadCauseEntry):
    pass
 
-class SysCpldReloadCauseProvider(HardwareReloadCauseProvider):
+class SysCpldRealTimeClock(RealTimeClock):
 
-   FAULT_TIME_BASE = datetime.datetime(2000, 1, 1)
+   def __init__(self, cpld, regmap):
+      self.cpld = cpld
+      self.regmap = regmap
+      self.regs_ = None
+
+   @property
+   def regs(self):
+      if self.regs_ is None:
+         self.regs_ = self.regmap(self.cpld.driver)
+      return self.regs_
+
+   def getName(self):
+      return str(self.cpld)
+
+   def getTime(self):
+      ftime = self.regs.rtc()
+      secs = ftime[5] << 24 | ftime[4] << 16 | ftime[3] << 8 | ftime[2]
+      msecs = (ftime[1] << 8 | ftime[0]) / 2**16
+      return self.cpld.FAULT_TIME_BASE + datetime.timedelta(seconds=secs + msecs)
+
+   def setTime(self, dt):
+      delta = dt - self.cpld.FAULT_TIME_BASE
+      now = delta.total_seconds()
+      secs = int(now)
+      ticks = int(2**16 * (now - secs))
+      self.regs.rtc([
+         ticks & 0xff,
+         (ticks >> 8) & 0xff,
+         secs & 0xff,
+         (secs >> 8) & 0xff,
+         (secs >> 16) & 0xff,
+         (secs >> 24) & 0xff,
+      ])
+
+class SysCpldReloadCauseProvider(HardwareReloadCauseProvider):
 
    def __init__(self, cpld, regmap, causes, **kwargs):
       super().__init__(**kwargs)
@@ -162,22 +197,8 @@ class SysCpldReloadCauseProvider(HardwareReloadCauseProvider):
       ftime = self.regs.faultTime()
       secs = ftime[5] << 24 | ftime[4] << 16 | ftime[3] << 8 | ftime[2]
       msecs = (ftime[1] << 8 | ftime[0]) / 2**16
-      date = self.FAULT_TIME_BASE + datetime.timedelta(seconds=secs + msecs)
+      date = self.cpld.FAULT_TIME_BASE + datetime.timedelta(seconds=secs + msecs)
       return datetimeToStr(date)
-
-   def setRealTimeClock(self):
-      delta = datetime.datetime.now() - self.FAULT_TIME_BASE
-      now = delta.total_seconds()
-      secs = int(now)
-      ticks = int(2**16 * (now - secs))
-      self.regs.rtc([
-         ticks & 0xff,
-         (ticks >> 8) & 0xff,
-         secs & 0xff,
-         (secs >> 8) & 0xff,
-         (secs >> 16) & 0xff,
-         (secs >> 24) & 0xff,
-      ])
 
    def getReloadCause(self):
       if inSimulation():
@@ -186,8 +207,6 @@ class SysCpldReloadCauseProvider(HardwareReloadCauseProvider):
       if self.faultsCleared():
          logging.debug('reboot cause already cleared')
          return None
-
-      self.setRealTimeClock()
 
       logging.debug('reading reboot causes for %s', self)
       code = self.regs.cause()
@@ -223,6 +242,7 @@ class SysCpld(I2cComponent):
    PRIORITY = Priority.DEFAULT
 
    SEU_REPORTER_CLS = SysCpldSeuReporter
+   FAULT_TIME_BASE = datetime.datetime(2000, 1, 1)
 
    def __init__(self, *args, **kwargs):
       super(SysCpld, self).__init__(*args, **kwargs)
@@ -267,4 +287,5 @@ class SysCpld(I2cComponent):
                               priority=ReloadCausePriority.PRIMARY):
       provider = SysCpldReloadCauseProvider(self, regmap, causes, priority=priority)
       self.inventory.addReloadCauseProvider(provider)
+      self.inventory.addRtc(SysCpldRealTimeClock(self, regmap))
       return provider

@@ -10,6 +10,7 @@ from ...core.cause import (
    ReloadCauseScore,
 )
 from ...core.component import Priority
+from ...core.driver.user.rtc import RealTimeClockImpl
 from ...core.log import getLogger
 from ...core.utils import inSimulation
 
@@ -208,9 +209,6 @@ class AdmReloadCauseProvider(HardwareReloadCauseProvider):
          'powerup': retryGet(self.adm.getPowerupCounter, wait=0.2, before=True),
       }
 
-   def setRealTimeClock(self):
-      self.adm.setRealTimeClock()
-
 class AdmProgrammable(Programmable):
    def __init__(self, adm):
       self.adm = adm
@@ -249,6 +247,7 @@ class Adm1266(PmbusDpm):
       self.reloadCauseProvider = AdmReloadCauseProvider(self, priority=priority)
       self.inventory.addReloadCauseProvider(self.reloadCauseProvider)
       self.inventory.addProgrammable(AdmProgrammable(self))
+      self.inventory.addRtc(RealTimeClockImpl(self))
 
    def getPowerupCounter(self):
       return self.driver.getPowerupCounter()
@@ -259,8 +258,8 @@ class Adm1266(PmbusDpm):
    def getRealTimeClock(self):
       return self.driver.getRealTimeClock()
 
-   def setRealTimeClock(self):
-      self.driver.setRealTimeClock()
+   def setRealTimeClock(self, dt):
+      self.driver.setRealTimeClock(dt)
 
    def _getReloadCauses(self):
       causes = []

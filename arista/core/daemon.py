@@ -35,12 +35,14 @@ class DaemonFeature(object):
 
 class PollDaemonFeature(DaemonFeature):
    INTERVAL = 1.
+   DELAY = 0.
 
    def init(self):
       self.daemon.loop.create_task(self._callback())
 
    async def _callback(self):
       last = self.daemon.loop.time()
+      await asyncio.sleep(self.DELAY)
       while True:
          now = self.daemon.loop.time()
          try:

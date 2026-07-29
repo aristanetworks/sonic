@@ -70,6 +70,7 @@ class Chassis(ChassisBase):
       'switch-card': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
       'leak-rope-fail': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
       'leak-detected': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
+      'rmcReboot': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
    }
 
    # Intervals in milliseconds

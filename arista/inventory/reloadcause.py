@@ -41,9 +41,6 @@ class ReloadCauseProvider(InventoryInterface):
    def getPriority(self):
       raise NotImplementedError
 
-   def setRealTimeClock(self):
-      pass
-
    @diagmethod('providers', diag=True)
    def getRemoteProviders(self):
       return []

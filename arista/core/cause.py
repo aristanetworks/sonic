@@ -1,5 +1,6 @@
 
 from collections import defaultdict
+from datetime import datetime
 import json
 import os
 
@@ -378,12 +379,21 @@ class ReloadCauseManager(object):
                "Found reload cause providers at different design versions")
       return res if res is not None else False
 
+   def syncRtcs(self, inventory):
+      '''Ensure all component clocks are properly updated'''
+      for rtc in inventory.getRtcs():
+         try:
+            rtc.setTime(datetime.now())
+         except Exception: # pylint: disable=broad-except
+            logging.exception('failed to sync rtc %s', rtc.getName())
+
    def readCauses(self, inventory, date=None):
       '''Read reload causes from hardware'''
       try:
          self.loadCauses()
       except Exception: # pylint: disable=broad-except
          logging.exception("Failed to read previous reboot causes")
+      self.syncRtcs(inventory)
       report = ReloadCauseReport(date=date or bootDatetime())
       providers = inventory.getReloadCauseProviders()
       report.processProviders(providers)

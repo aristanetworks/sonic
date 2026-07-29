@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from datetime import datetime
 from typing import List
 
 from ..config import Config
@@ -111,6 +112,13 @@ class Component(object):
       for driver in self.drivers.values():
          driver.finish()
       self.applyQuirks(Quirk.When.AFTER)
+
+      for rtc in self.inventory.getRtcs():
+         try:
+            rtc.setTime(datetime.now())
+            logging.debug('%s: initialized rtc %s', self, rtc.getName())
+         except Exception: # pylint: disable=broad-except
+            logging.error('%s: failed to initialize rtc %s', self, rtc.getName())
 
    def finish(self, filters=Priority.defaultFilter):
       # underlying component are initialized recursively but require the parent to

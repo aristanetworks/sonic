@@ -8,6 +8,7 @@ from ...core.cause import (
    ReloadCauseScore,
 )
 from ...core.component import Priority
+from ...core.driver.user.rtc import RealTimeClockImpl
 from ...core.utils import inSimulation
 from ...core.log import getLogger
 
@@ -30,11 +31,12 @@ class UcdPriority(ReloadCausePriority):
 class UcdGpi():
    TYPE = 'gpi'
    def __init__(self, bit, name='unknown', description=None,
-                priority=UcdPriority.NORMAL):
+                priority=UcdPriority.NORMAL, altSource=None):
       self.bit = bit
       self.name = name
       self.description = description
       self.priority = priority
+      self.altSource = altSource
 
    def getReason(self, page=None, detailed=False):
       ptype = self.TYPE if page is None else f'{self.TYPE} {page}'
@@ -57,9 +59,6 @@ class UcdReloadCauseProvider(HardwareReloadCauseProvider):
 
    def process(self):
       self.causes = self.ucd.getReloadCauses()
-
-   def setRealTimeClock(self):
-      self.ucd.setRealTimeClock()
 
 class UcdFaultDesc():
    def __init__(self, paged, typ, description, unit=None, conv=None):
@@ -143,7 +142,9 @@ class Ucd(PmbusDpm):
       self.causes = self._buildCauses(causes)
       self.oldestTime = datetime.datetime(1970, 1, 1)
       self.reloadCauseProvider = UcdReloadCauseProvider(self, priority=priority)
+      self.inventory.addReloadCauseProvider(self.reloadCauseProvider)
       self.inventory.addProgrammable(UcdProgrammable(self))
+      self.inventory.addRtc(RealTimeClockImpl(self))
 
    def _buildCauses(self, causes):
       if causes is None:
@@ -157,8 +158,8 @@ class Ucd(PmbusDpm):
          res.append(cause)
       return res
 
-   def setRealTimeClock(self):
-      diff = datetime.datetime.now() - self.oldestTime
+   def setRealTimeClock(self, dt):
+      diff = dt - self.oldestTime
       msecsInt = int(diff.seconds * 1000 + diff.microseconds / 1000)
       daysInt = diff.days
       daysInt += self.daysOffset
@@ -194,13 +195,7 @@ class Ucd(PmbusDpm):
       value = (reg[9] << 8) | reg[8]
       return paged, ftype, page, value, days, msecs
 
-   def _getFaultNum(self, reg):
-      causes = []
-
-      if len(reg) < self.Registers.LOGGED_FAULT_DETAIL_COUNT:
-         logging.debug('invalid unknown cause %s', reg)
-         return causes
-
+   def _decodeFaultDetail(self, reg):
       paged, ftype, page, value, days, msecs = self._parseFaultDetail(reg)
       days = int(days)
       secs = int(msecs / 1000)
@@ -210,6 +205,10 @@ class Ucd(PmbusDpm):
                                                      microseconds=usecs)
       logging.debug('paged=%d type=%d page=%d value=0x%04x time=%s',
                     paged, ftype, page, value, time)
+      return paged, ftype, page, time
+
+   def _getFaultNum(self, paged, ftype, page, time):
+      causes = []
 
       found = False
       if not paged and ftype == 9:
@@ -233,8 +232,7 @@ class Ucd(PmbusDpm):
                 rcDesc='gpi %s detailed fault' % page,
                 score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
                       ReloadCauseScore.getPriority(UcdPriority.NONE),
-               priority=cause.priority,
-               altSource=cause.altSource,
+                priority=ReloadCausePriority.UNKNOWN,
             ))
          found = True
       elif paged:
@@ -294,7 +292,7 @@ class Ucd(PmbusDpm):
             return cause
       return None
 
-   def _getSimpleFaults(self, reg):
+   def _getSimpleFaults(self, reg, detailedCauses):
       npf, gpi = self._parseFaults(reg)
       causes = []
 
@@ -318,6 +316,9 @@ class Ucd(PmbusDpm):
          for bitpos, bit in enumerate(iterBits(gpi), 1):
             if not bit:
                continue
+            # Ignore if detailed cause already presents
+            if bitpos in detailedCauses:
+               continue
             cause = self._getCause(bitpos)
             if cause is not None:
                logging.debug('found gpi: %s', cause.name)
@@ -336,7 +337,7 @@ class Ucd(PmbusDpm):
                   rcDesc='unknown gpi fault',
                   score=ReloadCauseScore.LOGGED |
                         ReloadCauseScore.getPriority(UcdPriority.NONE),
-                  priority=ReloadCausePriority.UNKNOWN
+                  priority=ReloadCausePriority.UNKNOWN,
                ))
 
       logging.debug('found %d faults', len(causes))
@@ -345,13 +346,22 @@ class Ucd(PmbusDpm):
 
    def _getReloadCauses(self, drv):
       causes = []
-
-      causes.extend(self._getSimpleFaults(drv.readFaults()))
+      detailedCauses = []
 
       faultCount = drv.getFaultCount()
       logging.debug('found %d detailed faults', faultCount)
       for i in range(0, faultCount):
-         causes.extend(self._getFaultNum(drv.getFaultNum(i)))
+         reg = drv.getFaultNum(i)
+         if len(reg) < self.Registers.LOGGED_FAULT_DETAIL_COUNT:
+            logging.debug('invalid unknown cause %s', reg)
+            continue
+         paged, ftype, page, time = self._decodeFaultDetail(reg)
+         # Record the GPI bit number of the detailed causes, whether known or not
+         if not paged and ftype == 9:
+            detailedCauses.append(page)
+         causes.extend(self._getFaultNum(paged, ftype, page, time))
+
+      causes.extend(self._getSimpleFaults(drv.readFaults(), detailedCauses))
 
       return causes
 

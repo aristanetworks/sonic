@@ -55,6 +55,8 @@ class Inventory():
 
       self.switchAsics = {}
 
+      self.rtcs = []
+
    def getXcvrs(self):
       xcvrs = {}
       xcvrs.update(self.getEthernets())
@@ -349,6 +351,13 @@ class Inventory():
    def getSwitchAsic(self, asicId):
       return self.switchAsics.get(asicId)
 
+   def addRtc(self, rtc):
+      self.rtcs.append(rtc)
+      return rtc
+
+   def getRtcs(self):
+      return self.rtcs
+
    def addReloadCauseProvider(self, provider):
       self.causeProviders.append(provider)
 
@@ -381,4 +390,5 @@ class Inventory():
          "gpios" : [g.genDiag(ctx) for g in self.gpios.values()],
          "programmables" : [c.genDiag(ctx) for c in self.programmables],
          "switchAsics" : [a.genDiag(ctx) for a in self.getSwitchAsics().values()],
+         "rtcs" : [r.genDiag(ctx) for r in self.rtcs],
       }

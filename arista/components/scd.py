@@ -1,6 +1,7 @@
 from __future__ import print_function, with_statement
 
 import copy
+import datetime
 import os
 
 from collections import OrderedDict, namedtuple
@@ -49,6 +50,7 @@ from ..drivers.scd.cause import ( # pylint: disable=unused-import
    ScdReloadCauseProvider,
    SimpleScdReloadCauseProvider,
 )
+from ..drivers.scd.rtc import ScdRealTimeClock
 from ..drivers.scd.seu import ScdSeuReporter
 
 from ..inventory.interrupt import Interrupt
@@ -226,6 +228,7 @@ class Scd(PciComponent):
    BusTweak = namedtuple('BusTweak', 'addr, t, datr, datw, ed')
    INTERRUPTS = []
    XCVR_GROUPS = []
+   FAULT_TIME_BASE = datetime.datetime(2000, 1, 1)
    def __init__(self, addr, registerCls=None, ports=None, **kwargs):
       drivers = [
          KernelDriver(module='scd'),
@@ -676,6 +679,7 @@ class Scd(PciComponent):
          rcp = SimpleScdReloadCauseProvider(self, addr, causes, priority=priority)
       else:
          rcp = ScdReloadCauseProvider(self, regmap, causes, priority=priority)
+         self.inventory.addRtc(ScdRealTimeClock(self, regmap))
       self.inventory.addReloadCauseProvider(rcp)
       return rcp
 

@@ -1,6 +1,7 @@
 [Unit]
 Description=Arista early platform initialization
 After=rc-local.service
+Before=database.service
 Before=opennsl-modules.service
 Before=swss.service
 Before=swss@.service

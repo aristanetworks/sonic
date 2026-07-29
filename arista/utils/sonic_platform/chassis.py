@@ -70,6 +70,7 @@ class Chassis(ChassisBase):
       'expansion-card': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
       'switch-card': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
       'fan-card': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
+      'sup-unseated': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
       'leak-rope-fail': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
       'leak-detected': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,
       'rmc-reboot': ChassisBase.REBOOT_CAUSE_HARDWARE_OTHER,

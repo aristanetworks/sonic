@@ -71,10 +71,10 @@ class SonicReloadCauseProvider(PreRebootReloadCauseProvider):
 class SonicReloadCauseCookieComponent(Component):
    DRIVER = SonicReloadCauseCookieDriver
 
-   def __init__(self, *args, priority=ReloadCausePriority.PRIMARY, **kwargs):
+   def __init__(self, *args, causePriority=ReloadCausePriority.PRIMARY, **kwargs):
       super().__init__(*args, **kwargs)
       self.inventory.addReloadCauseProvider(
-         SonicReloadCauseProvider(self, priority=priority))
+         SonicReloadCauseProvider(self, priority=causePriority))
 
    def _fixTime(self, timestamp):
       # FIXME: The date format is locale-dependent
@@ -122,11 +122,12 @@ class CookieComponentBase(Component):
       'slots': {},
    }
 
-   def __init__(self, slotId=None, priority=ReloadCausePriority.PRIMARY, **kwargs):
+   def __init__(self, slotId=None, causePriority=ReloadCausePriority.PRIMARY,
+                **kwargs):
       super().__init__(**kwargs)
       self.slotId = slotId
       self.inventory.addReloadCauseProvider(
-         CookieReloadCauseProvider(self, slotId, priority=priority))
+         CookieReloadCauseProvider(self, slotId, priority=causePriority))
       self.callbacks = []
       self.causeData = {}
 

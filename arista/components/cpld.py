@@ -162,10 +162,9 @@ class SysCpldRealTimeClock(RealTimeClock):
 class SysCpldReloadCauseProvider(HardwareReloadCauseProvider):
 
    def __init__(self, cpld, regmap, causes, **kwargs):
-      super().__init__(**kwargs)
+      super().__init__(descs=causes, **kwargs)
       self.cpld = cpld
       self.regmap = regmap
-      self.causes = causes
       self.regs_ = None
 
    def __str__(self):
@@ -201,9 +200,6 @@ class SysCpldReloadCauseProvider(HardwareReloadCauseProvider):
       return datetimeToStr(date)
 
    def getReloadCause(self):
-      if inSimulation():
-         return None
-
       if self.faultsCleared():
          logging.debug('reboot cause already cleared')
          return None
@@ -214,7 +210,7 @@ class SysCpldReloadCauseProvider(HardwareReloadCauseProvider):
       logging.debug('last cause code %#04x', code)
       self.clearFaults()
 
-      for cause in self.causes:
+      for cause in self.descs:
          if code != cause.code:
             continue
          logging.debug('found cause %s %s', cause.typ, cause.description)

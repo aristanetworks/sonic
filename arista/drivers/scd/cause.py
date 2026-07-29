@@ -6,8 +6,6 @@ from ...core.cause import (
    ReloadCauseScore,
 )
 from ...core.log import getLogger
-from ...core.utils import inSimulation
-
 from ...descs.cause import ReloadCauseDesc, ReloadCausePriority
 
 from ...libs.date import datetimeToStr
@@ -22,10 +20,9 @@ class ScdReloadCauseEntry(ReloadCauseEntry):
 
 class SimpleScdReloadCauseProvider(HardwareReloadCauseProvider):
    def __init__(self, scd, addr, causes, **kwargs):
-      super().__init__(name=str(scd), **kwargs)
+      super().__init__(name=str(scd), descs=causes, **kwargs)
       self.scd = scd
       self.addr = addr
-      self.causes = causes
 
    def __str__(self):
       return self.__class__.__name__
@@ -38,15 +35,12 @@ class SimpleScdReloadCauseProvider(HardwareReloadCauseProvider):
          mm.write32(self.addr, 0)
 
    def getReloadCause(self):
-      if inSimulation():
-         return []
-
       logging.debug('reading reboot causes for %s', self)
       with self.scd.getMmap() as mm:
          code = mm.read32(self.addr) & 0xff
          logging.debug('last cause code %#04x', code)
 
-      for cause in self.causes:
+      for cause in self.descs:
          if code == cause.code:
             logging.debug('found cause %s %s', cause.typ, cause.description)
             return ScdReloadCauseEntry(
@@ -72,10 +66,9 @@ class SimpleScdReloadCauseProvider(HardwareReloadCauseProvider):
 class ScdReloadCauseProvider(HardwareReloadCauseProvider):
 
    def __init__(self, scd, regmap, causes, **kwargs):
-      super().__init__(name=str(scd), **kwargs)
+      super().__init__(name=str(scd), descs=causes, **kwargs)
       self.scd = scd
       self.regmap = regmap
-      self.causes = causes
       self.regs_ = None
 
    def __str__(self):
@@ -109,9 +102,6 @@ class ScdReloadCauseProvider(HardwareReloadCauseProvider):
       self.regs.clearFault(1)
 
    def getReloadCause(self):
-      if inSimulation():
-         return None
-
       if self.faultsCleared():
          logging.debug('reboot cause already cleared')
          return None
@@ -122,7 +112,7 @@ class ScdReloadCauseProvider(HardwareReloadCauseProvider):
       logging.debug('last cause code %#04x on %s', code, rcTime)
       self.clearFaults()
 
-      for cause in self.causes:
+      for cause in self.descs:
          if code != cause.code:
             continue
          logging.debug('found cause %s %s', cause.typ, cause.description)

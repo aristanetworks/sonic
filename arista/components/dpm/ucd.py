@@ -12,7 +12,7 @@ from ...core.driver.user.rtc import RealTimeClockImpl
 from ...core.utils import inSimulation
 from ...core.log import getLogger
 
-from ...descs.cause import ReloadCausePriority
+from ...descs.cause import ReloadCauseDesc, ReloadCausePriority
 
 from ...drivers.dpm.ucd import UcdUserDriver
 
@@ -24,6 +24,9 @@ from ...libs.integer import iterBits, listToIntLsb
 from .pmbus import PmbusDpm
 
 logging = getLogger(__name__)
+
+def _formatBytes(data):
+   return ' '.join(f'{b:02x}' for b in data)
 
 class UcdPriority(ReloadCausePriority):
    pass
@@ -59,6 +62,17 @@ class UcdReloadCauseProvider(HardwareReloadCauseProvider):
 
    def process(self):
       self.causes = self.ucd.getReloadCauses()
+
+   def getReloadCauseDescs(self):
+      return tuple(
+         ReloadCauseDesc(
+            f'{c.TYPE}{c.bit}',
+            c.causeDesc,
+            description=c.description,
+            priority=c.priority,
+            altSource=c.altSource,
+         ) for c in self.ucd.causes
+      )
 
 class UcdFaultDesc():
    def __init__(self, paged, typ, description, unit=None, conv=None):
@@ -100,6 +114,8 @@ class Ucd(PmbusDpm):
 
    DRIVER = UcdUserDriver
    PRIORITY = Priority.DPM
+
+   PAGE_COUNT = 13
 
    FAULTS = {(f.paged, f.typ): f for f in [
       UcdFaultDesc(False, 2, 'resequence-error'),
@@ -196,7 +212,7 @@ class Ucd(PmbusDpm):
                     paged, ftype, page, value, time)
       return paged, ftype, page, time
 
-   def _getFaultNum(self, paged, ftype, page, time):
+   def _getFaultNum(self, paged, ftype, page, time, debugInfo):
       causes = []
 
       found = False
@@ -212,6 +228,7 @@ class Ucd(PmbusDpm):
                      ReloadCauseScore.getPriority(cause.priority),
                priority=cause.priority,
                altSource=cause.altSource,
+               debugInfo=debugInfo,
             ))
          else:
             logging.debug('found unknown detailed gpi: %s', page)
@@ -222,9 +239,10 @@ class Ucd(PmbusDpm):
                 score=ReloadCauseScore.LOGGED | ReloadCauseScore.DETAILED |
                       ReloadCauseScore.getPriority(UcdPriority.NONE),
                 priority=ReloadCausePriority.UNKNOWN,
+                debugInfo=debugInfo,
             ))
          found = True
-      elif paged:
+      elif paged and (ftype in (0, 1)):
          cause = self._getCause(page, typ=UcdMon)
          if cause is not None:
             logging.debug('found detailed mon: %s', cause.causeDesc.typ)
@@ -236,6 +254,7 @@ class Ucd(PmbusDpm):
                      ReloadCauseScore.getPriority(cause.priority),
                priority=cause.priority,
                altSource=cause.altSource,
+               debugInfo=debugInfo,
             ))
             found = True
 
@@ -249,6 +268,7 @@ class Ucd(PmbusDpm):
                score=ReloadCauseScore.EVENT | ReloadCauseScore.DETAILED |
                      ReloadCauseScore.getPriority(UcdPriority.NONE),
                priority=ReloadCausePriority.UNKNOWN,
+               debugInfo=debugInfo,
             )
             logging.debug('found detailed fault: %s', cause.description)
             causes.append(cause)
@@ -284,6 +304,7 @@ class Ucd(PmbusDpm):
    def _getSimpleFaults(self, reg, detailedCauses):
       npf, gpi = self._parseFaults(reg)
       causes = []
+      debugInfo = _formatBytes(reg)
 
       if npf is not None:
          for bitpos, bit in enumerate(iterBits(npf)):
@@ -297,6 +318,7 @@ class Ucd(PmbusDpm):
                   rcDesc='non paged fault',
                   score=ReloadCauseScore.LOGGED |
                         ReloadCauseScore.getPriority(UcdPriority.NORMAL),
+                  debugInfo=debugInfo,
                ))
             else:
                logging.debug('found unknown non paged fault: %s', npf)
@@ -318,6 +340,7 @@ class Ucd(PmbusDpm):
                         ReloadCauseScore.getPriority(cause.priority),
                   priority=cause.priority,
                   altSource=cause.altSource,
+                  debugInfo=debugInfo,
                ))
             else:
                logging.debug('found unknown gpi: %s', bitpos)
@@ -327,6 +350,7 @@ class Ucd(PmbusDpm):
                   score=ReloadCauseScore.LOGGED |
                         ReloadCauseScore.getPriority(UcdPriority.NONE),
                   priority=ReloadCausePriority.UNKNOWN,
+                  debugInfo=debugInfo,
                ))
 
       logging.debug('found %d faults', len(causes))
@@ -348,14 +372,15 @@ class Ucd(PmbusDpm):
          # Record the GPI bit number of the detailed causes, whether known or not
          if not paged and ftype == 9:
             detailedCauses.append(page)
-         causes.extend(self._getFaultNum(paged, ftype, page, time))
+         causes.extend(self._getFaultNum(paged, ftype, page, time,
+                                         _formatBytes(reg)))
 
       causes.extend(self._getSimpleFaults(drv.readFaults(), detailedCauses))
 
       return causes
 
-   def getReloadCauses(self):
-      if inSimulation():
+   def getReloadCauses(self, simulated=inSimulation()):
+      if simulated:
          return []
 
       with self.driver as drv:
@@ -366,6 +391,9 @@ class Ucd(PmbusDpm):
       return causes
 
 class Ucd90160(Ucd):
+
+   PAGE_COUNT = 16
+
    class Registers(Ucd.Registers):
       LOGGED_FAULTS_COUNT = 18
 
@@ -377,6 +405,9 @@ class Ucd90120A(Ucd):
       LOGGED_FAULTS_COUNT = 14
 
 class Ucd90320(Ucd):
+
+   PAGE_COUNT = 24
+
    class Registers(Ucd.Registers):
       LOGGED_FAULTS_COUNT = 37
       LOGGED_FAULT_DETAIL_COUNT = 12
@@ -400,4 +431,5 @@ class Ucd90320(Ucd):
       return paged, ftype, page, value, days, msecs
 
 class Ucd9090A(Ucd):
+   PAGE_COUNT = 11
    pass

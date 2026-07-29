@@ -67,6 +67,10 @@ class AdmCauseBase(ReloadCauseDesc):
       super().__init__(
          (current, action, self._pins), name, description, priority, **kwargs)
 
+   @property
+   def codeStr(self):
+      return ','.join(f'{p.typ.value}{p.pin}' for p in self._pins)
+
    @cached_property
    def gpios(self):
       return [p for p in self._pins if p.typ == AdmPin.Typ.GPIO]
@@ -211,6 +215,9 @@ class AdmReloadCauseProvider(HardwareReloadCauseProvider):
          # NOTE: device might need some time before grabbing the powerup
          'powerup': retryGet(self.adm.getPowerupCounter, wait=0.2, before=True),
       }
+
+   def getReloadCauseDescs(self):
+      return tuple(self.adm.causes)
 
 class AdmProgrammable(Programmable):
    def __init__(self, adm):

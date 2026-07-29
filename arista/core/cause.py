@@ -23,7 +23,8 @@ class ReloadCauseEntry(ReloadCause):
    def __init__(self, cause='unknown', rcTime='unknown', rcDesc='',
                       score=ReloadCauseScore.EVENT,
                       priority=ReloadCausePriority.NORMAL,
-                      altSource=None):
+                      altSource=None,
+                      debugInfo=None):
       self.cause = cause
       self.time = rcTime
       self.description = rcDesc
@@ -31,6 +32,10 @@ class ReloadCauseEntry(ReloadCause):
       self.priority = priority
       # The alternative source provider that should be checked if this cause presents
       self.altSource = altSource
+      # Optional provider-specific raw payload (e.g. register dump) for
+      # debugging. The producing provider owns the format.
+      # Falsy values (None, '') are omitted from the serialized form.
+      self.debugInfo = debugInfo
 
    def __str__(self):
       items = [self.cause]
@@ -70,7 +75,7 @@ class ReloadCauseEntry(ReloadCause):
       return altSource
 
    def toDict(self):
-      return {
+      d = {
          'cause': self.cause,
          'time': self.time,
          'description': self.description,
@@ -78,6 +83,9 @@ class ReloadCauseEntry(ReloadCause):
          'priority': self.priority,
          'altSource': self.altSource.value if self.altSource else None,
       }
+      if self.debugInfo:
+         d['debugInfo'] = self.debugInfo
+      return d
 
    @classmethod
    def fromDict(cls, data):
@@ -90,6 +98,7 @@ class ReloadCauseEntry(ReloadCause):
          # reload cause entries might not have priority or altSource
          priority=(ReloadCausePriority.NORMAL if 'priority' not in data
                    else data['priority']),
+         debugInfo=data.get('debugInfo'),
       )
       res.altSource=res.altSourceFromDict(data)
       return res
@@ -97,13 +106,14 @@ class ReloadCauseEntry(ReloadCause):
 class ReloadCauseProviderHelper(ReloadCauseProvider):
    def __init__(self, name='unknown', causes=None, extra=None,
                 priority=ReloadCausePriority.PRIMARY,
-                altSource=None):
+                altSource=None, descs=None):
       self.name = name
       self.causes = causes or []
       self.extra = extra or {}
       self.priority = priority
       # The alternative source this provider is serving as
       self.altSource = altSource or []
+      self.descs = tuple(descs) if descs else ()
 
    def getSourceName(self):
       return self.name
@@ -119,6 +129,9 @@ class ReloadCauseProviderHelper(ReloadCauseProvider):
 
    def getAltSource(self):
       return self.altSource
+
+   def getReloadCauseDescs(self):
+      return self.descs
 
    def altSourceFromDict(self, data):
       if 'altSource' not in data or not data['altSource']:
@@ -456,6 +469,11 @@ class ReloadCauseManager(object):
       #       probably a tempfile under /run/platform_cache/
       self.reports.insert(0, report)
 
+   def _getArchivePath(self, existingName):
+      oldName = existingName.replace('/', '-')
+      prefix, ext = os.path.splitext(self.path)
+      return f'{prefix}_{oldName}{ext}'
+
    def fromDict(self, data):
       if data["version"] != self.VERSION:
          raise ValueError("Expected reload cause version to be %d" % self.VERSION)
@@ -463,7 +481,18 @@ class ReloadCauseManager(object):
          logging.warning(
             "Expected reload cause name to match %s, existing name is %s",
             self.name, data["name"])
-         data["name"] = self.name
+
+         # Archive old causes
+         path = self._getArchivePath(data["name"])
+         try:
+            with open(path, 'w') as f:
+               json.dump(data, f, indent=3, separators=(',', ': '))
+            return
+         except OSError as e:
+            logging.warning(
+               'Failed to archive reboot causes for %s: %s',
+               data["name"], e)
+
       self.reports.extend(ReloadCauseReport.fromDict(d) for d in data['reports'])
 
    def loadLegacyCauseFile(self):

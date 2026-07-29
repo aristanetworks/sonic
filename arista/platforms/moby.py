@@ -271,7 +271,7 @@ class Moby(FixedSystem):
          SysCpldCause(0x0b, SysCpldCause.NO_FANS),
          SysCpldCause(0x0f, SysCpldCause.SEU, 'bitshadow rx parity error'),
          SysCpldCause(0x10, SysCpldCause.REBOOT, 'Powercycle via CPLD'),
-         SysCpldCause(0x11, SysCpldCause.POWERLOSS, 'Supervisor unseated'),
+         SysCpldCause(0x11, SysCpldCause.SUP_UNSEATED),
          SysCpldCause(0x20, SysCpldCause.RAIL, 'P12V_MOD_PG'),
          SysCpldCause(0x21, SysCpldCause.RAIL, 'CPLD_PWR_GOOD'),
          SysCpldCause(0x22, SysCpldCause.RAIL, 'P5V0_PGOOD'),

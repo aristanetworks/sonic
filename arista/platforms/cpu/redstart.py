@@ -62,7 +62,7 @@ class RedstartCpu(Cpu):
          ScdCause(0x0a, ScdCause.POWERLOSS, 'PSU DC to CPU'),
          ScdCause(0x0c, ScdCause.CPU),
          ScdCause(0x0d, ScdCause.CPU_S3, 'CPU Sleep Mode'),
-         ScdCause(0x12, ScdCause.POWERLOSS, 'Supervisor unseated'),
+         ScdCause(0x12, ScdCause.SUP_UNSEATED),
          ScdCause(0x20, ScdCause.RAIL, 'VR_VDDCR_FAULT'),
          ScdCause(0x21, ScdCause.RAIL, 'VR_VDDSOC_FAULT'),
          ScdCause(0x22, ScdCause.RAIL, 'DDR5_SODIMM2_FAULT'),

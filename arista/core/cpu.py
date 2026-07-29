@@ -13,9 +13,9 @@ class Cpu(Sku):
       super(Cpu, self).__init__(*args, **kwargs)
       self.bootloader = self.newComponent(Aboot)
       self.cookies = self.newComponent(PlatformCookieComponent,
-                                       priority=cookiesPriority)
+                                       causePriority=cookiesPriority)
       self.sonicOsCookie = self.newComponent(SonicReloadCauseCookieComponent,
-                                             priority=cookiesPriority)
+                                             causePriority=cookiesPriority)
 
    def getPciPort(self, desc):
       if desc.root:

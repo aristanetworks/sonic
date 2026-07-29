@@ -48,3 +48,7 @@ class ReloadCauseProvider(InventoryInterface):
    @diagmethod('providers', diag=True)
    def getRemoteProviders(self):
       return []
+
+   @diagmethod('descs', diag=True)
+   def getReloadCauseDescs(self):
+      return ()

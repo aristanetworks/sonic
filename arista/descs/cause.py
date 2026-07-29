@@ -79,11 +79,16 @@ class ReloadCauseDesc(object):
    EXPANSION_CARD = CauseDesc('expansion-card', 'Expansion card fault')
    SWITCH_CARD = CauseDesc('switch-card', 'Switch card fault')
    FAN_CARD = CauseDesc('fan-card', 'Fan card fault')
+   SUP_UNSEATED = CauseDesc('sup-unseated', 'Supervisor unseated')
    LEAK_ROPE_FAIL = CauseDesc('leak-rope-fail', 'No rope or rope broken')
    LEAK_DETECTED = CauseDesc('leak-detected', 'Leak detected')
    RMC_REBOOT = CauseDesc('rmc-reboot', 'Rebooted by RMC')
 
    Priority = ReloadCausePriority
+
+   @property
+   def codeStr(self):
+      return f'{self.code}'
 
    def __init__(self, code, causedef, description=None,
                 priority=ReloadCausePriority.NORMAL,

@@ -9,7 +9,8 @@ from unittest.mock import patch
 from ...libs.fs import touch, rmfile
 from ...libs.date import datetimeToStr, strToDatetime
 from ...tests.testing import unittest
-from ...descs.cause import ReloadCauseAltSource
+from ...descs.cause import ReloadCauseAltSource, ReloadCauseDesc
+from ...drivers.scd.cause import SimpleScdReloadCauseProvider, ScdCause
 
 from ...components.cookie import BertReloadCauseProvider
 from ..cause import (
@@ -464,6 +465,26 @@ class ReloadCauseManagerTest(unittest.TestCase):
          if os.path.exists(path):
             os.remove(path)
 
+   def testScdDescsStableAfterProcess(self):
+      class MockScd:
+         def __str__(self):
+            return 'MockScd'
+
+      causes = [
+         ScdCause(0x01, ReloadCauseDesc.POWERLOSS),
+         ScdCause(0x02, ReloadCauseDesc.WATCHDOG),
+      ]
+      provider = SimpleScdReloadCauseProvider(MockScd(), 0x5010, causes)
+      self.assertEqual(len(provider.getReloadCauseDescs()), 2)
+
+      # Simulate process() overwriting self.causes (the runtime result field)
+      provider.causes = []
+
+      descs = provider.getReloadCauseDescs()
+      self.assertEqual(len(descs), 2)
+      self.assertEqual(descs[0].typ, 'powerloss')
+      self.assertEqual(descs[1].typ, 'watchdog')
+
    def testLegacyV1ToCurrent(self):
       causes = [{
             'reloadReason': 'powerloss',
@@ -542,9 +563,19 @@ class ReloadCauseTest(unittest.TestCase):
          "time",
          "priority",
          "altSource",
+         "debugInfo",
       ]
       self.assertEqual(len(cause.__dict__), len(expectedKeys))
       self.assertEqual(set(cause.__dict__), set(expectedKeys))
+
+   def testDebugInfoRoundTrip(self):
+      entry = ReloadCauseEntry(cause='fault', debugInfo='ab cd')
+      self.assertEqual(ReloadCauseEntry.fromDict(entry.toDict()).debugInfo, 'ab cd')
+
+   def testDebugInfoDefaultsToNoneFromOldJson(self):
+      # Json written before debugInfo existed must deserialize with debugInfo=None.
+      entry = ReloadCauseEntry.fromDict(ReloadCauseEntry(cause='fault').toDict())
+      self.assertIsNone(entry.debugInfo)
 
 if __name__ == '__main__':
    unittest.main()

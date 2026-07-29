@@ -221,7 +221,7 @@ class QuicksilverBase(FixedSystem):
          SysCpldCause(0x0a, SysCpldCause.POWERLOSS, 'PSU DC'),
          SysCpldCause(0x0f, SysCpldCause.SEU, 'bitshadow rx parity error'),
          SysCpldCause(0x10, SysCpldCause.REBOOT, 'Software Reboot via CPLD'),
-         SysCpldCause(0x11, SysCpldCause.POWERLOSS, 'Supervisor unseated'),
+         SysCpldCause(0x11, SysCpldCause.SUP_UNSEATED),
          SysCpldCause(0x20, SysCpldCause.RAIL, 'CPLD_PWR_FAULT'),
          SysCpldCause(0x21, SysCpldCause.RAIL, 'POS5V0_FAULT'),
          SysCpldCause(0x22, SysCpldCause.RAIL, 'POS3V3_FAULT'),

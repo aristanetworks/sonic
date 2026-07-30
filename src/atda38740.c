@@ -131,6 +131,8 @@ static int tda38740_read_word_data(struct i2c_client *client, int page,
 		case PMBUS_POUT_OP_WARN_LIMIT:
 		case PMBUS_POUT_OP_FAULT_LIMIT:
 		case PMBUS_MFR_POUT_MAX:
+                case PMBUS_OT_FAULT_LIMIT:
+                case PMBUS_OT_WARN_LIMIT:
 		case PMBUS_UT_WARN_LIMIT:
 		case PMBUS_UT_FAULT_LIMIT:
 		case PMBUS_MFR_MAX_TEMP_1:

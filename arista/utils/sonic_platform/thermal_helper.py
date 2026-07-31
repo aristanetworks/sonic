@@ -11,6 +11,7 @@ from arista.core.cooling import (
    CoolingPwmBase,
    CoolingThermalBase,
 )
+from arista.core.linecard import Linecard
 from arista.core.log import getLogger
 from arista.core.supervisor import Supervisor
 from arista.libs.date import redisLastUpdateTimeToMonotonic
@@ -639,6 +640,12 @@ class CoolingEntityManager(object):
       if not chassis.get_num_modules():
          for dbent in self._get_dbhelper().get_all_thermals():
             self.get_thermal(dbent.name).register_db(dbent)
+
+      # NOTE: if on a linecard, the algorithm should be run
+      #       only against the local thermal sensors
+      platform = chassis.getPlatform()
+      if isinstance(platform, Linecard):
+         return
 
       for prefix, module in self._iter_chassis_modules(chassis):
          slotid = module.get_slot()

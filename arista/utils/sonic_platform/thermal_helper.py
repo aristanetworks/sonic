@@ -11,7 +11,6 @@ from arista.core.cooling import (
    CoolingPwmBase,
    CoolingThermalBase,
 )
-from arista.core.linecard import Linecard
 from arista.core.log import getLogger
 from arista.core.supervisor import Supervisor
 from arista.libs.date import redisLastUpdateTimeToMonotonic
@@ -125,10 +124,6 @@ class DBHelper(object):
 
    def get_all_thermals(self):
       return self._get_table_objects(self._state_db, 'TEMPERATURE_INFO')
-
-   def get_all_module_thermals(self, idx):
-      tbl = f'TEMPERATURE_INFO_{idx}'
-      return self._get_table_objects(self._chassis_state_db, tbl)
 
    def get_all_xcvrs(self):
       tbls = ['TRANSCEIVER_DOM_SENSOR', 'TRANSCEIVER_DOM_THRESHOLD']
@@ -640,17 +635,6 @@ class CoolingEntityManager(object):
       if not chassis.get_num_modules():
          for dbent in self._get_dbhelper().get_all_thermals():
             self.get_thermal(dbent.name).register_db(dbent)
-
-      # NOTE: if on a linecard, the algorithm should be run
-      #       only against the local thermal sensors
-      platform = chassis.getPlatform()
-      if isinstance(platform, Linecard):
-         return
-
-      for prefix, module in self._iter_chassis_modules(chassis):
-         slotid = module.get_slot()
-         for dbent in self._get_dbhelper().get_all_module_thermals(slotid):
-            self.get_thermal(f'{prefix}{dbent.name}').register_db(dbent)
 
    def update_xcvrs(self, chassis):
       # NOTE: inventory cannot read xcvr temperature nor thresholds

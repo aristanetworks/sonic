@@ -1,6 +1,50 @@
 from datetime import datetime, timezone
 from ....tests.testing import patch, unittest
-from ..thermal_helper import CoolingXcvrThermal
+from ..thermal_helper import ChassisDbFan, CoolingEntityManager, CoolingXcvrThermal
+
+class MockChassis:
+   def __init__(self, slot=1, platform=None, thermals=None, modules=None,
+                psus=None):
+      self.slot = slot
+      self.platform = platform or MockPlatform()
+      self.thermals = thermals or []
+      self.modules = modules or []
+      self.psus = psus or []
+
+   def get_my_slot(self):
+      return self.slot
+
+   def getPlatform(self):
+      return self.platform
+
+   def get_all_thermals(self):
+      return self.thermals
+
+   def get_all_modules(self):
+      return self.modules
+
+   def get_all_psus(self):
+      return self.psus
+
+   def get_num_modules(self):
+      return len(self.modules)
+
+class MockTable:
+   def __init__(self):
+      self.writes = []
+
+   def set(self, name, fvs):
+      self.writes.append((name, dict(fvs)))
+
+class MockDbHelper:
+   def __init__(self):
+      self.tables = {}
+
+   def get_chassis_state_table(self, table_name):
+      return self.tables.setdefault(table_name, MockTable())
+
+   def get_all_thermals(self):
+      raise AssertionError('modular chassis thermals must not be read from DB')
 
 class MockDbEntity:
    def __init__(self, readings):
@@ -17,6 +61,80 @@ class MockDbEntity:
       reading = self.readings[min(self.read_count, len(self.readings) - 1)]
       self.read_count += 1
       return reading
+
+class MockCoolingConfig:
+   asicViaDb = False
+
+class MockInventory:
+   def getTemps(self):
+      return []
+
+   def getPsuSlots(self):
+      return []
+
+class MockPlatform:
+   COOLING = MockCoolingConfig()
+
+   def getInventory(self):
+      return MockInventory()
+
+class MockApiThermal:
+   def __init__(self, name):
+      self.name = name
+
+   def get_name(self):
+      return self.name
+
+class MockModule:
+   def __init__(self, slot, thermals=None):
+      self.slot = slot
+      self.thermals = thermals or []
+
+   def get_slot(self):
+      return self.slot
+
+   def get_all_thermals(self):
+      return self.thermals
+
+class ChassisDbFanTest(unittest.TestCase):
+
+   def testSetSpeedWritesThermalAlgoResult(self):
+      dbhelper = MockDbHelper()
+      fan = ChassisDbFan(MockChassis(slot=3), dbhelper)
+
+      with patch('arista.utils.sonic_platform.thermal_helper.asctime',
+                 return_value='Tue Jun 23 10:11:12 2026'):
+         fan.setSpeed(42)
+
+      table = dbhelper.tables['TEMPERATURE_INFO_3']
+      self.assertEqual(len(table.writes), 1)
+      name, data = table.writes[0]
+      self.assertEqual(name, 'THERMAL_ALGO_RESULT')
+      self.assertEqual(data['pwm'], '42.0')
+      self.assertEqual(data['last_update_time'], 'Tue Jun 23 10:11:12 2026')
+      self.assertEqual(data['device_name'], 'Linecard 3')
+
+
+class CoolingEntityManagerTest(unittest.TestCase):
+
+   def testUpdateThermalsRegistersModuleThermalsOnlyFromApi(self):
+      chassis = MockChassis(
+         thermals=[MockApiThermal('Chassis thermal')],
+         modules=[
+            MockModule(2, [MockApiThermal('Linecard2 thermal')]),
+         ],
+      )
+      dbhelper = MockDbHelper()
+      with patch('arista.utils.sonic_platform.thermal_helper.DBHelper',
+                 return_value=dbhelper):
+         mgr = CoolingEntityManager(chassis)
+         mgr.update_thermals(chassis)
+
+      thermals = mgr.get_all_thermals()
+      self.assertIn('Chassis thermal', thermals)
+      self.assertIn('CARD2 Linecard2 thermal', thermals)
+      self.assertIsNotNone(thermals['CARD2 Linecard2 thermal'].api)
+      self.assertIsNone(thermals['CARD2 Linecard2 thermal'].dbent)
 
 
 class CoolingXcvrThermalTest(unittest.TestCase):

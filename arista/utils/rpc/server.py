@@ -130,6 +130,7 @@ class RpcServer():
             message = None
             try:
                message = json.loads(data)
+               reader.feed_eof()
             except ValueError:
                pass
 
@@ -155,3 +156,4 @@ class RpcServer():
       finally:
          logging.info('%s: Connection %s for %s', self, exitReason, ctx)
          writer.close()
+         await writer.wait_closed()

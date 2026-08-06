@@ -19,7 +19,7 @@ class AspeedWatchdog(Watchdog):
    The daemon works in seconds, so conversions happen at the boundary.
    """
 
-   SOCKET_PATH = '/run/hw-watchdog-mgrd.sock'
+   SOCKET_PATH = "/run/hw-watchdog-mgrd/hw-watchdog-mgrd.sock"
    SOCKET_TIMEOUT = 5
    SYSFS_BASE = '/sys/class/watchdog/watchdog0'
    MAX_TIMEOUT = 30000 # 300 seconds in centiseconds

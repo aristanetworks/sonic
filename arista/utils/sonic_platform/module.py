@@ -335,6 +335,11 @@ class HostSwitchModule(Module):
       regs.nonStandbyPwrCycle(0xDE)
       return True
 
+   def do_system_power_cycle(self):
+      regs = self._sku.hostCpu.cpld.driver.regs
+      regs.systemPwrCycle(0xDE)
+      return True
+
    def is_replaceable(self):
       return False
 

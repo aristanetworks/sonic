@@ -1,0 +1,15 @@
+[Unit]
+Description=Goldfinch AST2720 ABR Boot Watchdog Disarm
+DefaultDependencies=no
+After=local-fs-pre.target
+Before=local-fs.target
+ConditionPathExists=!/usr/lib/systemd/system/aspeed-disable-boot-watchdog.service
+
+[Service]
+Type=oneshot
+ExecCondition=/bin/grep -qF arista_goldfinch-r0 /proc/device-tree/compatible
+ExecStart=/bin/bash -ec 'cur_val=$$(busybox devmem 0x14c3740c 2>/dev/null); new_val=$$(printf "0x%%08X" $$((cur_val & 0xFFFFFFFE))); busybox devmem 0x14c3740c 32 "$$new_val" 2>/dev/null; echo "platform-arista-disable-boot-watchdog: WDTA ctrl: $$cur_val -> $$new_val"'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=local-fs.target

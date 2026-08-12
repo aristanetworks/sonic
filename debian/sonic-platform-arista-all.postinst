@@ -24,6 +24,10 @@ pip3 install --root-user-action=ignore --no-deps "$pywhl"
 
 systemctl daemon-reload
 
+if ! systemctl enable --now platform-arista-disable-boot-watchdog.service; then
+    echo "Warning: failed to start Goldfinch boot-watchdog disarm service" >&2
+fi
+
 svcs="$(grep /lib/systemd/system/platform-arista \
     /var/lib/dpkg/info/sonic-platform-arista-all.list  | sed 's/.*\///')"
 

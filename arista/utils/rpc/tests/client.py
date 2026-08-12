@@ -2,10 +2,63 @@ from errno import EAGAIN
 import json
 import os
 import select
+import socket
+import threading
 
 from ....tests.testing import mock, unittest
 
 from ..client import RpcClient, RpcClientException, RpcServerException
+
+
+class LoopbackServer():
+   """Run a small scripted TCP server and report worker failures to the test."""
+
+   TIMEOUT = 2
+
+   def __init__(self, handler):
+      self.handler = handler
+      self.requests = []
+      self.error = None
+      self.listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+      self.listener.bind(('127.0.0.1', 0))
+      self.listener.listen()
+      self.listener.settimeout(self.TIMEOUT)
+      self.port = self.listener.getsockname()[1]
+      self.worker = threading.Thread(target=self._run)
+
+   def start(self):
+      self.worker.start()
+
+   def _run(self):
+      try:
+         self.handler(self)
+      except Exception as error: # pylint: disable=broad-except
+         self.error = error
+      finally:
+         self.listener.close()
+
+   def accept(self):
+      connection, _ = self.listener.accept()
+      connection.settimeout(self.TIMEOUT)
+      return connection
+
+   def readRequest(self, connection):
+      data = b''
+      while not data.endswith(b'\n'):
+         segment = connection.recv(RpcClient.READ_LENGTH)
+         assert segment, 'client closed connection before sending a request'
+         data += segment
+      request = json.loads(data.decode('utf-8'))
+      self.requests.append(request)
+      return request
+
+   def close(self):
+      self.listener.close()
+      self.worker.join(self.TIMEOUT)
+      assert not self.worker.is_alive(), 'loopback RPC server did not finish'
+      if self.error is not None:
+         raise self.error
 
 class FakeSocket():
    def __init__(self):
@@ -52,6 +105,23 @@ class ClientTest(unittest.TestCase):
       client = RpcClient(ClientTest.HOST, ClientTest.PORT)
       client._connectSocket()
       return client
+
+   def _newLoopbackClient(self, server):
+      client = RpcClient('127.0.0.1', server.port)
+      self.addCleanup(self._closeClient, client)
+      return client
+
+   @staticmethod
+   def _closeClient(client):
+      if client.sock is not None:
+         client.sock.close()
+      client.poller.close()
+
+   def _startLoopbackServer(self, handler):
+      server = LoopbackServer(handler)
+      self.addCleanup(server.close)
+      server.start()
+      return server
 
    def testDoCommandData(self):
       with mock.patch('socket.create_connection') as createMock, \
@@ -103,6 +173,47 @@ class ClientTest(unittest.TestCase):
          api.sock.response_data = b'{"jsonrpc": "2.0", "id": 0}'
          with self.assertRaises(RpcClientException):
             api.doCommand('test')
+
+   def testRetriesAfterConnectionLoss(self):
+      result = {'setup': 'complete'}
+
+      def handle(server):
+         with server.accept() as connection:
+            server.readRequest(connection)
+
+         with server.accept() as connection:
+            request = server.readRequest(connection)
+            connection.sendall(json.dumps({
+               'jsonrpc': '2.0', 'id': request['id'], 'result': result,
+            }).encode('utf-8') + b'\n')
+            threading.Event().wait(0.1)
+
+      server = self._startLoopbackServer(handle)
+      client = self._newLoopbackClient(server)
+
+      with mock.patch('arista.utils.rpc.client.time.sleep'):
+         self.assertEqual(client.doCommand('linecardSetup', 7), result)
+
+      self.assertEqual(len(server.requests), 2)
+      self.assertEqual(server.requests[0], server.requests[1])
+
+   def testReassemblesSegmentedResponse(self):
+      result = 'x' * (RpcClient.READ_LENGTH * 2)
+
+      def handle(server):
+         with server.accept() as connection:
+            request = server.readRequest(connection)
+            response = json.dumps({
+               'jsonrpc': '2.0', 'id': request['id'], 'result': result,
+            }).encode('utf-8') + b'\n'
+            for segment in (response[:100], response[100:4200], response[4200:]):
+               connection.sendall(segment)
+               threading.Event().wait(0.02)
+
+      server = self._startLoopbackServer(handle)
+      client = self._newLoopbackClient(server)
+
+      self.assertEqual(client.doCommand('test'), result)
 
 if __name__ == '__main__':
    unittest.main()

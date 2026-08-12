@@ -1,6 +1,7 @@
 import errno
 import json
 from json.decoder import JSONDecodeError
+import os
 from select import epoll, EPOLLERR, EPOLLHUP, EPOLLIN
 import socket
 import time
@@ -23,6 +24,9 @@ class RpcServerException(Exception):
       self.code = error.get('code', None)
       self.message = error.get('message', None)
 
+class RetryException(Exception):
+   pass
+
 class RpcClient():
    """JSON-RPC client implementation.
 
@@ -30,6 +34,10 @@ class RpcClient():
    are run. A complete list of methods is provided by "RpcApi.methods".
 
    This client implementation is *not* thread-safe."""
+
+   DEFAULT_READ_TIMEOUT = 10
+   READ_LENGTH = 4096
+
    def __init__(self, host, port):
       self.poller = epoll()
       self.host = host
@@ -43,6 +51,11 @@ class RpcClient():
       return uid
 
    def _connectSocket(self):
+      if self.sock is not None:
+         self.poller.unregister(self.sock)
+         self.sock.close()
+         self.sock = None
+
       for delay in [1, 2, 4, 8]:
          try:
             self.sock = socket.create_connection((self.host, self.port))
@@ -64,7 +77,9 @@ class RpcClient():
       """Clear any leftover delayed responses on the socket"""
       while True:
          try:
-            self.sock.recv(4096)
+            x = self.sock.recv(self.READ_LENGTH)
+            if not x:
+               break
          except OSError as e:
             if e.errno == errno.EAGAIN:
                # No data to receive on the socket
@@ -74,15 +89,15 @@ class RpcClient():
    def _sendCommand(self, command):
       return self.sock.sendall(command)
 
-   def _readResponse(self, timeout=5):
+   def _readResponse(self, timeout=DEFAULT_READ_TIMEOUT):
       # Wait for data to become available on the socket
       events = self.poller.poll(timeout)
       if not events:
-         raise TimeoutError()
+         raise TimeoutError("timed out waiting for input")
       for _, event in events:
          if event == EPOLLIN:
             break
-         raise ConnectionResetError()
+         raise OSError(errno.ECONNRESET, os.strerror(errno.ECONNRESET))
 
       # Read all data from the socket; we need to keep trying to receive until we
       # get EAGAIN from the recv call, or we will potentially only get the first
@@ -90,7 +105,10 @@ class RpcClient():
       buf = b''
       try:
          while True:
-            buf += self.sock.recv(4096)
+            segment = self.sock.recv(self.READ_LENGTH)
+            if not segment:
+               break
+            buf += segment
       except OSError as e:
          if e.errno != errno.EAGAIN:
             raise
@@ -125,12 +143,18 @@ class RpcClient():
                pass
          attempts += 1
       if not responseStr:
-         raise RpcClientException('JSON-RPC server did not respond')
+         raise RetryException('JSON-RPC server did not respond')
       raise RpcClientException(f'Could not decode JSON-RPC server response for message {uid}: {responseStr}')
 
    def doCommand(self, call, *args, **kwargs):
       if self.sock is None:
          self._connectSocket()
+      else:
+         try:
+            self._clearSocket()
+         except OSError:
+            self._connectSocket()
+
       uid = self.next_id()
       params = kwargs
       if params:
@@ -145,16 +169,13 @@ class RpcClient():
          'params': params,
          'id': uid}) + '\n'
 
-      self._clearSocket()
       # Allow reconnecting the socket if the connection dies; if we timeout twice then give up.
       for _ in range(2):
-         self._sendCommand(command.encode('utf-8'))
          try:
+            self._sendCommand(command.encode('utf-8'))
             return self._doGetCommandResponse(uid)
-         except OSError:
+         except (OSError, RetryException):
             # Try disconnecting and reconnecting the socket then try again.
-            self.poller.unregister(self.sock)
-            self.sock.close()
             self._connectSocket()
       raise RpcClientException('JSON-RPC server did not respond')
 

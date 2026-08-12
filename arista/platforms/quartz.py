@@ -11,6 +11,7 @@ from ..components.scd import Scd
 from ..components.tmp464 import Tmp464
 from ..components.vrm.isl68137 import Isl68221, Isl68225
 from ..components.vrm.raa228228 import Raa228228
+from ..components.vrm.tps546d24 import Tps546D24
 
 from ..descs.cause import ReloadCauseDesc, ReloadCauseAltSource
 from ..descs.gpio import GpioDesc
@@ -96,7 +97,13 @@ class QuartzDd(FixedSystem):
          (Isl68225, 4, 0x61, [
             'QSFP_3V3_LEFT',
             'QSFP_3V3_RIGHT',
-         ])
+         ]),
+         (Tps546D24, 5, 0x22, [
+            'TPS546D24_JE0_PLL',
+         ]),
+         (Tps546D24, 5, 0x23, [
+            'TPS546D24_JE1_PLL',
+         ]),
       ]
       for cls, bus, addr, sensors in vrms:
          scd.newComponent(cls, addr=scd.i2cAddr(bus, addr, t=3, datr=2, datw=3),

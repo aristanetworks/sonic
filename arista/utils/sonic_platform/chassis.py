@@ -160,6 +160,8 @@ class Chassis(ChassisBase):
       return getSonicSku(self._eeprom.read_eeprom().data())
 
    def get_base_mac(self):
+      if self.is_bmc():
+         return self._platform.getBmcBaseMac()
       return self._eeprom.read_eeprom().getField("MAC")
 
    def get_serial(self):

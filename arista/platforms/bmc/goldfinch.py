@@ -24,7 +24,7 @@ class Goldfinch(BmcSubsystem):
          SensorDesc(diode=0, name='BMC temp sensor',
                     position=Position.OTHER, target=70, overheat=80, critical=90),
       ])
-      self.newComponent(BmcMgmtNic, cpuEeprom=self.cpuEeprom)
+      self.bmcMgmtNic = self.newComponent(BmcMgmtNic, cpuEeprom=self.cpuEeprom)
       self.newComponent(BmcUsbDeviceNic, udcName='12060000.usb-vhub:p1')
 
       self.newComponent(SonicReloadCauseCookieComponent,
@@ -49,3 +49,6 @@ class Goldfinch(BmcSubsystem):
 
    def cpuCpldAddr(self):
       return self.bmc.getSmbus(12).i2cAddr(0x43)
+
+   def getBmcBaseMac(self):
+      return self.bmcMgmtNic.getEepromMgmtMac()

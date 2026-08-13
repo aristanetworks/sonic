@@ -69,3 +69,6 @@ class BmcSubsystem(FixedSystem):
    @simulateWith(getEepromSim)
    def getEeprom(self):
       return self.bmcEeprom.prefdl()
+
+   def getBmcBaseMac(self):
+      return self.bmcEeprom.prefdl().get('MAC')

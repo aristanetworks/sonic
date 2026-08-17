@@ -21,7 +21,6 @@ scd-hwmon-objs += scd-xcvr.o
 CFLAGS_scd-smbus.o := -I$M
 
 obj-m += crow-fan-driver.o
-obj-m += raven-fan-driver.o
 obj-m += rook-led-driver.o
 obj-m += rook-fan-cpld.o
 obj-m += tmp468.o

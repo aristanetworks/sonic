@@ -468,7 +468,7 @@ class CoolingLogicClassicPid(CoolingLogic):
       return pwm
 
    def exportCooling(self):
-      return [self.targetRpm.lastSet or self.config.maxSpeed]
+      return [self.targetRpm.lastSet or self.zone.maxSpeed]
 
    def exportThermal(self, thermal):
       return [thermal.logicData(k).lastGet or 0 for k in ('p', 'i', 'd')]

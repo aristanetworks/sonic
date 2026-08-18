@@ -61,3 +61,6 @@ class Osfp(Xcvr):
 
 class Osfp800(Osfp):
    SPEED = 100000
+
+class Osfp1600(Osfp):
+   SPEED = 200000

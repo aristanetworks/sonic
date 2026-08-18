@@ -75,6 +75,66 @@ class Tps16890(TiEcb):
 
    DESCRIPTION = _makeTPS16890Description(TiEcb.SENSE_RESISTANCE)
 
+class AdEcb(PsuModel):
+   MANUFACTURER = 'AnalogDevices'
+   PMBUS_CLS = PmbusPsu
+
+   SENSE_RESISTANCE = 1
+
+   @classmethod
+   def makeDescription(cls, senseRes):
+      raise NotImplementedError
+
+def _makeLTC4287Description(senseRes):
+   # LTC conversion of raw ADC values read over PMBus:
+   #    X = (1/m) * Y * 10^-R - b
+   # where Y is the 2 byte value read from PMBus register.
+   # Voltage (V): m = 32, b = 0, R = 1
+   # Current (A): m = 1024 * SENSE_RESISTANCE, b = 0, R = 3
+   # Power (W): m = SENSE_RESISTANCE, b = 0, R = 4
+   # Temperature (C): m = 1, b = 273.15, R = 0
+   LTC4287_VOLTAGE_SCALE = 1. / 320
+   LTC4287_CURRENT_SCALE_PER_OHM = 1. / 1024000
+   LTC4287_POWER_SCALE_PER_OHM = 1. / 10000
+   currentScale = LTC4287_CURRENT_SCALE_PER_OHM / senseRes
+   voltageScale = LTC4287_VOLTAGE_SCALE
+   powerScale = LTC4287_POWER_SCALE_PER_OHM / senseRes
+
+   desc = psuDescHelper(
+      sensors=[
+         ('internal', Position.OTHER, 100, 105, 110, 1, -273.15),
+      ],
+      hasFans=False,
+      inputRailId=None,
+      outputRailId=None,
+   )
+   # LTC4287 exposes a mix of input and output telemetry:
+   # - vin/pin are INPUT (no iin available)
+   # - vout1/iout1 are OUTPUT (no pout available)
+   # Use INPUT for rails[0] (power) and OUTPUT for rails[1] (voltage/current)
+   desc.rails = [
+      RailDesc(railId=1, direction=RailDirection.INPUT,
+               powerScale=powerScale),
+      RailDesc(railId=1, direction=RailDirection.OUTPUT,
+               currentScale=currentScale, voltageScale=voltageScale),
+   ]
+   return desc
+
+class Ltc4287(AdEcb):
+   CAPACITY = 1600
+   AUTODETECT_PMBUS = False
+
+   PMBUS_ADDR = 0x10
+   IDENTIFIERS = [
+      PsuIdent('LTC4287', 'LTC4287', None),
+   ]
+
+   @classmethod
+   def makeDescription(cls, senseRes):
+      return _makeLTC4287Description(senseRes)
+
+   DESCRIPTION = _makeLTC4287Description(AdEcb.SENSE_RESISTANCE)
+
 def createPmbusECB(cls, senseRes, addr=0x10):
    name = '%s_0x%02x' % (cls.__name__, addr)
    PmbusECB = type(name, (cls,), {

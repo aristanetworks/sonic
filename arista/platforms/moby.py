@@ -14,7 +14,8 @@ from ..components.lm75 import Tmp75
 from ..components.max6581 import Max6581
 from ..components.minke import Minke
 from ..components.pci import EcrcPciQuirk
-from ..components.psu.dcdc import createPmbusIBC
+from ..components.psu.ecb import createPmbusECB, Ltc4287
+from ..components.vrm.ibc import Pwr689
 
 from ..components.scd import (
    Scd,
@@ -175,20 +176,32 @@ class Moby(FixedSystem):
          ) for i in range(0, self.BACKPLANE_CONNECTORS)
       ]
 
-      for psuId, psuClasses in [
-         (1, [createPmbusIBC(addr=0x10)]),
-         (2, [createPmbusIBC(addr=0x12)]),
-      ]:
-         addrFunc=lambda addr: scd.i2cAddr(16, addr, t=3, datr=2, datw=3)
-         self.scd.newComponent(
-            PsuSlot,
-            slotId=psuId,
-            addrFunc=addrFunc,
-            presentGpio=True,
-            psus=psuClasses,
-            forcePsuLoad=True,
-            psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS,
-         )
+      # No traditional PSU on Moby. ECB connects to 48V bus bar so model
+      # that as the PSU
+      scd.newComponent(
+         PsuSlot,
+         slotId=1,
+         addrFunc=lambda addr: scd.i2cAddr(5, addr),
+         presentGpio=True,
+         psus=[createPmbusECB(Ltc4287, senseRes=0.00025, addr=0x40)],
+         forcePsuLoad=True,
+         psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS,
+      )
+
+      # 2 IBC for SWC and 2 IBC for fan card
+      ibcs = [
+         (16, 0x10, 'SWC1'),
+         (16, 0x12, 'SWC2'),
+         (17, 0x10, 'Fan1'),
+         (17, 0x12, 'Fan2'),
+      ]
+      for bus, addr, name in ibcs:
+         scd.newComponent(Pwr689, addr=scd.i2cAddr(bus, addr, t=3, datr=2, datw=3),
+            sensors=[
+               SensorDesc(diode=0, name='IBC %s' % name,
+                          position=Position.OTHER, target=100, overheat=105,
+                          critical=110),
+            ])
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD1)
       pscd = port.newComponent(MobyPortScd, addr=port.addr, ports=self.PORTS)

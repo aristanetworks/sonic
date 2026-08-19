@@ -3,6 +3,11 @@ from ..core.fixed import FixedSystem
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
 from ..core.psu import PsuSlot
+from ..core.register import (
+   Register,
+   RegisterMap,
+   RegBitField,
+)
 from ..core.utils import incrange
 
 from ..components.asic.xgs.tomahawk6 import Tomahawk6
@@ -32,6 +37,32 @@ OSFP_TRICOLOR_LED = {'defaultLed': '%s:rgb:1', 'leds': [
 QSFP_TRICOLOR_LED = {'defaultLed': '%s:rgb:1', 'leds': [
    LedDesc(addr=0, name='%s:rgb:1', **LedKind.desc(LedKind.RGB_8_F)),
 ]}
+
+class SteamerLaneSysCpldRegisters(RegisterMap):
+   MINOR = Register(0x00, name='revisionMinor')
+   REVISION = Register(0x01, name='revision')
+   SCRATCHPAD = Register(0x02, name='scratchpad', ro=False)
+
+   FAULT_PWR_CYCLE_EN_1 = Register(0x11,
+      RegBitField(6, 'railFault', ro=False),
+      RegBitField(4, 'cpuFault', ro=False),
+      RegBitField(3, 'watchdog', ro=False),
+      RegBitField(2, 'powerCycleOnCrc', ro=False),
+      RegBitField(1, 'overtemp', ro=False),
+   )
+   FAULT_PWR_CYCLE_EN_2 = Register(0x12,
+      RegBitField(7, 'bitshadowRxParity', ro=False),
+      RegBitField(0, 'leak', ro=False),
+   )
+   RT_FAULT_0 = Register(0x46,
+      RegBitField(4, 'cpuFault'),
+      RegBitField(3, 'watchdog'),
+      RegBitField(2, 'scdCrcError'),
+      RegBitField(1, 'overtemp'),
+   )
+
+class SteamerLaneSysCpld(SysCpld):
+   REGISTER_CLS = SteamerLaneSysCpldRegisters
 
 class Windsurf(object):
    '''
@@ -94,10 +125,9 @@ class SteamerLaneBase(FixedSystem):
 
       # Virtual CPLD inside the switchcard SCD
       self.syscpld = self.cpu.cpld.newComponent(
-         SysCpld,
+         SteamerLaneSysCpld,
          addr=scBus.i2cAddr(0x23)
       )
-      # TODO: define syscpld registers (pwr_cycle_en)
 
       self.pca = self.cpu.cpld.newComponent(
          Pca9548,

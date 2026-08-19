@@ -1,5 +1,6 @@
 from ..core.cooling import CoolingConfig, CoolingLogicIncPid
 from ..core.fixed import FixedSystem, FixedChassis
+from ..core.liquid import LeakDetectionInterfaceV1, LeakSensorType
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
 from ..core.psu import PsuSlot
@@ -16,13 +17,14 @@ from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdMon, UcdPriority
 from ..components.lm75 import Tmp75
 from ..components.pca954x import Pca9548
 from ..components.psu.ecb import createPmbusECB, Tps16890
-from ..components.scd import Scd
+from ..components.scd import LeakDetectionPcieRegistersV1, Scd
 from ..components.tmp401 import Tmp431
 from ..components.vrm.ibc import Pwr689
 from ..components.vrm.tda38740 import Tda38740a, Xdpe1a2g5b, Xdpe1b284b
 
 from ..descs.cause import ReloadCauseDesc, ReloadCauseAltSource
 from ..descs.led import LedDesc, LedKind
+from ..descs.liquid import LeakSensorDesc, LiquidCoolingDesc
 from ..descs.psu import PsuStatusPolicy
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
@@ -234,7 +236,8 @@ class SteamerLaneBase(FixedSystem):
          )
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
-      self.scd = scd = port.newComponent(Scd, addr=port.addr)
+      self.scd = scd = port.newComponent(Scd, addr=port.addr,
+         registerCls=LeakDetectionPcieRegistersV1)
       scd.setMsiRearmOffset(0x180)
       scd.addSmbusMasterRange(0x8000, 11, 0x80, 8)
 
@@ -261,6 +264,16 @@ class SteamerLaneBase(FixedSystem):
       if self.HAS_WINDSURF:
          self.windsurf = Windsurf(self.cpu, psuSlotId=self.psuCounter)
          self.psuCounter += 1
+
+      # TODO: update locations.
+      self.cpu.cpld.addLiquidCooling(
+         LiquidCoolingDesc(LeakDetectionInterfaceV1, sensors=[
+            LeakSensorDesc(name="trayLeak", sensorType=LeakSensorType.ROPE_MAJOR,
+                           addr=0, location="drip tray"),
+            LeakSensorDesc(name="smallLeak", sensorType=LeakSensorType.ROPE_MINOR,
+                           addr=0, location="unspecified"),
+         ])
+      )
 
       intrRegs = [
          scd.createInterrupt(addr=0x3000, num=0),

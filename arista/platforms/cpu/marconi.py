@@ -1,5 +1,6 @@
 from ...core.bmc import BmcHostCpu, registerHostCpu
 from ...core.cpu import Cpu
+from ...core.liquid import LeakDetectionInterfaceV1, LeakSensorType
 from ...core.pci import PciPortDesc, PciRoot
 
 from ...components.bmc_usb_host_nic import BmcUsbHostNic
@@ -22,6 +23,7 @@ from ...descs.cause import (
    ReloadCausePriority,
 )
 from ...descs.led import LedDesc, LedKind
+from ...descs.liquid import LeakSensorDesc, LiquidCoolingDesc
 from ...descs.sensor import Position, SensorDesc
 
 class MarconiCpu(Cpu):
@@ -98,8 +100,6 @@ class MarconiCpu(Cpu):
          priority=ScdCause.Priority.HARDWARE_SECONDARY,
          altSource=[ReloadCauseAltSource.CPU]
       )
-
-      # TODO: leak detection registers on CPU CPLD
 
       # TODO: everything related ot the BMC, will likely need a new subpackage
       # under arista.platforms.bmc and a new base definition under
@@ -190,3 +190,13 @@ class MarconiHostCpu(BmcHostCpu):
       self.cpld = self.newComponent(SysCpld,
                                     addr=self.parent.cpuCpldAddr(),
                                     registerCls=MarconiCpldRegisters)
+
+      # TODO: update locations.
+      self.cpld.addLiquidCooling(
+         LiquidCoolingDesc(LeakDetectionInterfaceV1, sensors=[
+            LeakSensorDesc(name="trayLeak", sensorType=LeakSensorType.ROPE_MAJOR,
+                           addr=0, location="drip tray"),
+            LeakSensorDesc(name="smallLeak", sensorType=LeakSensorType.ROPE_MINOR,
+                           addr=0, location="unspecified"),
+         ])
+      )

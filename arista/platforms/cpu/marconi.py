@@ -20,7 +20,6 @@ from ...components.vrm.tda38740 import Xdpe1e496b
 from ...descs.cause import (
    ReloadCauseAltSource,
    ReloadCauseDesc,
-   ReloadCausePriority,
 )
 from ...descs.led import LedDesc, LedKind
 from ...descs.liquid import LeakSensorDesc, LiquidCoolingDesc
@@ -48,7 +47,7 @@ class MarconiCpu(Cpu):
    SMBUS_FC = ScdSmbusDesc(1, 3)
 
    def __init__(self, **kwargs):
-      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
+      super().__init__(**kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
       port = self.pciRoot.rootPort(device=0x18, func=3)

@@ -46,6 +46,8 @@ class SteamerLaneBase(FixedSystem):
       posHyst=0,
    )
 
+   PORT_LED_POLICY = True
+
    def __init__(self, **kwargs):
       super().__init__(**kwargs)
 

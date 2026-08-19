@@ -5,26 +5,31 @@ from ..core.port import PortLayout
 from ..core.utils import incrange
 
 from ..components.asic.xgs.tomahawk6 import Tomahawk6
-from ..components.dpm.ucd import Ucd90320
+from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdMon
 from ..components.scd import Scd
 from ..components.tmp401 import Tmp431
 
+from ..descs.cause import ReloadCauseDesc
 from ..descs.led import LedDesc, LedKind
 from ..descs.reset import ResetDesc
+from ..descs.sensor import Position, SensorDesc
 from ..descs.xcvr import Osfp1600, Qsfp28
 
 from .cpu.marconi import MarconiCpu
 
-SFP_TRICOLOR_LED = {'defaultLed': '%s:rgb:1', 'leds': [
+OSFP_TRICOLOR_LED = {'defaultLed': '%s:rgb:1', 'leds': [
    LedDesc(addr=0, name='%s:rgb:1', **LedKind.desc(LedKind.RGB_8_F)),
    LedDesc(addr=16, name='%s:rgb:2', **LedKind.desc(LedKind.RGB_8_F)),
+]}
+QSFP_TRICOLOR_LED = {'defaultLed': '%s:rgb:1', 'leds': [
+   LedDesc(addr=0, name='%s:rgb:1', **LedKind.desc(LedKind.RGB_8_F)),
 ]}
 
 class SteamerLaneBase(FixedSystem):
 
    PORTS = PortLayout(
-      (Osfp1600(i, **SFP_TRICOLOR_LED) for i in incrange(1, 64)),
-      (Qsfp28(65, **SFP_TRICOLOR_LED),),
+      (Osfp1600(i, **OSFP_TRICOLOR_LED) for i in incrange(1, 64)),
+      (Qsfp28(65, **QSFP_TRICOLOR_LED),),
    )
 
    COOLING = CoolingConfig(
@@ -53,21 +58,52 @@ class SteamerLaneBase(FixedSystem):
       # 0x74 IO EXPANDER
 
       bus = self.cpu.getSmbus(self.cpu.SMBUS_POL)
-      self.cpu.cpld.newComponent(Ucd90320, addr=bus.i2cAddr(0x11))
-      self.cpu.cpld.newComponent(Ucd90320, addr=bus.i2cAddr(0x13))
-      # TODO: reboot causes?
+
+      self.cpu.cpld.newComponent(
+         Ucd90320, addr=bus.i2cAddr(0x11),
+         causes=[
+            UcdMon(1, ReloadCauseDesc.POWERLOSS, "Busbar"),
+            UcdMon(2, ReloadCauseDesc.POWERLOSS, "ECB output"),
+            UcdGpi(12, ReloadCauseDesc.CPU),
+            UcdGpi(13, ReloadCauseDesc.OVERTEMP),
+            UcdGpi(14, ReloadCauseDesc.OVERTEMP),
+            UcdGpi(15, ReloadCauseDesc.OVERTEMP),
+            UcdGpi(17, ReloadCauseDesc.WATCHDOG),
+            UcdGpi(22, ReloadCauseDesc.LEAK_DETECTED, "Rope 2"),
+            UcdGpi(23, ReloadCauseDesc.LEAK_DETECTED, "Rope 1"),
+            UcdGpi(24, ReloadCauseDesc.RAIL, "CPU"),
+            UcdGpi(27, ReloadCauseDesc.RAIL, "TH6"),
+            UcdGpi(32, ReloadCauseDesc.POWERLOSS, "ECB enable"),
+      ])
+      self.cpu.cpld.newComponent(Ucd90320,addr=bus.i2cAddr(0x13))
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
       self.scd = scd = port.newComponent(Scd, addr=port.addr)
       scd.setMsiRearmOffset(0x180)
       scd.addSmbusMasterRange(0x8000, 11, 0x80, 8)
 
-      # TODO: add SensorDescs
-      scd.newComponent(Tmp431, addr=scd.i2cAddr(0, 0x4c))
-      scd.newComponent(Tmp431, addr=scd.i2cAddr(1, 0x4c))
-      scd.newComponent(Tmp431, addr=scd.i2cAddr(2, 0x4c))
+      scd.newComponent(Tmp431, addr=scd.i2cAddr(0, 0x4c), sensors=[
+         SensorDesc(diode=0, name='Back center PCB sensor',
+                    position=Position.INLET, target=75, overheat=80, critical=90),
+         SensorDesc(diode=1, name='TH6 diode 0',
+                    position=Position.INLET, target=100, overheat=105, critical=110),
+      ])
+      scd.newComponent(Tmp431, addr=scd.i2cAddr(1, 0x4c), sensors=[
+         SensorDesc(diode=0, name='Front left PCB sensor',
+                    position=Position.INLET, target=75, overheat=80, critical=90),
+         SensorDesc(diode=1, name='TH6 diode 1',
+                    position=Position.INLET, target=100, overheat=105, critical=110),
+      ])
+      scd.newComponent(Tmp431, addr=scd.i2cAddr(2, 0x4c), sensors=[
+         SensorDesc(diode=0, name='Back left PCB sensor',
+                    position=Position.INLET, target=75, overheat=80, critical=90),
+         SensorDesc(diode=1, name='TH6 diode 2',
+                    position=Position.INLET, target=100, overheat=105, critical=110),
+      ])
 
-      # TODO: add Psus
+      # TODO: add Psus and ECBs
+
+      # TODO: add VRMs
 
       intrRegs = [
          scd.createInterrupt(addr=0x3000, num=0),
@@ -105,6 +141,8 @@ class SteamerLaneBase(FixedSystem):
       ])
 
       # TODO: add system/status LEDs (on the management card)
+
+      # TODO: Add windsurf board
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC1)
       self.asic = port.newComponent(Tomahawk6, addr=port.addr,

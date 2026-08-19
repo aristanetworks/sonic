@@ -1,7 +1,11 @@
+from ...core.bmc import BmcHostCpu, registerHostCpu
 from ...core.cpu import Cpu
 from ...core.pci import PciPortDesc, PciRoot
 
+from ...components.bmc_usb_host_nic import BmcUsbHostNic
+from ...components.cpld import SysCpld
 from ...components.cpu.amd.k10temp import K10Temp
+from ...components.cpu.marconi import MarconiCpldRegisters
 from ...components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ...components.lm75 import Tmp75
 from ...components.scd import (
@@ -171,6 +175,18 @@ class MarconiCpu(Cpu):
          ]
       )
 
+      self.newComponent(BmcUsbHostNic)
+
    def getSmbus(self, desc):
       busPerMaster = next(iter(self.cpld.smbusMasters.values()))['bus']
       return self.cpld.getSmbus(desc.master * busPerMaster + desc.bus)
+
+@registerHostCpu()
+class MarconiHostCpu(BmcHostCpu):
+   SID = ['Marconi', 'SteamerLaneMv3']
+
+   def __init__(self, *args, **kwargs):
+      super().__init__(*args, **kwargs)
+      self.cpld = self.newComponent(SysCpld,
+                                    addr=self.parent.cpuCpldAddr(),
+                                    registerCls=MarconiCpldRegisters)

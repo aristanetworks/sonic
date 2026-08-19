@@ -139,8 +139,9 @@ class Ltc4287(AdEcb):
 
    DESCRIPTION = _makeLTC4287Description(AdEcb.SENSE_RESISTANCE)
 
-def createPmbusECB(cls, senseRes, addr=0x10):
-   name = '%s_0x%02x' % (cls.__name__, addr)
+def createPmbusECB(cls, senseRes, slotId=1, addr=0x10):
+   # slotId is included in the generated class name to keep it unique
+   name = '%s_%d' % (cls.__name__, slotId)
    PmbusECB = type(name, (cls,), {
       'PMBUS_ADDR': addr,
       'SENSE_RESISTANCE': senseRes,

@@ -7,6 +7,7 @@ from ..core.utils import incrange
 
 from ..components.asic.xgs.tomahawk6 import Tomahawk6
 from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdMon
+from ..components.lm75 import Tmp75
 from ..components.psu.ecb import createPmbusECB, Tps16890
 from ..components.scd import Scd
 from ..components.tmp401 import Tmp431
@@ -30,7 +31,35 @@ QSFP_TRICOLOR_LED = {'defaultLed': '%s:rgb:1', 'leds': [
    LedDesc(addr=0, name='%s:rgb:1', **LedKind.desc(LedKind.RGB_8_F)),
 ]}
 
+class Windsurf(object):
+   '''
+   Windsurf rear board which contains power and leak detection circuitry.
+   '''
+   def __init__(self, cpu, psuSlotId):
+      fcBus = cpu.getSmbus(cpu.SMBUS_FC)
+      cpu.cpld.newComponent(
+         Tmp75,
+         addr=fcBus.i2cAddr(0x48),
+         sensors=[
+            SensorDesc(diode=0, name='Rear card', position=Position.OUTLET,
+                       target=75, overheat=80, critical=85),
+         ]
+      )
+
+      # ECB connected to 48V bus bar
+      cpu.cpld.newComponent(
+         PsuSlot,
+         slotId=psuSlotId,
+         addrFunc=fcBus.i2cAddr,
+         presentGpio=True,
+         psus=[createPmbusECB(Tps16890, senseRes=11000, slotId=psuSlotId,
+                              addr=0x52)],
+         forcePsuLoad=True,
+         psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS,
+      )
+
 class SteamerLaneBase(FixedSystem):
+   HAS_WINDSURF = False
 
    PORTS = PortLayout(
       (Osfp1600(i, **OSFP_TRICOLOR_LED) for i in incrange(1, 64)),
@@ -50,6 +79,8 @@ class SteamerLaneBase(FixedSystem):
 
    def __init__(self, **kwargs):
       super().__init__(**kwargs)
+
+      self.psuCounter = 1
 
       self.cpu = self.newComponent(MarconiCpu)
 
@@ -87,16 +118,19 @@ class SteamerLaneBase(FixedSystem):
 
       pwrBus = self.cpu.getSmbus(self.cpu.SMBUS_PWR)
 
-      for psuId, addr in enumerate([0x52, 0x53, 0x54, 0x55], 1):
-         self.cpu.syscpld.newComponent(
+      # 4 ECB on SWC connected to 48V bus bar
+      for addr in [0x52, 0x53, 0x54, 0x55]:
+         self.cpu.cpld.newComponent(
             PsuSlot,
-            slotId=psuId,
+            slotId=self.psuCounter,
             addrFunc=pwrBus.i2cAddr,
             presentGpio=True,
-            psus=[createPmbusECB(Tps16890, senseRes=1330, addr=addr)],
+            psus=[createPmbusECB(Tps16890, senseRes=1330, slotId=self.psuCounter,
+                                 addr=addr)],
             forcePsuLoad=True,
             psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS,
          )
+         self.psuCounter += 1
 
       ibcs = [
          (0x10, 'POS12V_LHS'),
@@ -109,11 +143,15 @@ class SteamerLaneBase(FixedSystem):
          (0x17, 'POS12V_OPTICS3'),
       ]
       for ibcId, (addr, name) in enumerate(ibcs):
-         self.cpu.syscpld.newComponent(Pwr689, addr=pwrBus.i2cAddr(addr), sensors=[
-            SensorDesc(diode=0, name='IBC %d %s' % (ibcId, name),
-                       position=Position.OTHER, target=100, overheat=105,
-                       critical=110),
-         ])
+         self.cpu.cpld.newComponent(
+            Pwr689,
+            addr=pwrBus.i2cAddr(addr),
+            sensors=[
+               SensorDesc(diode=0, name='IBC %d %s' % (ibcId, name),
+                          position=Position.OTHER, target=100, overheat=105,
+                          critical=110),
+            ]
+         )
 
       vrms = [
          (Tda38740a, 0x4a, ['POS1V2_VDDA']),
@@ -148,24 +186,29 @@ class SteamerLaneBase(FixedSystem):
       scd.setMsiRearmOffset(0x180)
       scd.addSmbusMasterRange(0x8000, 11, 0x80, 8)
 
-      scd.newComponent(Tmp431, addr=scd.i2cAddr(0, 0x4c), sensors=[
-         SensorDesc(diode=0, name='Back center PCB sensor',
-                    position=Position.INLET, target=75, overheat=80, critical=90),
-         SensorDesc(diode=1, name='TH6 diode 0',
-                    position=Position.INLET, target=100, overheat=105, critical=110),
-      ])
-      scd.newComponent(Tmp431, addr=scd.i2cAddr(1, 0x4c), sensors=[
-         SensorDesc(diode=0, name='Front left PCB sensor',
-                    position=Position.INLET, target=75, overheat=80, critical=90),
-         SensorDesc(diode=1, name='TH6 diode 1',
-                    position=Position.INLET, target=100, overheat=105, critical=110),
-      ])
-      scd.newComponent(Tmp431, addr=scd.i2cAddr(2, 0x4c), sensors=[
-         SensorDesc(diode=0, name='Back left PCB sensor',
-                    position=Position.INLET, target=75, overheat=80, critical=90),
-         SensorDesc(diode=1, name='TH6 diode 2',
-                    position=Position.INLET, target=100, overheat=105, critical=110),
-      ])
+      # PCB/TH6 temp sensors
+      pcbDiodeTempParams = {'target': 75, 'overheat': 80, 'critical': 90}
+      th6DiodeTempParams = {'target': 100, 'overheat': 105, 'critical': 110}
+      tmp431s = [
+         (0, 0x4c, ['Back center PCB', 'TH6 diode 0']),
+         (1, 0x4c, ['Front left PCB', 'TH6 diode 1']),
+         (2, 0x4c, ['Back left PCB', 'TH6 diode 2']),
+      ]
+      for bus, addr, (pcbDiode, th6Diode) in tmp431s:
+         scd.newComponent(
+            Tmp431,
+            addr=scd.i2cAddr(bus, addr),
+            sensors=[
+               SensorDesc(diode=0, name=pcbDiode, position=Position.OTHER,
+                          **pcbDiodeTempParams),
+               SensorDesc(diode=1, name=th6Diode, position=Position.OTHER,
+                          **th6DiodeTempParams),
+            ]
+         )
+
+      if self.HAS_WINDSURF:
+         self.windsurf = Windsurf(self.cpu, psuSlotId=self.psuCounter)
+         self.psuCounter += 1
 
       intrRegs = [
          scd.createInterrupt(addr=0x3000, num=0),
@@ -204,8 +247,6 @@ class SteamerLaneBase(FixedSystem):
 
       # TODO: add system/status LEDs (on the management card)
 
-      # TODO: Add windsurf board
-
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC1)
       self.asic = port.newComponent(Tomahawk6, addr=port.addr,
          coreResets=[
@@ -218,5 +259,7 @@ class SteamerLaneBase(FixedSystem):
 
 @registerPlatform()
 class SteamerLaneMv3(SteamerLaneBase):
+   HAS_WINDSURF = True
+
    SID = ['SteamerLaneMv3']
    SKU = ['7060XE7-64PRS-MV3-L', 'DCS-7060XE7-64PRS-MV3-L']

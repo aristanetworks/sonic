@@ -16,7 +16,7 @@ from ..components.tmp401 import Tmp431
 from ..components.vrm.ibc import Pwr689
 from ..components.vrm.tda38740 import Xdpe1a2g5b, Xdpe1b284b, Tda38740a
 
-from ..descs.cause import ReloadCauseDesc
+from ..descs.cause import ReloadCauseDesc, ReloadCauseAltSource
 from ..descs.led import LedDesc, LedKind
 from ..descs.psu import PsuStatusPolicy
 from ..descs.reset import ResetDesc
@@ -113,7 +113,8 @@ class SteamerLaneBase(FixedSystem):
          causes=[
             UcdMon(1, ReloadCauseDesc.POWERLOSS, "Busbar"),
             UcdMon(2, ReloadCauseDesc.POWERLOSS, "ECB output"),
-            UcdGpi(12, ReloadCauseDesc.CPU),
+            UcdGpi(12, ReloadCauseDesc.CPU,
+                   altSource=ReloadCauseAltSource.CPU),
             UcdGpi(13, ReloadCauseDesc.OVERTEMP),
             UcdGpi(14, ReloadCauseDesc.OVERTEMP),
             UcdGpi(15, ReloadCauseDesc.OVERTEMP),

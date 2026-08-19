@@ -7,7 +7,7 @@ from ..core.utils import incrange
 
 from ..components.asic.xgs.tomahawk6 import Tomahawk6
 from ..components.cpld import SysCpld
-from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdMon
+from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdMon, UcdPriority
 from ..components.lm75 import Tmp75
 from ..components.pca954x import Pca9548
 from ..components.psu.ecb import createPmbusECB, Tps16890
@@ -124,10 +124,13 @@ class SteamerLaneBase(FixedSystem):
             UcdGpi(25, ReloadCauseDesc.RMC_REBOOT), # Not used on MV3
             UcdGpi(27, ReloadCauseDesc.RAIL, "TH6"),
             UcdGpi(32, ReloadCauseDesc.POWERLOSS, "ECB enable"),
-      ])
+         ],
+         causePriority=UcdPriority.HARDWARE_MAIN
+      )
       self.cpu.cpld.newComponent(
          Ucd90320,
-         addr=polBus.i2cAddr(0x13)
+         addr=polBus.i2cAddr(0x13),
+         causePriority=UcdPriority.HARDWARE_SECONDARY
       )
 
       pwrBus = self.cpu.getSmbus(self.cpu.SMBUS_PWR)

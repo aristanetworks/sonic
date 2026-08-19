@@ -4,10 +4,19 @@ from ...core.pci import PciPortDesc, PciRoot
 from ...components.cpu.amd.k10temp import K10Temp
 from ...components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ...components.lm75 import Tmp75
-from ...components.scd import Scd, ScdSmbusDesc
+from ...components.scd import (
+   Scd,
+   ScdCause,
+   ScdReloadCauseRegisters,
+   ScdSmbusDesc
+)
 from ...components.vrm.tda38740 import Xdpe1e496b
 
-from ...descs.cause import ReloadCauseDesc
+from ...descs.cause import (
+   ReloadCauseAltSource,
+   ReloadCauseDesc,
+   ReloadCausePriority,
+)
 from ...descs.led import LedDesc, LedKind
 from ...descs.sensor import Position, SensorDesc
 
@@ -33,7 +42,7 @@ class MarconiCpu(Cpu):
    SMBUS_FC = ScdSmbusDesc(1, 3)
 
    def __init__(self, **kwargs):
-      super().__init__(**kwargs)
+      super().__init__(cookiesPriority=ReloadCausePriority.PREREBOOT, **kwargs)
 
       self.pciRoot = self.newComponent(PciRoot)
       port = self.pciRoot.rootPort(device=0x18, func=3)
@@ -63,6 +72,26 @@ class MarconiCpu(Cpu):
             ('scm_status', 0x6090),
          ]
       ])
+      self.cpld.addReloadCauseProvider(
+         causes=[
+            ScdCause(0x01, ScdCause.OVERTEMP),
+            ScdCause(0x05, ScdCause.SWITCH_CARD),
+            ScdCause(0x08, ScdCause.REBOOT, 'Software Reboot'),
+            ScdCause(0x0a, ScdCause.POWERLOSS, 'DC to CPU'),
+            ScdCause(0x0b, ScdCause.NO_FANS), # Only used if air cooled
+            ScdCause(0x0c, ScdCause.CPU),
+            ScdCause(0x0d, ScdCause.CPU_S3),
+            ScdCause(0x0e, ScdCause.CPU_S5),
+            ScdCause(0x0f, ScdCause.SEU, 'bitshadow rx parity error'),
+            ScdCause(0x11, ScdCause.SWITCH_CARD, 'switch-card unseated'),
+            ScdCause(0x15, ScdCause.LEAK_ROPE_FAIL),
+            ScdCause(0x16, ScdCause.LEAK_DETECTED),
+         ],
+         regmap=ScdReloadCauseRegisters,
+         priority=ScdCause.Priority.HARDWARE_SECONDARY,
+         altSource=[ReloadCauseAltSource.CPU]
+      )
+
       # TODO: leak detection registers on CPU CPLD
 
       # TODO: everything related ot the BMC, will likely need a new subpackage
@@ -96,9 +125,13 @@ class MarconiCpu(Cpu):
          addr=cpuPolBus.i2cAddr(0x31),
          causes=[
             # TODO: update reload cause list
-            UcdGpi(6, ReloadCauseDesc.OVERTEMP),
-            UcdGpi(7, ReloadCauseDesc.CPU, priority=UcdPriority.LOW),
-      ])
+            UcdGpi(15, ReloadCauseDesc.OVERTEMP),
+            UcdGpi(16, ReloadCauseDesc.REBOOT, 'Rebooted by BMC'),
+            UcdGpi(21, ReloadCauseDesc.REBOOT, 'Rebooted by CPU'),
+         ],
+         causePriority=UcdPriority.HARDWARE_SECONDARY,
+         altSource=[ReloadCauseAltSource.CPU]
+      )
 
       # Front panel shim board
       fpBus = self.getSmbus(self.SMBUS_FP)

@@ -1,5 +1,5 @@
 from ..core.cooling import CoolingConfig, CoolingLogicIncPid
-from ..core.fixed import FixedSystem
+from ..core.fixed import FixedSystem, FixedChassis
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
 from ..core.psu import PsuSlot
@@ -91,7 +91,11 @@ class Windsurf(object):
          psuStatusPolicy=PsuStatusPolicy.PMBUS_STATUS,
       )
 
+class SteamerLaneChassis(FixedChassis):
+   HEIGHT_RU = 2
+
 class SteamerLaneBase(FixedSystem):
+   CHASSIS = SteamerLaneChassis
    HAS_WINDSURF = False
 
    PORTS = PortLayout(

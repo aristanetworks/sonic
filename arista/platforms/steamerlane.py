@@ -19,7 +19,7 @@ from ..components.psu.ecb import createPmbusECB, Tps16890
 from ..components.scd import Scd
 from ..components.tmp401 import Tmp431
 from ..components.vrm.ibc import Pwr689
-from ..components.vrm.tda38740 import Xdpe1a2g5b, Xdpe1b284b, Tda38740a
+from ..components.vrm.tda38740 import Tda38740a, Xdpe1a2g5b, Xdpe1b284b
 
 from ..descs.cause import ReloadCauseDesc, ReloadCauseAltSource
 from ..descs.led import LedDesc, LedKind

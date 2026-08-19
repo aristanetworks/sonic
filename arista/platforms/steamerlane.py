@@ -72,6 +72,7 @@ class SteamerLaneBase(FixedSystem):
             UcdGpi(22, ReloadCauseDesc.LEAK_DETECTED, "Rope 2"),
             UcdGpi(23, ReloadCauseDesc.LEAK_DETECTED, "Rope 1"),
             UcdGpi(24, ReloadCauseDesc.RAIL, "CPU"),
+            UcdGpi(25, ReloadCauseDesc.RMC_REBOOT), # Not used on MV3
             UcdGpi(27, ReloadCauseDesc.RAIL, "TH6"),
             UcdGpi(32, ReloadCauseDesc.POWERLOSS, "ECB enable"),
       ])

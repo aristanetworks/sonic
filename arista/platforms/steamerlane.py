@@ -1,6 +1,7 @@
 from ..core.bmc import BmcHostSwitch, registerHostSwitch
 from ..core.cooling import CoolingConfig, CoolingLogicIncPid
 from ..core.fixed import FixedSystem, FixedChassis
+from ..core.hwapi import HwApi
 from ..core.liquid import LeakDetectionInterfaceV1, LeakSensorType
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
@@ -16,6 +17,7 @@ from ..components.asic.xgs.tomahawk6 import Tomahawk6
 from ..components.cpld import SysCpld
 from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdMon, UcdPriority
 from ..components.lm75 import Tmp75
+from ..components.max31732 import Max31732
 from ..components.pca954x import Pca9548
 from ..components.psu.ecb import createPmbusECB, Tps16890
 from ..components.scd import LeakDetectionPcieRegistersV1, Scd
@@ -101,6 +103,7 @@ class SteamerLaneChassis(FixedChassis):
 class SteamerLaneBase(FixedSystem):
    CHASSIS = SteamerLaneChassis
    HAS_WINDSURF = False
+   P3_HWAPI = HwApi(4, 0)
 
    PORTS = PortLayout(
       (Osfp1600(i, **OSFP_TRICOLOR_LED) for i in incrange(1, 64)),
@@ -243,25 +246,67 @@ class SteamerLaneBase(FixedSystem):
       scd.setMsiRearmOffset(0x180)
       scd.addSmbusMasterRange(0x8000, 11, 0x80, 8)
 
-      # PCB/TH6 temp sensors
-      pcbDiodeTempParams = {'target': 85, 'overheat': 90, 'critical': 95}
+      # Board/TH6 temp sensors
+      boardDiodeTempParams = {'target': 90, 'overheat': 95, 'critical': 100}
       th6DiodeTempParams = {'target': 90, 'overheat': 105, 'critical': 110}
       tmp431s = [
-         (0, 0x4c, ['Back center PCB', 'TH6 diode 0']),
-         (1, 0x4c, ['Front left PCB', 'TH6 diode 1']),
-         (2, 0x4c, ['Back left PCB', 'TH6 diode 2']),
+         (0, 0x4c, ['Board Center', 'TH6C Remote Diode 0']),
+         (1, 0x4c, ['Board Front Left', 'TH6C Remote Diode 1']),
+         (2, 0x4c, ['Board Center Left', 'TH6C Remote Diode 2']),
       ]
-      for bus, addr, (pcbDiode, th6Diode) in tmp431s:
+      for bus, addr, (boardDiode, th6Diode) in tmp431s:
          scd.newComponent(
             Tmp431,
             addr=scd.i2cAddr(bus, addr),
             sensors=[
-               SensorDesc(diode=0, name=pcbDiode, position=Position.OTHER,
-                          **pcbDiodeTempParams),
+               SensorDesc(diode=0, name=boardDiode, position=Position.OTHER,
+                          **boardDiodeTempParams),
                SensorDesc(diode=1, name=th6Diode, position=Position.OTHER,
                           **th6DiodeTempParams),
             ]
          )
+
+      if self.getHwApi() >= self.P3_HWAPI:
+         max31732s = [
+            (0x4e, [
+               SensorDesc(diode=0, name='Board Rear Center',
+                          position=Position.OTHER, **boardDiodeTempParams),
+               SensorDesc(diode=1, name='Underside Front Left',
+                          position=Position.OTHER, betaComp=False,
+                          **boardDiodeTempParams),
+               SensorDesc(diode=2, name='Underside Center Left',
+                          position=Position.OTHER, betaComp=False,
+                          **boardDiodeTempParams),
+               SensorDesc(diode=3, name='Board Rear Left',
+                          position=Position.OTHER, betaComp=False,
+                          **boardDiodeTempParams),
+               SensorDesc(diode=4, name='Underside Rear Left',
+                          position=Position.OTHER, betaComp=False,
+                          **boardDiodeTempParams),
+            ]),
+            (0x4f, [
+               SensorDesc(diode=0, name='Board Rear Right',
+                          position=Position.OTHER, **boardDiodeTempParams),
+               SensorDesc(diode=1, name='Underside Rear Center',
+                          position=Position.OTHER, betaComp=False,
+                          **boardDiodeTempParams),
+               SensorDesc(diode=2, name='Underside Rear Right',
+                          position=Position.OTHER, betaComp=False,
+                          **boardDiodeTempParams),
+               SensorDesc(diode=3, name='Underside Front Right',
+                          position=Position.OTHER, betaComp=False,
+                          **boardDiodeTempParams),
+               SensorDesc(diode=4, name='Underside Center',
+                          position=Position.OTHER, betaComp=False,
+                          **boardDiodeTempParams),
+            ]),
+         ]
+         for addr, sensors in max31732s:
+            scd.newComponent(
+               Max31732,
+               addr=scd.i2cAddr(7, addr),
+               sensors=sensors,
+            )
 
       if self.HAS_WINDSURF:
          self.windsurf = Windsurf(self.cpu, psuSlotId=self.psuCounter)

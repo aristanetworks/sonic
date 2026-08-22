@@ -192,13 +192,13 @@ class QuartzDd(FixedSystem):
       )
 
 @registerPlatform()
-class QuartzDdBK(QuartzDd):
-   SID = ['QuartzDdBK']
+class QuartzDdBk(QuartzDd):
+   SID = ['QuartzDdBk']
    SKU = ['DCS-7280DR3AK-36']
 
 @registerPlatform()
-class QuartzDdBKS(QuartzDdBK):
-   SID = ['QuartzDdBKS']
+class QuartzDdBkS(QuartzDdBk):
+   SID = ['QuartzDdBkS']
    SKU = ['DCS-7280DR3AK-36S']
 
    PORTS = PortLayout(

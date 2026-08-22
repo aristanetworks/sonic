@@ -94,6 +94,7 @@ class MarconiCpu(Cpu):
             ScdCause(0x11, ScdCause.SWITCH_CARD, 'switch-card unseated'),
             ScdCause(0x15, ScdCause.LEAK_ROPE_FAIL),
             ScdCause(0x16, ScdCause.LEAK_DETECTED),
+            ScdCause(0x20, ScdCause.RAIL, 'DPM detected rail fault'),
          ],
          regmap=ScdReloadCauseRegisters,
          priority=ScdCause.Priority.HARDWARE_SECONDARY,

@@ -20,6 +20,8 @@ from ..cause import (
    ReloadCauseManager,
    ReloadCauseProviderHelper,
    ReloadCausePriority,
+   ReloadCauseReport,
+   ReloadCauseScore,
 )
 from ..config import Config
 from ..inventory import Inventory
@@ -65,6 +67,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
                'cause': ReloadCauseDesc.POWERLOSS.typ,
                'time': EXPECTED_DATE,
                'description': 'user triggered',
+               'score': ReloadCauseScore.UNKNOWN,
                'priority': ReloadCausePriority.NORMAL,
                'altSource': None,
             },
@@ -83,6 +86,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
                         'cause': ReloadCauseDesc.CPU.typ,
                         'time': EXPECTED_DATE,
                         'description': 'secondary reported',
+                        'score': ReloadCauseScore.UNKNOWN,
                         'priority': ReloadCausePriority.UNKNOWN,
                         'altSource': ReloadCauseAltSource.CPU.value,
                      },
@@ -98,6 +102,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
                         'cause': 'powerloss',
                         'time': EXPECTED_DATE,
                         'description': 'user triggered',
+                        'score': ReloadCauseScore.UNKNOWN,
                         'priority': ReloadCausePriority.NORMAL,
                         'altSource': None,
                      }
@@ -244,6 +249,45 @@ class ReloadCauseManagerTest(unittest.TestCase):
       self.assertDictEqual(self.EXPECTED_SIMPLE, result,
          msg='Serialization/Deserialization of reload cause failed')
 
+   def testMissingJsonFieldsUseDefaults(self):
+      entry = ReloadCauseEntry.fromDict({})
+      self.assertReloadCauseEquals(
+         entry,
+         cause=ReloadCauseDesc.UNKNOWN.typ,
+         description='',
+         score=ReloadCauseScore.UNKNOWN,
+         time='unknown',
+         priority=ReloadCausePriority.NORMAL,
+      )
+
+      provider = ReloadCauseProviderHelper.fromDict({})
+      self.assertEqual(provider.getSourceName(), 'unknown')
+      self.assertEqual(provider.getCauses(), [])
+      self.assertEqual(provider.getExtra(), {})
+      self.assertEqual(
+         provider.getPriority(), ReloadCausePriority.HARDWARE_SECONDARY)
+      self.assertEqual(provider.getAltSource(), [])
+
+      report = ReloadCauseReport.fromDict({})
+      self.assertReloadCauseEquals(
+         report.cause,
+         cause=ReloadCauseDesc.UNKNOWN.typ,
+         description='',
+         score=ReloadCauseScore.UNKNOWN,
+         time='unknown',
+         priority=ReloadCausePriority.NORMAL,
+      )
+      self.assertEqual(report.providers, [])
+
+      self.rcm.fromDict({})
+      self.assertEqual(self.rcm.allReports(), [])
+
+   def testHistoricalScoreIsPreserved(self):
+      historicalScore = 1 << 32
+      entry = ReloadCauseEntry.fromDict({'score': historicalScore})
+      self.assertEqual(entry.getScore(), historicalScore)
+      self.assertEqual(entry.toDict()['score'], historicalScore)
+
    def testLoadOldVersionStore(self):
       # This is for special cases if there are mismatches between reload cause
       # versions running on the switch and the stored reload causes from an older
@@ -305,7 +349,7 @@ class ReloadCauseManagerTest(unittest.TestCase):
       self.assertEqual(cause.getDescription(), ' | '.join(self.BERT_LINES))
       self.assertEqual(cause.getPriority(), ReloadCausePriority.BERT)
 
-   def assertReloadCauseEquals(self, rc, cause=None, description=None,
+   def assertReloadCauseEquals(self, rc, cause=None, description=None, score=None,
                                time=None, priority=None, altSource=None):
       self.assertIsInstance(rc, ReloadCauseEntry)
       if cause is not None:
@@ -314,6 +358,8 @@ class ReloadCauseManagerTest(unittest.TestCase):
          self.assertEqual(rc.getDescription(), description)
       if time is not None:
          self.assertEqual(rc.getTime(), time)
+      if score is not None:
+         self.assertEqual(rc.getScore(), score)
       if priority is not None:
          self.assertEqual(rc.getPriority(), priority)
       if altSource is not None:
@@ -610,6 +656,7 @@ class ReloadCauseTest(unittest.TestCase):
       expectedKeys = [
          "cause",
          "description",
+         "score",
          "time",
          "priority",
          "altSource",

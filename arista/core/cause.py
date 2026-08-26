@@ -9,7 +9,12 @@ from .inventory import ReloadCause, ReloadCauseProvider
 from .log import getLogger
 from .utils import JsonStoredData
 
-from ..descs.cause import ReloadCausePriority, ReloadCauseAltSource
+from ..descs.cause import (
+   ReloadCauseAltSource,
+   ReloadCauseDesc,
+   ReloadCausePriority,
+   ReloadCauseScore,
+)
 
 from ..libs.date import datetimeToStr, strToDatetime, epochToDatetime
 from ..libs.procfs import bootDatetime
@@ -20,13 +25,16 @@ logging = getLogger(__name__)
 RELOAD_CAUSE_HISTORY_SIZE=128
 
 class ReloadCauseEntry(ReloadCause):
-   def __init__(self, cause='unknown', rcTime='unknown', rcDesc='',
+   def __init__(self, cause=ReloadCauseDesc.UNKNOWN.typ,
+                     rcTime='unknown', rcDesc='',
+                     score=ReloadCauseScore.UNKNOWN,
                      priority=ReloadCausePriority.NORMAL,
                      altSource=None,
                      debugInfo=None):
       self.cause = cause
       self.time = rcTime
       self.description = rcDesc
+      self.score = score
       self.priority = priority
       # The alternative source provider that should be checked if this cause presents
       self.altSource = altSource
@@ -52,6 +60,9 @@ class ReloadCauseEntry(ReloadCause):
    def getTime(self):
       return self.time
 
+   def getScore(self):
+      return self.score
+
    def getPriority(self):
       return self.priority
 
@@ -74,6 +85,7 @@ class ReloadCauseEntry(ReloadCause):
          'cause': self.cause,
          'time': self.time,
          'description': self.description,
+         'score': self.score,
          'priority': self.priority,
          'altSource': self.altSource.value if self.altSource else None,
       }
@@ -84,13 +96,13 @@ class ReloadCauseEntry(ReloadCause):
    @classmethod
    def fromDict(cls, data):
       res = cls(
-         cause=data['cause'],
-         rcTime=data['time'],
-         rcDesc=data['description'],
-         # If we load a new image onto an old version SONiC switch, its saved
-         # reload cause entries might not have priority or altSource
-         priority=(ReloadCausePriority.NORMAL if 'priority' not in data
-                   else data['priority']),
+         # All fields are optional for compatibility with stored data written
+         # by other releases.
+         cause=data.get('cause', ReloadCauseDesc.UNKNOWN.typ),
+         rcTime=data.get('time', 'unknown'),
+         rcDesc=data.get('description', ''),
+         score=data.get('score', ReloadCauseScore.UNKNOWN),
+         priority=data.get('priority', ReloadCausePriority.NORMAL),
          debugInfo=data.get('debugInfo'),
       )
       res.altSource=res.altSourceFromDict(data)
@@ -155,18 +167,19 @@ class ReloadCauseProviderHelper(ReloadCauseProvider):
 
    @classmethod
    def fromDict(cls, data):
+      name = data.get('name', 'unknown')
       if 'priority' in data:
          priority = data['priority']
-      elif data['name'] == 'bert':
+      elif name == 'bert':
          priority = ReloadCausePriority.BERT
-      elif data['name'].startswith('cookie-'):
+      elif name.startswith('cookie-'):
          priority = ReloadCausePriority.PREREBOOT
       else:
          priority = ReloadCausePriority.HARDWARE_SECONDARY
       res = cls(
-         name=data['name'],
-         causes=[ReloadCauseEntry.fromDict(c) for c in data['causes']],
-         extra=data['extra'],
+         name=name,
+         causes=[ReloadCauseEntry.fromDict(c) for c in data.get('causes', [])],
+         extra=data.get('extra', {}),
          # If we load a new image onto an old version SONiC switch, its saved
          # reload cause providers might not have priority or altSource
          priority=priority,
@@ -199,8 +212,8 @@ class ReloadCauseDataStore(JsonStoredData):
 
    def convertFormatV1(self, data):
       for item in data:
-         item['cause'] = item['reloadReason']
-         del item['reloadReason']
+         item['cause'] = item.get('reloadReason', ReloadCauseDesc.UNKNOWN.typ)
+         item.pop('reloadReason', None)
       return data
 
    def maybeConvertReloadCauseFormat(self, data):
@@ -351,7 +364,7 @@ class ReloadCauseReport(object):
          return
 
       self.cause = ReloadCauseEntry(
-         cause='unknown',
+         cause=ReloadCauseDesc.UNKNOWN.typ,
          rcTime=datetimeToStr(self.date),
          rcDesc='could not find a valid reboot cause',
          priority=ReloadCausePriority.UNKNOWN,
@@ -367,9 +380,12 @@ class ReloadCauseReport(object):
    @classmethod
    def fromDict(cls, data):
       return cls(
-         date=strToDatetime(data['date']),
-         cause=ReloadCauseEntry.fromDict(data['cause']),
-         providers=[ReloadCauseProviderHelper.fromDict(p) for p in data['providers']]
+         date=strToDatetime(data.get('date', datetimeToStr(datetime.now()))),
+         cause=ReloadCauseEntry.fromDict(data.get('cause', {})),
+         providers=[
+            ReloadCauseProviderHelper.fromDict(p)
+            for p in data.get('providers', [])
+         ]
       )
 
 class ReloadCauseManager(object):
@@ -415,15 +431,16 @@ class ReloadCauseManager(object):
       return f'{prefix}_{oldName}{ext}'
 
    def fromDict(self, data):
-      if data["version"] != self.VERSION:
+      if data.get("version", self.VERSION) != self.VERSION:
          raise ValueError("Expected reload cause version to be %d" % self.VERSION)
-      if data["name"] != self.name:
+      existingName = data.get("name", self.name)
+      if existingName != self.name:
          logging.warning(
             "Expected reload cause name to match %s, existing name is %s",
-            self.name, data["name"])
+            self.name, existingName)
 
          # Archive old causes
-         path = self._getArchivePath(data["name"])
+         path = self._getArchivePath(existingName)
          try:
             with open(path, 'w') as f:
                json.dump(data, f, indent=3, separators=(',', ': '))
@@ -431,9 +448,10 @@ class ReloadCauseManager(object):
          except OSError as e:
             logging.warning(
                'Failed to archive reboot causes for %s: %s',
-               data["name"], e)
+               existingName, e)
 
-      self.reports.extend(ReloadCauseReport.fromDict(d) for d in data['reports'])
+      self.reports.extend(
+         ReloadCauseReport.fromDict(d) for d in data.get('reports', []))
 
    def loadLegacyCauseFile(self):
       rcds = ReloadCauseDataStore(lifespan='persistent')

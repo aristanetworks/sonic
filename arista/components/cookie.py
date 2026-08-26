@@ -196,10 +196,10 @@ class PlatformCookieComponent(CookieComponentBase):
       return None
 
    def fromDict(self, data):
-      if data['version'] != self.VERSION:
+      if data.get('version', self.VERSION) != self.VERSION:
          raise ValueError(f'Expected reload cause version to be {self.VERSION}')
-      self.causesFromDict(data['platform'])
-      for slotIdStr, sources in data['slots'].items():
+      self.causesFromDict(data.get('platform', {}))
+      for slotIdStr, sources in data.get('slots', {}).items():
          slotId = int(slotIdStr)
          if slotId not in self.slots:
             raise ValueError(f'Unexpected slotId {slotId} in cookie data')

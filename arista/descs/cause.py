@@ -5,6 +5,11 @@ class ReloadCauseAltSource(Enum):
    # The CPU main hardware controller
    CPU = 'CPU'
 
+class ReloadCauseScore:
+   # Temporary compatibility value for one-release downgrade.
+   # Remove this class and the serialized score field in the next release.
+   UNKNOWN = 0
+
 class ReloadCausePriority:
    # Priorities will be used in two ways:
    # 1) Specify the significance of providers

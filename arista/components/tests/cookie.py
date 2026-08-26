@@ -1,10 +1,12 @@
 
 import unittest
 
+from ..cookie import PlatformCookieComponent
 from ..denali.card import DenaliLinecardBase, DenaliLinecardSlot
 from ..denali.linecard import DenaliLinecard
+from ...core.inventory import Inventory
 from ...core.tests.mockchassis import MockCpu, MockSupervisor
-from ...descs.cause import ReloadCauseDesc
+from ...descs.cause import ReloadCauseDesc, ReloadCauseScore
 
 class MockLinecard(DenaliLinecardBase):
    CPU_CLS = MockCpu
@@ -52,6 +54,9 @@ class CookieTest(unittest.TestCase):
       slot.loadCard(card)
       card.cookies.poll()
       assert list(card.cookies.causeData.keys()) == [ReloadCauseDesc.WATCHDOG]
+      serialized = card.cookies.causesToDict()
+      entry = next(iter(serialized.values()))
+      assert entry['score'] == ReloadCauseScore.UNKNOWN
 
       providers = card.getInventory().getReloadCauseProviders()
       assert len(providers) == 1
@@ -61,6 +66,11 @@ class CookieTest(unittest.TestCase):
       assert len(card.cookies.causeData.keys()) == 0
       assert len(p.getCauses()) == 1
       assert p.getCauses()[0].cause == ReloadCauseDesc.WATCHDOG.typ
+
+   def testMissingJsonFieldsUseDefaults(self):
+      cookies = PlatformCookieComponent(inventory=Inventory())
+      cookies.fromDict({})
+      assert cookies.toDict() == cookies.DEFAULT_CAUSEDATA
 
 if __name__ == '__main__':
    unittest.main()

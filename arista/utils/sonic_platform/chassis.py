@@ -183,10 +183,14 @@ class Chassis(ChassisBase):
 
    def set_status_led(self, color):
       # FIXME: add support for blinking
+      if self.is_bmc():
+         return False
       color = color.replace('_blink', '')
       return self._inventory.getLed('status').setColor(color)
 
    def get_status_led(self):
+      if self.is_bmc():
+         return "N/A"
       return self._inventory.getLed('status').getColor()
 
    def get_sfp(self, index):

@@ -1957,9 +1957,6 @@ static ssize_t get_ptp_sample_timestamp(struct device *dev,
    return buf_len;
 }
 
-u64 (*ptp_timestamp)(void) = NULL;
-EXPORT_SYMBOL(ptp_timestamp);
-
 // This function wraps 'u64 scd_ptp_timestamp(void)' to allow the timestamp to be
 // accessed through a HamImpl. Any code that accesses scd_ptp_timestamp directly
 // doesn't need to be modified.
@@ -2377,6 +2374,8 @@ EXPORT_SYMBOL(update_shutdown_dev);
 
 void (*put_shutdown_dev)(void *pdev) = NULL;
 EXPORT_SYMBOL(put_shutdown_dev);
+
+u64 (*ptp_timestamp)(void) = NULL;
 
 static int scd_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 {

@@ -498,6 +498,13 @@ class Cartridge:
    def getPresence(self):
       return all(not interrupt.asserted() for interrupt in self.interrupts)
 
+   def getPresenceRaw(self):
+      raw = 0
+      for i, interrupt in enumerate(self.interrupts):
+         if interrupt.asserted():
+            raw |= (1 << i)
+      return raw
+
 class BackplaneConnector(XcvrSlot):
    def __init__(self, *args, cartridge=None, **kwargs):
       super().__init__(*args, **kwargs)
@@ -510,3 +517,6 @@ class BackplaneConnector(XcvrSlot):
 
    def getPresence(self):
       return self.cartridge.getPresence()
+
+   def getPresenceRaw(self):
+      return self.cartridge.getPresenceRaw()

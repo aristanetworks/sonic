@@ -1,3 +1,4 @@
+from ..core.bmc import BmcHostSwitch, registerHostSwitch
 from ..core.cooling import CoolingConfig, CoolingLogicIncPid
 from ..core.fixed import FixedSystem, FixedChassis
 from ..core.liquid import LeakDetectionInterfaceV1, LeakSensorType
@@ -21,6 +22,7 @@ from ..components.scd import LeakDetectionPcieRegistersV1, Scd
 from ..components.tmp401 import Tmp431
 from ..components.vrm.ibc import Pwr689
 from ..components.vrm.tda38740 import Tda38740a, Xdpe1a2g5b, Xdpe1b284b
+from ..components.cpu.marconi import MarconiCpldRegisters
 
 from ..descs.cause import ReloadCauseDesc, ReloadCauseAltSource
 from ..descs.led import LedDesc, LedKind
@@ -331,3 +333,23 @@ class SteamerLaneMv3(SteamerLaneBase):
 
    SID = ['SteamerLaneMv3']
    SKU = ['7060XE7-64PRS-MV3-L', 'DCS-7060XE7-64PRS-MV3-L']
+
+@registerHostSwitch()
+class SteamerLaneHostSwitch(BmcHostSwitch):
+   SID = ['Marconi', 'SteamerLaneMv3']
+
+   def __init__(self, *args, **kwargs):
+      super().__init__(*args, **kwargs)
+      self.cpld = self.newComponent(SysCpld,
+                                    addr=self.parent.cpuCpldAddr(),
+                                    registerCls=MarconiCpldRegisters)
+
+      # TODO: update locations.
+      self.cpld.addLiquidCooling(
+         LiquidCoolingDesc(LeakDetectionInterfaceV1, sensors=[
+            LeakSensorDesc(name="trayLeak", sensorType=LeakSensorType.ROPE_MAJOR,
+                           addr=0, location="drip tray"),
+            LeakSensorDesc(name="smallLeak", sensorType=LeakSensorType.ROPE_MINOR,
+                           addr=0, location="unspecified"),
+         ])
+      )

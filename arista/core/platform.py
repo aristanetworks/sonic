@@ -226,7 +226,7 @@ def getPlatform(name=None):
    platform = platformCls()
    if isBmcEnvironment():
       platform.setupEeproms()
-      platform.createHostCpu()
+      platform.createHostSwitch()
    platform.refresh()
    return platform
 

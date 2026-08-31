@@ -3,30 +3,30 @@ from .fixed import FixedSystem
 from .sku import Sku
 from .utils import simulateWith
 
-class HostCpuManager:
+class HostSwitchManager:
    def __init__(self):
-      self.hostCpuSidIndex = {}
+      self.hostSwitchSidIndex = {}
 
-   def registerHostCpuCls(self, cls):
+   def registerHostSwitchCls(self, cls):
       for sid in cls.SID:
-         self.hostCpuSidIndex[sid] = cls
+         self.hostSwitchSidIndex[sid] = cls
       return cls
 
-   def loadHostCpu(self, platform):
-      sid = platform.cpuEeprom.prefdl().get('SID')
-      cpuCls = self.hostCpuSidIndex.get(sid)
-      if cpuCls is not None:
-         return platform.newComponent(cpuCls)
+   def loadHostSwitch(self, platform):
+      sid = platform.chassisEeprom.prefdl().get('SID')
+      hostSwitchCls = self.hostSwitchSidIndex.get(sid)
+      if hostSwitchCls is not None:
+         return platform.newComponent(hostSwitchCls)
       return None
 
-hostCpuManager = HostCpuManager()
+hostSwitchManager = HostSwitchManager()
 
-def registerHostCpu():
+def registerHostSwitch():
    def wrapper(cls):
-      return hostCpuManager.registerHostCpuCls(cls)
+      return hostSwitchManager.registerHostSwitchCls(cls)
    return wrapper
 
-class BmcHostCpu(Sku):
+class BmcHostSwitch(Sku):
    pass
 
 class BmcSubsystem(FixedSystem):
@@ -37,15 +37,16 @@ class BmcSubsystem(FixedSystem):
       self.bmcEeprom = self.createBmcEeprom()
       self.cpuEeprom = self.createCpuEeprom()
       self.chassisEeprom = self.createChassisEeprom()
-      self.hostCpu = None
+      self.hostSwitch= None
       self.newComponent(Uboot)
 
-   def createHostCpu(self):
-      self.hostCpu = hostCpuManager.loadHostCpu(self)
+   def createHostSwitch(self):
+      self.hostSwitch = hostSwitchManager.loadHostSwitch(self)
 
    def setupEeproms(self):
       self.bmcEeprom.setup()
       self.cpuEeprom.setup()
+      self.chassisEeprom.setup()
 
    def createBmc(self):
       raise NotImplementedError

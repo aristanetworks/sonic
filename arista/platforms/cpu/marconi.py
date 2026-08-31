@@ -1,12 +1,8 @@
-from ...core.bmc import BmcHostCpu, registerHostCpu
 from ...core.cpu import Cpu
-from ...core.liquid import LeakDetectionInterfaceV1, LeakSensorType
 from ...core.pci import PciPortDesc, PciRoot
 
 from ...components.bmc_usb_host_nic import BmcUsbHostNic
-from ...components.cpld import SysCpld
 from ...components.cpu.amd.k10temp import K10Temp
-from ...components.cpu.marconi import MarconiCpldRegisters
 from ...components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ...components.lm75 import Tmp75
 from ...components.scd import (
@@ -22,7 +18,6 @@ from ...descs.cause import (
    ReloadCauseDesc,
 )
 from ...descs.led import LedDesc, LedKind
-from ...descs.liquid import LeakSensorDesc, LiquidCoolingDesc
 from ...descs.sensor import Position, SensorDesc
 
 class MarconiCpu(Cpu):
@@ -180,23 +175,3 @@ class MarconiCpu(Cpu):
    def getSmbus(self, desc):
       busPerMaster = next(iter(self.cpld.smbusMasters.values()))['bus']
       return self.cpld.getSmbus(desc.master * busPerMaster + desc.bus)
-
-@registerHostCpu()
-class MarconiHostCpu(BmcHostCpu):
-   SID = ['Marconi', 'SteamerLaneMv3']
-
-   def __init__(self, *args, **kwargs):
-      super().__init__(*args, **kwargs)
-      self.cpld = self.newComponent(SysCpld,
-                                    addr=self.parent.cpuCpldAddr(),
-                                    registerCls=MarconiCpldRegisters)
-
-      # TODO: update locations.
-      self.cpld.addLiquidCooling(
-         LiquidCoolingDesc(LeakDetectionInterfaceV1, sensors=[
-            LeakSensorDesc(name="trayLeak", sensorType=LeakSensorType.ROPE_MAJOR,
-                           addr=0, location="drip tray"),
-            LeakSensorDesc(name="smallLeak", sensorType=LeakSensorType.ROPE_MINOR,
-                           addr=0, location="unspecified"),
-         ])
-      )

@@ -310,14 +310,7 @@ static int scd_smbus_master_xfer(struct i2c_adapter *adap,
    union smbus_request_reg req;
    int ss, ti, err;
 
-   ss = 0;
    for (msg = msgs; msg < end; msg++) {
-      ss += 1 + msg->len;
-
-      master_dbg(bus->master,
-                 "bus %d msg[%ld] { .addr=%#02x .flags=%#x .len=%#x } ss=%d\n",
-                 adap->nr, msg - msgs, msg->addr, msg->flags, msg->len, ss );
-
       if (msg->flags & I2C_M_TEN) {
          return -EOPNOTSUPP;
       }
@@ -339,6 +332,18 @@ static int scd_smbus_master_xfer(struct i2c_adapter *adap,
       smbus_master_write_cs(bus->master, cs);
    }
 
+   ss = 0;
+   for (msg = msgs; msg < end; msg++) {
+      if ((msg->flags & I2C_M_RECV_LEN) && cs.ver >= 2)
+         ss += 1;
+      else
+         ss += 1 + msg->len;
+
+      master_dbg(bus->master,
+                 "bus %d msg[%ld] { .addr=%#02x .flags=%#x .len=%#x } ss=%d\n",
+                 adap->nr, msg - msgs, msg->addr, msg->flags, msg->len, ss );
+   }
+
    req.reg = 0;
    req.ss = ss;
 
@@ -358,7 +363,7 @@ static int scd_smbus_master_xfer(struct i2c_adapter *adap,
       req.st = !ns;
       req.dod = 1;
       req.da = 0;
-      req.br = 0;
+      req.br = br && cs.ver >= 2;
       req.d = (msg->addr << 1) | rd;
       req.t = params->t;
 
@@ -370,10 +375,11 @@ static int scd_smbus_master_xfer(struct i2c_adapter *adap,
 
       i = 0;
 
-      if (br) {
+      if (br && cs.ver >= 2) {
+         i = msg->len;
+      } else if (br) {
          req.ti = ti++;
          req.sp = 0;
-         req.br = cs.ver >= 2;
          req.da = 1;
          req.d = 0;
          req.ed = params->ed;

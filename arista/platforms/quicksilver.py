@@ -15,6 +15,7 @@ from ..components.lm75 import Tmp75
 from ..components.max6581 import Max6581
 from ..components.psu.delta import ECD1502005
 from ..components.scd import Scd
+from ..components.vrm.isl68137 import Isl68226
 from ..components.vrm.raa228228 import Raa228926
 
 from ..descs.cause import ReloadCauseAltSource
@@ -194,8 +195,24 @@ class QuicksilverBase(FixedSystem):
             ],
          )
 
-      scd.newComponent(Raa228926, addr=scd.i2cAddr(16, 0x45),
-                       quirks=[QuicksilverRaaQuirk()])
+      vrmTempParams = {'target': 95, 'overheat': 105, 'critical': 115}
+      scd.newComponent(Raa228926, addr=scd.i2cAddr(16, 0x45), sensors=[
+         SensorDesc(diode=0, name='P0V8_VDD', **vrmTempParams),
+      ], quirks=[QuicksilverRaaQuirk()])
+      scd.newComponent(Isl68226, addr=scd.i2cAddr(17, 0x46), sensors=[
+         SensorDesc(diode=0, name='P0V9_AVDD_0', **vrmTempParams),
+         SensorDesc(diode=1, name='P0V9_AVDD_1', **vrmTempParams),
+      ])
+      scd.newComponent(Isl68226, addr=scd.i2cAddr(18, 0x47), sensors=[
+         SensorDesc(diode=0, name='P0V75_AVDD_0', **vrmTempParams),
+         SensorDesc(diode=1, name='P0V75_AVDD_1', **vrmTempParams),
+      ])
+      scd.newComponent(Isl68226, addr=scd.i2cAddr(19, 0x4d), sensors=[
+         SensorDesc(diode=0, name='P3V3_OPTICS_A', **vrmTempParams),
+      ])
+      scd.newComponent(Isl68226, addr=scd.i2cAddr(20, 0x4c), sensors=[
+         SensorDesc(diode=0, name='P3V3_OPTICS_B', **vrmTempParams),
+      ])
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC0)
       self.asic = port.newComponent(Tomahawk5, addr=port.addr,

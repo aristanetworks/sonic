@@ -15,6 +15,8 @@ from ..components.cpld import SysCpldCause, SysCpldReloadCauseRegistersV2
 from ..components.max6581 import Max6581
 from ..components.psu.delta import DPS1500AB, DPS1600AB, DPS1600CB
 from ..components.scd import Scd
+from ..components.vrm.isl68137 import Isl68226
+from ..components.vrm.raa228228 import Raa228228
 
 from ..descs.cause import ReloadCauseAltSource
 from ..descs.gpio import GpioDesc
@@ -87,6 +89,18 @@ class BlackhawkTH4DD(FixedSystem):
                     position=Position.OTHER, target=90, overheat=100, critical=105),
          SensorDesc(diode=7, name='Switch chip diode 2 sensor',
                     position=Position.OTHER, target=90, overheat=100, critical=105),
+      ])
+
+      vrmTempParams = {'target': 100, 'overheat': 115, 'critical': 120}
+      scd.newComponent(Raa228228, addr=scd.i2cAddr(13, 0x60), sensors=[
+         SensorDesc(diode=0, name='POS0V9_TH4_CORE', **vrmTempParams),
+         SensorDesc(diode=1, name='POS0V75A_TH4', **vrmTempParams),
+      ])
+      scd.newComponent(Isl68226, addr=scd.i2cAddr(13, 0x64), sensors=[
+         SensorDesc(diode=0, name='POS3V3_OPTICS_LT', **vrmTempParams),
+      ])
+      scd.newComponent(Isl68226, addr=scd.i2cAddr(13, 0x68), sensors=[
+         SensorDesc(diode=0, name='POS3V3_OPTICS_RT', **vrmTempParams),
       ])
 
       scd.addResets([

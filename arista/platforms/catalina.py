@@ -14,6 +14,7 @@ from ..components.tmp464 import Tmp464
 from ..components.phy.babbagelp import BabbageLP
 from ..components.psu.liteon import PS2242
 from ..components.scd import Scd
+from ..components.vrm.isl68137 import Isl68226
 from ..components.vrm.raa228228 import Raa228228, Raa228228GainQuirk
 
 from ..descs.cause import ReloadCauseAltSource
@@ -153,6 +154,7 @@ class CatalinaDD(FixedSystem):
          ],
       )
 
+      vrmTempParams = {'target': 95, 'overheat': 105, 'critical': 115}
       quirks = [
          Raa228228GainQuirk(
             description='Update TH4 proportional gain',
@@ -160,7 +162,21 @@ class CatalinaDD(FixedSystem):
             gain=[0xa9, 0x00, 0x73, 0x00],
         ),
       ] if self.getHwApi() < HwApi(5) else []
-      scd.newComponent(Raa228228, addr=scd.i2cAddr(16, 0x45), quirks=quirks)
+
+      scd.newComponent(Raa228228, addr=scd.i2cAddr(16, 0x45), sensors=[
+         SensorDesc(diode=0, name='POS0V8_VDD', **vrmTempParams),
+      ], quirks=quirks)
+      scd.newComponent(Isl68226, addr=scd.i2cAddr(17, 0x46), sensors=[
+         SensorDesc(diode=0, name='P0V75_AVDD_0', **vrmTempParams),
+         SensorDesc(diode=1, name='P0V75_AVDD_1', **vrmTempParams),
+         SensorDesc(diode=2, name='P0V75_AVDD_2', **vrmTempParams),
+      ])
+      scd.newComponent(Isl68226, addr=scd.i2cAddr(18, 0x47), sensors=[
+         SensorDesc(diode=0, name='P3V3_OPTICS_A', **vrmTempParams),
+      ])
+      scd.newComponent(Isl68226, addr=scd.i2cAddr(19, 0x4c), sensors=[
+         SensorDesc(diode=0, name='P3V3_OPTICS_B', **vrmTempParams),
+      ])
 
    def addSwitchDpm(self):
       if self.getHwApi() < HwApi(6):

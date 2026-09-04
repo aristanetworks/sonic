@@ -312,29 +312,29 @@ class HostSwitchModule(Module):
       return 1
 
    def get_presence(self):
-      return self._sku.hostCpu is not None
+      return self._sku.hostSwitch is not None
 
    def get_oper_status(self):
       if not self.get_presence():
          return self.MODULE_STATUS_EMPTY
-      regs = self._sku.hostCpu.cpld.driver.regs
+      regs = self._sku.hostSwitch.cpld.driver.regs
       if regs.hostCpuPwrStatus() and regs.swcPwrStatus():
          return self.MODULE_STATUS_ONLINE
       return self.MODULE_STATUS_OFFLINE
 
    def set_admin_state(self, up):
-      regs = self._sku.hostCpu.cpld.driver.regs
+      regs = self._sku.hostSwitch.cpld.driver.regs
       regs.nonStandbyPwrCtrl(3 if up else 0)
       return True
 
    def do_power_cycle(self):
-      regs = self._sku.hostCpu.cpld.driver.regs
+      regs = self._sku.hostSwitch.cpld.driver.regs
       regs.nonStandbyPwrCtrl(3)
       regs.nonStandbyPwrCycle(0xDE)
       return True
 
    def do_system_power_cycle(self):
-      regs = self._sku.hostCpu.cpld.driver.regs
+      regs = self._sku.hostSwitch.cpld.driver.regs
       regs.systemPwrCycle(0xDE)
       return True
 

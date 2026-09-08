@@ -1,6 +1,7 @@
 [Unit]
 Description=Arista early platform initialization
 After=rc-local.service
+Before=database-chassis.service
 Before=database.service
 Before=opennsl-modules.service
 Before=swss.service
@@ -17,3 +18,5 @@ ExecStop=/usr/bin/arista -l /var/log/arista.log clean
 
 [Install]
 RequiredBy=platform-arista.target
+WantedBy=database.service
+WantedBy=database-chassis.service

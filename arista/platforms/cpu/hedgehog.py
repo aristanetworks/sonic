@@ -31,7 +31,7 @@ class HedgehogCpuCpld(RegisterMap):
    SLOT_ID = Register(0x30, name='slotId')
    PROVISION = Register(0x50, name='provision')
 
-class HedgehogCpu(Cpu):
+class HedgehogCpuBase(Cpu):
 
    PLATFORM = 'hedgehog'
 
@@ -43,7 +43,7 @@ class HedgehogCpu(Cpu):
    )
 
    def __init__(self, **kwargs):
-      super(HedgehogCpu, self).__init__(**kwargs)
+      super().__init__(**kwargs)
       self.slot = None
       self.pciRoot = self.newComponent(PciRoot)
 
@@ -66,10 +66,6 @@ class HedgehogCpu(Cpu):
    def addScdComponents(self, scd):
       self.rpc.addSeuReporter(scd)
       scd.createWatchdog(intr=scd.getInterrupt(0), bit=10)
-      scd.newComponent(SbTsi, addr=scd.i2cAddr(9, 0x4c), sensors=[
-         SensorDesc(diode=0, name='Cpu SBTSI',
-                    position=Position.OTHER, target=60, overheat=90, critical=95),
-      ])
 
    def getSlotId(self):
       # NOTE: this slotId value is used by Plx to deduce the lcpu upstreamPort
@@ -82,6 +78,7 @@ class HedgehogCpu(Cpu):
       self.slot = cls(self, slotId, pci, bus, card=card)
       return self.slot
 
+class HedgehogCpu(HedgehogCpuBase):
    @classmethod
    def addCpuDpm(cls, bus, addr=None, causes=None):
       return bus.newComponent(Adm1266, addr=addr, causes=causes or [
@@ -94,3 +91,10 @@ class HedgehogCpu(Cpu):
          AdmCauseOneHot(AdmCauseOneHot.CPU_S5,
                         AdmPdio(14), AdmCauseOneHot.Direction.IN,    True, 15, 2)
       ], causePriority=AdmPriority.HARDWARE_SECONDARY)
+
+   def addScdComponents(self, scd):
+      super().addScdComponents(scd)
+      scd.newComponent(SbTsi, addr=scd.i2cAddr(9, 0x4c), sensors=[
+         SensorDesc(diode=0, name='Cpu SBTSI',
+                    position=Position.OTHER, target=60, overheat=90, critical=95),
+      ])

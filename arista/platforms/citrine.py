@@ -79,6 +79,8 @@ class CitrineBase(FixedSystem):
          addr=self.cpu.getSmbus(self.cpu.SMBUS_POL).i2cAddr(0x40),
          causes=[
             AdmCauseU(AdmCauseU.OVERTEMP,  AdmGpio(1),                gpioInMask),
+            AdmCauseU(AdmCauseU.SEU,       AdmGpio(2),                gpioInMask,
+                      description='SCD CRC error'),
             AdmCauseU(AdmCauseU.WATCHDOG,  AdmGpio.fromPins(1, 2),    gpioInMask),
             AdmCauseU(AdmCauseU.POWERLOSS, AdmGpio(3),                gpioInMask,
                       description="CPU Power bad",
@@ -94,6 +96,8 @@ class CitrineBase(FixedSystem):
                       description="Both PSUs lost DC output power"),
             AdmCauseU(AdmCauseU.NO_FANS,   AdmGpio.fromPins(1, 2, 4), gpioInMask),
             AdmCauseU(AdmCauseU.FAN_CARD,  AdmGpio.fromPins(3, 4),    gpioInMask),
+            AdmCauseU(AdmCauseU.SEU,       AdmGpio.fromPins(1, 2, 3, 4),
+                      gpioInMask, description='BitShadow RX parity error'),
       ], causePriority=AdmPriority.HARDWARE_MAIN)
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)

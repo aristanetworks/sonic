@@ -45,6 +45,7 @@ class QuartzDd(FixedSystem):
             UcdGpi(4, ReloadCauseDesc.REBOOT),
             UcdGpi(5, ReloadCauseDesc.WATCHDOG),
             UcdGpi(6, ReloadCauseDesc.OVERTEMP),
+            UcdGpi(7, ReloadCauseDesc.SEU, 'SCD CRC error'),
             UcdGpi(8, ReloadCauseDesc.CPU),
       ])
 

@@ -22,6 +22,16 @@ class StatusLedFeature(PollDaemonFeature):
       # TODO: implement logic for SCM leds
       return LedColor.GREEN
 
+   def getShortpinStatus(self, platform, led):
+      shortpinSlots = getattr(platform, 'shortpinXcvrSlots', {})
+      slotId = shortpinSlots.get(led.getName())
+      if slotId is None:
+         return LedColor.RED
+      slot = platform.getInventory().getXcvrSlots().get(slotId)
+      if slot is None or not slot.getPresence():
+         return LedColor.RED
+      return LedColor.GREEN
+
    def getAllFansStatus(self, platform, led):
       inv = platform.getInventory()
       fans = []
@@ -85,8 +95,11 @@ class StatusLedFeature(PollDaemonFeature):
          'linecard_status': self.getAllLinecardsStatus,
          'scm_status': self.getAllSwitchcardStatus,
       }
-      policy = ledPolicies.get(name)
-      return policy
+      if name in ledPolicies:
+         return ledPolicies[name]
+      if name.startswith('shortpin'):
+         return self.getShortpinStatus
+      return None
 
    async def callback(self, elapsed):
       inventory = self.daemon.platform.getInventory()

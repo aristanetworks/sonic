@@ -26,6 +26,13 @@ from .pmbus import PmbusDpm
 
 logging = getLogger(__name__)
 
+# calculate min and max voltage based on threshold percentage
+def minV( expectedVolt, threshold ):
+   return expectedVolt * (1 - ( threshold / 100 ))
+
+def maxV( expectedVolt, threshold ):
+   return expectedVolt * (1 + ( threshold / 100 ))
+
 class AdmPriority(ReloadCausePriority):
    pass
 
@@ -235,6 +242,25 @@ class Adm1266(PmbusDpm):
 
    DRIVER = Adm1266UserDriver
    PRIORITY = Priority.DPM
+
+   # Constant definitions for mapping the rail name in the datasheet to the rail ID.
+   VH1 = 1
+   VH2 = 2
+   VH3 = 3
+   VH4 = 4
+   VP1 = 5
+   VP2 = 6
+   VP3 = 7
+   VP4 = 8
+   VP5 = 9
+   VP6 = 10
+   VP7 = 11
+   VP8 = 12
+   VP9 = 13
+   VP10 = 14
+   VP11 = 15
+   VP12 = 16
+   VP13 = 17
 
    class Registers(PmbusDpm.Registers):
       REAL_TIME_CLOCK = 0xdf

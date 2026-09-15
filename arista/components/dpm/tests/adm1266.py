@@ -6,14 +6,19 @@ from ..adm1266 import (
    AdmCauseOneHot,
    AdmCauseUnique,
    AdmGpio,
-   AdmPdio
+   AdmPdio,
+   maxV,
+   minV,
 )
 
 from ....core.fabric import Fabric
+from ....core.inventory import Inventory
 from ....core.linecard import Linecard
 from ....core.modular import Modular
 from ....core.platform import loadPlatforms, getPlatforms
 from ....descs.cause import ReloadCauseDesc
+from ....descs.rail import RailDesc, RailDirection
+from ....drivers.dpm.adm1266 import Adm1266Rail
 from ....libs.integer import isBitSet
 from ....tests.logging import getLogger
 
@@ -120,6 +125,119 @@ class TestAdm1266CauseConfiguration:
                      self.validateCauseOneHot(cause)
                   elif isinstance(cause, AdmCauseUnique):
                      self.validateCauseUnique(cause)
+
+
+class TestAdm1266Rails:
+   def makeRail(self, desc, page=7, voutMode=0x16, rawVout=12288):
+      adm = Adm1266(inventory=Inventory(), rails=[desc])
+      driver = adm.driver
+      calls = []
+
+      def readByteData(reg):
+         calls.append(('read_byte_data', reg))
+         if reg == driver.registers.PAGE:
+            return page
+         if reg == driver.registers.VOUT_MODE:
+            return voutMode
+         raise AssertionError('Unexpected byte register %#x' % reg)
+
+      def writeByteData(reg, value):
+         calls.append(('write_byte_data', reg, value))
+
+      def readWordData(reg):
+         calls.append(('read_word_data', reg))
+         assert reg == driver.registers.READ_VOUT
+         return rawVout
+
+      driver.read_byte_data = readByteData
+      driver.write_byte_data = writeByteData
+      driver.read_word_data = readWordData
+      rails = adm.getInventory().getRails()
+      assert len(rails) == 1
+      return rails[0], driver, calls
+
+   @pytest.mark.parametrize(
+      "railId, name, minVoltage, maxVoltage",
+      [
+         (Adm1266.VH1, 'POS12V', 12.0, 12.0),
+         (Adm1266.VH2, 'POS5V_ALW', minV(5, 4), maxV(5, 4)),
+         (Adm1266.VH3, 'POS3V3_ALW', minV(3, 4), maxV(3, 4)),
+         (Adm1266.VH4, 'POS1V8_ALW', minV(1.8, 3), maxV(1.8, 3)),
+         (Adm1266.VP1, 'POS0V75_ALW', minV(0.75, 3), maxV(0.75, 3)),
+         (Adm1266.VP2, 'POS1V2_CPLD', minV(1.2, 4), maxV(1.2, 4)),
+         (Adm1266.VP3, 'POS2V5_CPLD', minV(2.5, 4), maxV(2.5, 4)),
+         (Adm1266.VP4, 'POS1V0_MSW', minV(1, 4), maxV(1, 4)),
+         (Adm1266.VP5, 'BMC_1V0', 1.0, 1.0),
+         (Adm1266.VP6, 'POS1V1_MEM', minV(1.1, 3), maxV(1.1, 3)),
+         (Adm1266.VP7, 'POS1V8_CPU', minV(1.8, 4), maxV(1.8, 4)),
+         (Adm1266.VP8, 'POS3V3_CPU', minV(3.3, 4), maxV(3.3, 4)),
+         (Adm1266.VP9, 'POS0V75_CPU', minV(0.75, 3), maxV(0.75, 3)),
+         (Adm1266.VP10, 'POS0V78_MEM', minV(0.78, 4), maxV(0.78, 4)),
+         (Adm1266.VP11, 'POS1V27_MPHY', 1.27, 1.27),
+         (Adm1266.VP12, 'APU_VDDCR', 0.6, 1.55),
+         (Adm1266.VP13, 'APU_VDDCR_SOC', 0.6, 1.2),
+      ],
+   )
+   def testRailStoredInInventory(self, railId, name, minVoltage, maxVoltage):
+      rail, _, _ = self.makeRail(RailDesc(
+         railId=railId,
+         name=name,
+         minVoltage=minVoltage,
+         maxVoltage=maxVoltage,
+      ))
+
+      assert isinstance(rail, Adm1266Rail)
+      assert rail.railId == railId
+      assert rail.desc.direction == RailDirection.OUTPUT
+      assert rail.getName() == name
+      assert rail.voltage.getName() == name
+      assert rail.voltage.getLowThreshold() == minVoltage
+      assert rail.voltage.getHighThreshold() == maxVoltage
+      assert rail.voltage.getLowCriticalThreshold() is None
+      assert rail.voltage.getHighCriticalThreshold() is None
+
+   def testRailPreservesExplicitDirection(self):
+      rail, _, _ = self.makeRail(RailDesc(
+         railId=Adm1266.VH1,
+         name='POS12V',
+         direction=RailDirection.INPUT,
+      ))
+
+      assert rail.desc.direction == RailDirection.INPUT
+
+   @pytest.mark.parametrize("railId, targetPage, oldPage", [
+      (Adm1266.VH1, 0, 7),
+      (Adm1266.VP13, 16, 3),
+   ])
+   def testRailVoltageReadsMappedPageAndRestoresPage(
+         self, railId, targetPage, oldPage):
+      rail, driver, calls = self.makeRail(
+         RailDesc(railId=railId, name='RAIL'),
+         page=oldPage,
+         voutMode=0x16,
+         rawVout=12288,
+      )
+
+      assert rail.getVoltage() == 12.0
+      assert calls == [
+         ('read_byte_data', driver.registers.PAGE),
+         ('write_byte_data', driver.registers.PAGE, targetPage),
+         ('read_byte_data', driver.registers.VOUT_MODE),
+         ('read_word_data', driver.registers.READ_VOUT),
+         ('write_byte_data', driver.registers.PAGE, oldPage),
+      ]
+
+   def testUnsupportedVoutModeReturnsNoneAndRestoresPage(self):
+      rail, driver, calls = self.makeRail(
+         RailDesc(railId=Adm1266.VH1, name='POS12V'),
+         page=7,
+         voutMode=0x20,
+         rawVout=12288,
+      )
+
+      assert rail.getVoltage() is None
+      assert ('read_word_data', driver.registers.READ_VOUT) not in calls
+      assert calls[-1] == ('write_byte_data', driver.registers.PAGE, 7)
 
 
 @pytest.mark.usefixtures("logger")

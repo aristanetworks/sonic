@@ -71,8 +71,8 @@ class ScdI2cAddr(I2cAddr):
    def master(self):
       if not self.scd_.smbusMasters:
          return 0
-      busPerMaster = next(iter(self.scd_.smbusMasters.values()))['bus']
-      return self.bus_ // busPerMaster
+      master, _ = self.scd_.getSmbusMasterBus(self.bus_)
+      return master
 
    @property
    def uniqueName(self):
@@ -594,6 +594,17 @@ class Scd(PciComponent):
 
    def getSmbus(self, bus):
       return ScdSmbus(self, bus)
+
+   def getSmbusMasterBus(self, bus):
+      if bus < 0:
+         raise IndexError(f'SCD SMBus {bus} is not configured')
+      offset = 0
+      for info in self.smbusMasters.values():
+         count = info['bus']
+         if bus < offset + count:
+            return info['id'], bus - offset
+         offset += count
+      raise IndexError(f'SCD SMBus {bus} is not configured')
 
    def getInterrupts(self):
       return self.interrupts

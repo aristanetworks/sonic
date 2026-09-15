@@ -61,8 +61,8 @@ class ScdKernelDriver(PciKernelDriver):
       utils.FileWaiter(path, SCD_WAIT_TIMEOUT).waitFileReady()
 
    def getMasterNameForBus(self, bus):
-      bpm = next(iter(self.scd.smbusMasters.values()))['bus']
-      return self.getMasterName(bus // bpm, bus % bpm)
+      master, masterBus = self.scd.getSmbusMasterBus(bus)
+      return self.getMasterName(master, masterBus)
 
    def getMasterName(self, master, bus):
       return "SCD %s SMBus master %d bus %d" % (self.addr, master, bus)

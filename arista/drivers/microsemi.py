@@ -13,6 +13,7 @@ class MicrosemiConsts(object):
    GAS_INPROGRESS = 1
    SWITCHTEC_MAX_PORTS = 48
    MICROSEMI_VENDOR_ID = 0x11f8
+   MICROSEMI_EXPECTED_GAS_VENDOR_ID = 0x5243494d
    MICROSEMI_DEVICE_IDS = [ 0x8533, 0x8534, 0x8532 ]
    MICROSEMI_BUS = 5
    MICROSEMI_FUNC = 1
@@ -23,6 +24,7 @@ class MicrosemiGAS(object):
    GAS_COMMAND = 0x800
    GAS_STATUS = 0x804
    GAS_RETURNVALUE = 0x808
+   GAS_VENDOR_ID = 0x2108
 
 class MCRPC_P2PSubcommand(object):
    MRPC_P2P_BIND = 0
@@ -42,6 +44,7 @@ class MicrosemiDriver(MicrosemiConsts, MicrosemiMRPC, MicrosemiGAS, Driver):
       self.addr = addr
       self.microsemiBar = 0
       self.resource_ = None
+      self.bus_ = None
 
    @property
    def lockName(self):
@@ -60,9 +63,12 @@ class MicrosemiDriver(MicrosemiConsts, MicrosemiMRPC, MicrosemiGAS, Driver):
       return self.resource_
 
    def mapResource(self):
-      p = os.path.join(self.addr.getSysfsPath(), "resource%d" % self.microsemiBar)
+      barFile = f"resource{self.microsemiBar}"
+      p = os.path.join(self.addr.getSysfsPath(), barFile)
       self.resource_ = MmapResource(p)
-      self.resource_.map()
+      waitFor(self.resource_.map,
+              description=f"{self.addr} {barFile} to mmap successfully",
+              interval=1000)
 
    def write32(self, offset, value):
       return self.resource.write32(offset, value)
@@ -96,3 +102,9 @@ class MicrosemiDriver(MicrosemiConsts, MicrosemiMRPC, MicrosemiGAS, Driver):
       data = self.MRPC_P2P_UNBIND | int(partition) << 8 | \
              int(dsp) << 16 | int(flags) << 24
       return self.doGasLocked(self.MRPC_PORTPARTP2P, data)
+
+   def ping(self):
+      if not os.path.isdir(self.addr.getSysfsPath()):
+         return False
+      expected = self.MICROSEMI_EXPECTED_GAS_VENDOR_ID
+      return self.read32(self.GAS_VENDOR_ID) == expected

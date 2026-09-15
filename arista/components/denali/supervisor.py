@@ -21,6 +21,7 @@ from .card import (
 )
 
 class DenaliSupervisor(Supervisor):
+   UPSTREAM_PORT = None
    LINECARD_PORTS = []
    FABRIC_PORTS = []
    PSUS = []
@@ -84,7 +85,8 @@ class DenaliSupervisor(Supervisor):
          self.pciSwitchCls,
          addr=uport.addr,
       )
-      port.attach(self.pciSwitch.upstreamPort())
+      switchUport = self.pciSwitch.addPciPort(desc=self.UPSTREAM_PORT)
+      port.attach(switchUport)
 
    def createLinecards(self):
       for lcId in range(self.linecardCount):

@@ -258,7 +258,10 @@ class PciBridge(PciComponent):
 
    @property
    def upstream(self):
-      return next(iter(self.upstreamPorts.values()))
+      for port in self.upstreamPorts.values():
+         if port.upstream:
+            return port
+      raise RuntimeError('No upstream port defined')
 
    def busForPort(self, port):
       absBus = self.upstream.secondary + port

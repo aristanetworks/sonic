@@ -17,7 +17,7 @@ class PlxPortDesc(object):
       self.upstream = upstream
 
 class DownstreamPlxPort(DownstreamPciPort):
-   def __init__(self, desc=None, **kwargs):
+   def __init__(self, *, desc, **kwargs):
       super(DownstreamPlxPort, self).__init__(port=desc.port, **kwargs)
       self.desc = desc
 
@@ -35,7 +35,7 @@ class DownstreamPlxPort(DownstreamPciPort):
       return self.parent.isPortAvailable(self)
 
 class UpstreamPlxPort(UpstreamPciPort):
-   def __init__(self, desc=None, **kwargs):
+   def __init__(self, *, desc, **kwargs):
       super(UpstreamPlxPort, self).__init__(port=desc.port, **kwargs)
       self.desc = desc
 
@@ -59,13 +59,6 @@ class PlxPciSwitch(PciSwitch):
       self.plx = plx
       self.ports = {}
       self.addPciPorts(ports)
-
-   @property
-   def upstream(self):
-      for port in self.upstreamPorts.values():
-         if port.upstream:
-            return port
-      raise RuntimeError('No upstream port defined')
 
    def addPciPorts(self, descs):
       self.descs = descs

@@ -20,7 +20,11 @@ from ..components.lm75 import Tmp75
 from ..components.max31732 import Max31732
 from ..components.pca954x import Pca9548
 from ..components.psu.ecb import createPmbusECB, Tps16890
-from ..components.scd import LeakDetectionPcieRegistersV1, Scd
+from ..components.scd import (
+   LeakDetectionPcieRegistersV1,
+   Scd,
+   ScdInterruptDesc,
+)
 from ..components.tmp401 import Tmp431
 from ..components.vrm.ibc import Pwr689
 from ..components.vrm.tda38740 import Tda38740a, Xdpe1a2g5b, Xdpe1b284b
@@ -70,6 +74,13 @@ class SteamerLaneSysCpldRegisters(RegisterMap):
 class SteamerLaneSysCpld(SysCpld):
    REGISTER_CLS = SteamerLaneSysCpldRegisters
 
+class SteamerLaneSwcScd(Scd):
+   INTERRUPTS = [
+      ScdInterruptDesc(addr=0x3000, fields=[]),
+      ScdInterruptDesc(addr=0x3030, fields=[]),
+      ScdInterruptDesc(addr=0x3060, fields=[]),
+   ]
+
 class Windsurf(object):
    '''
    Windsurf rear board which contains power and leak detection circuitry.
@@ -103,7 +114,7 @@ class SteamerLaneChassis(FixedChassis):
 class SteamerLaneBase(FixedSystem):
    CHASSIS = SteamerLaneChassis
    HAS_WINDSURF = False
-   P3_HWAPI = HwApi(4, 0)
+   OSFP_PORTS_PER_SCD = 32
 
    PORTS = PortLayout(
       (Osfp1600(i, **OSFP_TRICOLOR_LED) for i in incrange(1, 64)),
@@ -240,11 +251,30 @@ class SteamerLaneBase(FixedSystem):
             ]
          )
 
-      port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)
-      self.scd = scd = port.newComponent(Scd, addr=port.addr,
-         registerCls=LeakDetectionPcieRegistersV1)
-      scd.setMsiRearmOffset(0x180)
-      scd.addSmbusMasterRange(0x8000, 11, 0x80, 8)
+      # SCD
+      hasDualScds = self.getHwApi() >= HwApi(5, 0)
+      miscBus = self.OSFP_PORTS_PER_SCD if hasDualScds else 0
+      osfpBus = 0 if hasDualScds else 8
+
+      scd0 = self._createScd(
+         self.cpu.PCI_PORT_SCD0,
+         registerCls=LeakDetectionPcieRegistersV1,
+      )
+      self.scd0 = scd0
+
+      scd1 = None
+      self.scd1 = None
+      if hasDualScds:
+         scd1 = self._createScd(self.cpu.PCI_PORT_SCD1)
+         self.scd1 = scd1
+
+         # Dedicated SMBus master for each port
+         scd0.addSmbusMasterRange(0x8000, self.OSFP_PORTS_PER_SCD - 1, 0x40, 1)
+         scd1.addSmbusMasterRange(0x8000, self.OSFP_PORTS_PER_SCD - 1, 0x40, 1)
+         # Additional master for miscellaneous devices
+         scd0.addSmbusMaster(0x8800, self.OSFP_PORTS_PER_SCD, 8)
+      else:
+         scd0.addSmbusMasterRange(0x8000, 11, 0x80, 8)
 
       # Board/TH6 temp sensors
       boardDiodeTempParams = {'target': 90, 'overheat': 95, 'critical': 100}
@@ -255,9 +285,9 @@ class SteamerLaneBase(FixedSystem):
          (2, 0x4c, ['Board Center Left', 'TH6C Remote Diode 2']),
       ]
       for bus, addr, (boardDiode, th6Diode) in tmp431s:
-         scd.newComponent(
+         scd0.newComponent(
             Tmp431,
-            addr=scd.i2cAddr(bus, addr),
+            addr=scd0.i2cAddr(miscBus + bus, addr),
             sensors=[
                SensorDesc(diode=0, name=boardDiode, position=Position.OTHER,
                           **boardDiodeTempParams),
@@ -266,7 +296,7 @@ class SteamerLaneBase(FixedSystem):
             ]
          )
 
-      if self.getHwApi() >= self.P3_HWAPI:
+      if self.getHwApi() >= HwApi(4, 0):
          max31732s = [
             (0x4e, [
                SensorDesc(diode=0, name='Board Rear Center',
@@ -302,9 +332,9 @@ class SteamerLaneBase(FixedSystem):
             ]),
          ]
          for addr, sensors in max31732s:
-            scd.newComponent(
+            scd0.newComponent(
                Max31732,
-               addr=scd.i2cAddr(7, addr),
+               addr=scd0.i2cAddr(miscBus + 7, addr),
                sensors=sensors,
             )
 
@@ -322,38 +352,53 @@ class SteamerLaneBase(FixedSystem):
          ])
       )
 
-      intrRegs = [
-         scd.createInterrupt(addr=0x3000, num=0),
-         scd.createInterrupt(addr=0x3030, num=1),
-         scd.createInterrupt(addr=0x3060, num=2),
+      scd0.createWatchdog(intr=scd0.getInterrupt(0), bit=20)
+
+      osfpPorts = self.PORTS.getOsfps()
+      scd0OsfpPorts = osfpPorts if scd1 is None else [
+         port for port in osfpPorts if port.index <= self.OSFP_PORTS_PER_SCD
+      ]
+      scd1OsfpPorts = [] if scd1 is None else [
+         port for port in osfpPorts if port.index > self.OSFP_PORTS_PER_SCD
       ]
 
-      scd.createWatchdog(intr=scd.getInterrupt(0), bit=20)
-
-      scd.addXcvrSlots(
-         ports=self.PORTS.getOsfps(),
+      scd0.addXcvrSlots(
+         ports=scd0OsfpPorts,
          addr=0xA010,
-         bus=8,
+         bus=osfpBus,
          ledAddr=0x6100,
          ledAddrOffsetFn=lambda x: 0x10,
-         intrRegs=intrRegs,
+         intrRegs=scd0.getInterrupts(),
          intrRegIdxFn=lambda xcvrId: xcvrId // 33 + 1,
          intrBitFn=lambda xcvrId: (xcvrId - 1) % 32,
       )
 
-      scd.addXcvrSlots(
+      if scd1 is not None:
+         scd1.addXcvrSlots(
+            ports=scd1OsfpPorts,
+            addr=0xA010,
+            bus=0,
+            ledAddr=0x6500,
+            ledScd=scd0, # SCD0 still handles the port LEDs
+            ledAddrOffsetFn=lambda x: 0x10,
+            intrRegs=scd1.getInterrupts(),
+            intrRegIdxFn=lambda _: 1,
+            intrBitFn=lambda xcvrId: (xcvrId - self.OSFP_PORTS_PER_SCD - 1) % 32,
+         )
+
+      scd0.addXcvrSlots(
          ports=self.PORTS.getQsfps(),
          addr=0xA410,
-         bus=6,
+         bus=miscBus + 6,
          ledAddr=0x60a0,
          ledScd=self.cpu.cpld,
          ledAddrOffsetFn=lambda x: 0x40,
-         intrRegs=intrRegs,
+         intrRegs=scd0.getInterrupts(),
          intrRegIdxFn=lambda _: 0,
          intrBitFn=lambda xcvrId: xcvrId - 65 + 9,
       )
 
-      scd.addResets([
+      scd0.addResets([
          ResetDesc('switch_chip_pcie_reset', addr=0x4000, bit=1, auto=False),
          ResetDesc('switch_chip_reset', addr=0x4000, bit=0, auto=False),
       ])
@@ -361,16 +406,22 @@ class SteamerLaneBase(FixedSystem):
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC1)
       self.asic = port.newComponent(Tomahawk6, addr=port.addr,
          coreResets=[
-            scd.inventory.getReset('switch_chip_reset'),
+            scd0.inventory.getReset('switch_chip_reset'),
          ],
          pcieResets=[
-            scd.inventory.getReset('switch_chip_pcie_reset'),
+            scd0.inventory.getReset('switch_chip_pcie_reset'),
          ],
          sensors=[
             SensorDesc(diode=0, name='Asic', position=Position.OTHER,
                        target=90, overheat=105, critical=110),
          ],
       )
+
+   def _createScd(self, pciPort, **kwargs):
+      port = self.cpu.getPciPort(pciPort)
+      scd = port.newComponent(SteamerLaneSwcScd, addr=port.addr, **kwargs)
+      scd.setMsiRearmOffset(0x180)
+      return scd
 
 @registerPlatform()
 class SteamerLaneMv3(SteamerLaneBase):

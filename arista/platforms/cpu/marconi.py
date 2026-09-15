@@ -28,7 +28,7 @@ class MarconiCpu(Cpu):
    PCI_PORT_ASIC0 = PciPortDesc(0x1, 3)
    PCI_PORT_ASIC1 = PciPortDesc(0x1, 5)
    PCI_PORT_SCD0 = PciPortDesc(0x3, 2)
-   PCI_PORT_SCD1 = PciPortDesc(0x3, 5)
+   PCI_PORT_SCD1 = PciPortDesc(0x3, 1)
 
    SMBUS_FP = ScdSmbusDesc(0, 0)
    SMBUS_CPU_POL = ScdSmbusDesc(0, 1)

@@ -6,6 +6,7 @@ from ..core.liquid import LeakDetectionInterfaceV1, LeakSensorType
 from ..core.platform import registerPlatform
 from ..core.port import PortLayout
 from ..core.psu import PsuSlot
+from ..core.quirk import PciConfigQuirk, Quirk
 from ..core.register import (
    Register,
    RegisterMap,
@@ -410,6 +411,20 @@ class SteamerLaneBase(FixedSystem):
          ],
          pcieResets=[
             scd0.inventory.getReset('switch_chip_pcie_reset'),
+         ],
+         quirks=[
+            PciConfigQuirk(
+               port.upstream.addr,
+               'ECAP_AER+8.l=00000000:00004000',
+               'Configure TH6 root-port AER',
+               when=Quirk.When.BEFORE,
+            ),
+            PciConfigQuirk(
+               port.upstream.addr,
+               'ECAP_DPC+6.w=0005:0007',
+               'Configure TH6 root-port DPC',
+               when=Quirk.When.BEFORE,
+            ),
          ],
          sensors=[
             SensorDesc(diode=0, name='Asic', position=Position.OTHER,

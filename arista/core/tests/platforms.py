@@ -25,13 +25,17 @@ from .. import utils
 from ..component import Component
 from ..driver import Driver
 from ..driver.kernel.sysfs import SysfsEntry, GpioSysfsImpl
+from ..exception import UnknownPlatformError
 from ..fixed import FixedSystem
 from ..hwapi import HwApi
+from .. import platform as platformModule
 from ..platform import getPlatformSkus
 from ..sku import Sku
 from ..types import I2cAddr
 
 from ... import platforms as _
+from ...platforms.bmc.goldfinch import GoldfinchBmc
+from ...platforms.steamerlane import GoldfinchSteamerLane, SteamerLaneHostSwitch
 
 def mock_i2cBusFromName(name, idx=0, force=False):
    assert isinstance(name, str)
@@ -141,6 +145,61 @@ class MockPlatformTest(unittest.TestCase):
             continue
          self.logger.info('Testing constructor for platform %s', name)
          platform()
+
+   def testBmcPlatformLookup(self):
+      manager = platformModule.manager
+      self.assertIs(manager.bmcIndex['Goldfinch'], GoldfinchBmc)
+      self.assertIs(manager.bmcSubsystemIndex[('Goldfinch', 'SteamerLaneMv3')],
+                    GoldfinchSteamerLane)
+
+      with patch.object(platformModule, 'isBmcEnvironment', return_value=True), \
+           patch.object(platformModule, 'readBmcDeviceTreeModel',
+                        return_value='Goldfinch'), \
+           patch.object(platformModule, 'loadPrerequisites'), \
+           patch.object(GoldfinchBmc, 'readChassisEeprom',
+                        return_value={'SID': 'SteamerLaneMv3'}):
+         platform = platformModule.getPlatform()
+
+      self.assertIsInstance(platform, GoldfinchSteamerLane)
+      self.assertIsInstance(platform.bmc, GoldfinchBmc)
+      self.assertIsInstance(platform.hostSwitch, SteamerLaneHostSwitch)
+
+   def testBmcPlatformLookupWithName(self):
+      with patch.object(platformModule, 'isBmcEnvironment', return_value=True):
+         with self.assertRaisesRegex(
+                  UnknownPlatformError,
+                  'does not accept name'):
+            platformModule.getPlatform('Goldfinch')
+
+   def testBmcPlatformLookupWithUnknownModel(self):
+      with patch.object(platformModule, 'isBmcEnvironment', return_value=True), \
+           patch.object(platformModule, 'readBmcDeviceTreeModel',
+                        return_value='Unknown'):
+         with self.assertRaisesRegex(
+                  UnknownPlatformError,
+                  'Unknown.*supported BMC models: Goldfinch'):
+            platformModule.getPlatform()
+
+   def testBmcPlatformLookupWithEmptySid(self):
+      with patch.object(platformModule, 'isBmcEnvironment', return_value=True), \
+           patch.object(platformModule, 'readBmcDeviceTreeModel',
+                        return_value='Goldfinch'), \
+           patch.object(platformModule, 'loadPrerequisites'), \
+           patch.object(GoldfinchBmc, 'readChassisEeprom', return_value={}):
+         with self.assertRaisesRegex(UnknownPlatformError, 'empty SID'):
+            platformModule.getPlatform()
+
+   def testBmcPlatformLookupWithUnknownSid(self):
+      with patch.object(platformModule, 'isBmcEnvironment', return_value=True), \
+           patch.object(platformModule, 'readBmcDeviceTreeModel',
+                        return_value='Goldfinch'), \
+           patch.object(platformModule, 'loadPrerequisites'), \
+           patch.object(GoldfinchBmc, 'readChassisEeprom',
+                        return_value={'SID': 'Unknown'}):
+         with self.assertRaisesRegex(
+                  UnknownPlatformError,
+                  'No BMC subsystem.*Goldfinch.*Unknown'):
+            platformModule.getPlatform()
 
    def testSetup(self):
       for name, platform in getPlatformSkus().items():

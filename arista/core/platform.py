@@ -38,6 +38,8 @@ class PlatformManager:
       self.platforms = []
       self.platformSidIndex = {}
       self.platformSkuIndex = {}
+      self.bmcIndex = {}
+      self.bmcSubsystemIndex = {}
 
    def registerPlatform(self, cls):
       self.platforms.append(cls)
@@ -54,15 +56,18 @@ class PlatformManager:
 
       return cls
 
-   def detectPlatform(self):
-      if isBmcEnvironment():
-         sku = readBmcDeviceTreeModel()
-         if sku is not None:
-            platformCls = self.platformSkuIndex.get(sku)
-            if platformCls is not None:
-               return platformCls
-         return None
+   def registerBmc(self, cls):
+      for model in cls.MODEL:
+         self.bmcIndex[model] = cls
+      return cls
 
+   def registerBmcSubsystem(self, cls):
+      for model in cls.BMC_CLS.MODEL:
+         for sid in cls.HOST_SWITCH_CLS.SID:
+            self.bmcSubsystemIndex[(model, sid)] = cls
+      return cls
+
+   def detectPlatform(self):
       # TODO: refactor by obtaining a Cpu object based on the platform= from
       #       cmdline implement getEeprom on all Cpu to get the prefdl from hw
       #       add a fallback mechanism to read /etc/sonic/.syseeprom like done
@@ -220,11 +225,31 @@ def getPlatformCls(*names):
    return manager.getPlatformCls(*names)
 
 def getPlatform(name=None):
-   platformCls = manager.getPlatformCls(name)
-   platform = platformCls()
    if isBmcEnvironment():
-      platform.setupEeproms()
-      platform.createHostSwitch()
+      if name is not None:
+         raise UnknownPlatformError(
+            f'BMC platform identification does not accept name={name!r}')
+
+      model = readBmcDeviceTreeModel()
+      bmcCls = manager.bmcIndex.get(model)
+      if bmcCls is None:
+         supportedModels = ', '.join(sorted(manager.bmcIndex))
+         raise UnknownPlatformError(
+            f'BMC model {model!r} is not registered; supported BMC models: '
+            f'{supportedModels}')
+
+      loadPrerequisites()
+      sid = bmcCls.readChassisEeprom().get('SID')
+      if not sid:
+         raise UnknownPlatformError(
+            f'BMC model {model!r} has an empty SID in its chassis EEPROM')
+      platformCls = manager.bmcSubsystemIndex.get((model, sid))
+      if platformCls is None:
+         raise UnknownPlatformError(
+            f'No BMC subsystem is registered for model {model!r} and SID {sid!r}')
+   else:
+      platformCls = manager.getPlatformCls(name)
+   platform = platformCls()
    platform.refresh()
    return platform
 
@@ -245,4 +270,14 @@ def loadPlatforms():
 def registerPlatform():
    def wrapper(cls):
       return manager.registerPlatform(cls)
+   return wrapper
+
+def registerBmc():
+   def wrapper(cls):
+      return manager.registerBmc(cls)
+   return wrapper
+
+def registerBmcSubsystem():
+   def wrapper(cls):
+      return manager.registerBmcSubsystem(cls)
    return wrapper

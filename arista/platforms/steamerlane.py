@@ -1,9 +1,12 @@
-from ..core.bmc import BmcHostSwitch, registerHostSwitch
+from ..core.bmc import BmcHostSwitch, BmcSubsystem
 from ..core.cooling import CoolingConfig, CoolingLogicIncPid
 from ..core.fixed import FixedSystem, FixedChassis
 from ..core.hwapi import HwApi
 from ..core.liquid import LeakDetectionInterfaceV1, LeakSensorType
-from ..core.platform import registerPlatform
+from ..core.platform import (
+   registerBmcSubsystem,
+   registerPlatform,
+)
 from ..core.port import PortLayout
 from ..core.psu import PsuSlot
 from ..core.quirk import PciConfigQuirk, Quirk
@@ -40,6 +43,7 @@ from ..descs.sensor import Position, SensorDesc
 from ..descs.xcvr import Osfp1600, Qsfp28
 
 from .cpu.marconi import MarconiCpu
+from .bmc.goldfinch import GoldfinchBmc
 
 OSFP_TRICOLOR_LED = {'defaultLed': '%s:rgb:1', 'leds': [
    LedDesc(addr=0, name='%s:rgb:1', **LedKind.desc(LedKind.RGB_8_F)),
@@ -445,7 +449,6 @@ class SteamerLaneMv3(SteamerLaneBase):
    SID = ['SteamerLaneMv3']
    SKU = ['7060XE7-64PRS-MV3-L', 'DCS-7060XE7-64PRS-MV3-L']
 
-@registerHostSwitch()
 class SteamerLaneHostSwitch(BmcHostSwitch):
    SID = ['Marconi', 'SteamerLaneMv3']
 
@@ -464,3 +467,8 @@ class SteamerLaneHostSwitch(BmcHostSwitch):
                            addr=0, location="unspecified"),
          ])
       )
+
+@registerBmcSubsystem()
+class GoldfinchSteamerLane(BmcSubsystem):
+   BMC_CLS = GoldfinchBmc
+   HOST_SWITCH_CLS = SteamerLaneHostSwitch

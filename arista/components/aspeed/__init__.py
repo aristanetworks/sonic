@@ -42,9 +42,10 @@ class AspeedSoc(Component):
          return 'N/A'
       return data.get('build_version', 'N/A')
 
-   def getSmbus(self, bus):
-      addr = self.I2C_BASE + (bus + 1) * self.I2C_STRIDE
-      return I2cBus('%08x.%s' % (addr, self.I2C_SUFFIX))
+   @classmethod
+   def getSmbus(cls, bus):
+      addr = cls.I2C_BASE + (bus + 1) * cls.I2C_STRIDE
+      return I2cBus(f'{addr:08x}.{cls.I2C_SUFFIX}')
 
    def createWatchdog(self):
       watchdog = AspeedWatchdog()

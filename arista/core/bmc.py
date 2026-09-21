@@ -1,55 +1,28 @@
+from abc import ABC, abstractmethod
+
 from .bootloader import Uboot
+from .component import Component
 from .fixed import FixedSystem
 from .sku import Sku
 from .utils import simulateWith
 
-class HostSwitchManager:
-   def __init__(self):
-      self.hostSwitchSidIndex = {}
+class Bmc(Component, ABC):
+   """Base component for BMC-local hardware and EEPROM wiring."""
 
-   def registerHostSwitchCls(self, cls):
-      for sid in cls.SID:
-         self.hostSwitchSidIndex[sid] = cls
-      return cls
+   MODEL = ()
 
-   def loadHostSwitch(self, platform):
-      sid = platform.chassisEeprom.prefdl().get('SID')
-      hostSwitchCls = self.hostSwitchSidIndex.get(sid)
-      if hostSwitchCls is not None:
-         return platform.newComponent(hostSwitchCls)
-      return None
-
-hostSwitchManager = HostSwitchManager()
-
-def registerHostSwitch():
-   def wrapper(cls):
-      return hostSwitchManager.registerHostSwitchCls(cls)
-   return wrapper
-
-class BmcHostSwitch(Sku):
-   pass
-
-class BmcSubsystem(FixedSystem):
-
-   def __init__(self, **kwargs):
-      super(BmcSubsystem, self).__init__(**kwargs)
-      self.bmc = self.createBmc()
+   def __init__(self, *args, **kwargs):
+      super().__init__(*args, **kwargs)
       self.bmcEeprom = self.createBmcEeprom()
       self.cpuEeprom = self.createCpuEeprom()
       self.chassisEeprom = self.createChassisEeprom()
-      self.hostSwitch= None
+      self.setupEeproms()
       self.newComponent(Uboot)
 
-   def createHostSwitch(self):
-      self.hostSwitch = hostSwitchManager.loadHostSwitch(self)
-
-   def setupEeproms(self):
-      self.bmcEeprom.setup()
-      self.cpuEeprom.setup()
-      self.chassisEeprom.setup()
-
-   def createBmc(self):
-      raise NotImplementedError
+   @classmethod
+   @abstractmethod
+   def readChassisEeprom(cls):
+      """Read and return the chassis EEPROM PreFDL."""
 
    def createBmcEeprom(self):
       raise NotImplementedError
@@ -59,6 +32,11 @@ class BmcSubsystem(FixedSystem):
 
    def createChassisEeprom(self):
       raise NotImplementedError
+
+   def setupEeproms(self):
+      self.bmcEeprom.setup()
+      self.cpuEeprom.setup()
+      self.chassisEeprom.setup()
 
    def cpuCpldAddr(self):
       raise NotImplementedError
@@ -72,3 +50,35 @@ class BmcSubsystem(FixedSystem):
 
    def getBmcBaseMac(self):
       return self.bmcEeprom.prefdl().get('MAC')
+
+class BmcHostSwitch(Sku):
+   pass
+
+class BmcSubsystem(FixedSystem):
+
+   BMC_CLS = None
+   HOST_SWITCH_CLS = None
+
+   def __init__(self, **kwargs):
+      super(BmcSubsystem, self).__init__(**kwargs)
+      if self.BMC_CLS is None:
+         raise NotImplementedError
+      self.bmc = self.newComponent(self.BMC_CLS)
+      self.bmcEeprom = self.bmc.bmcEeprom
+      self.cpuEeprom = self.bmc.cpuEeprom
+      self.chassisEeprom = self.bmc.chassisEeprom
+      self.hostSwitch = self.createHostSwitch()
+
+   def createHostSwitch(self):
+      if self.HOST_SWITCH_CLS is not None:
+         return self.newComponent(self.HOST_SWITCH_CLS)
+      return None
+
+   def cpuCpldAddr(self):
+      return self.bmc.cpuCpldAddr()
+
+   def getEeprom(self):
+      return self.bmc.getEeprom()
+
+   def getBmcBaseMac(self):
+      return self.bmc.getBmcBaseMac()

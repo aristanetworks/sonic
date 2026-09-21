@@ -96,11 +96,15 @@ class ProvisionManifest:
             else:
                # Chassis newly upgraded from 202405 will not have the
                # provision_state field
+               doUpdate = False
                for lcData in self.data['linecards'].values():
                   if 'provision_state' not in lcData:
                      lcData['provision_state'] = (
                         ProvisionState.fromProvisioned(lcData['provisioned'])
                      )
+                     doUpdate = True
+               if doUpdate:
+                  self._write()
                return
          else:
             return
@@ -182,6 +186,12 @@ class ProvisionManifest:
          'provision_state': ProvisionState.UNPROVISIONED
       }
 
+   def _getEntryProvisionState(self, entry):
+      val = entry.get('provision_state', None)
+      if val is None:
+         return ProvisionState.fromProvisioned(entry.get('provisioned', False))
+      return val
+
    def setLinecardUnprovisioned(self, lc, eepromData=None):
       if not eepromData:
          eepromData = lc.slot.getEeprom()
@@ -210,7 +220,7 @@ class ProvisionManifest:
             self._write()
 
    async def setLinecardProvisioned(self, lc):
-      curSerial = self.getLinecardSerial(lc.getEeprom())
+      eeprom = lc.getEeprom()
 
       async with self.asyncLock():
          # init=False is important here to prevent recursive locking
@@ -220,13 +230,16 @@ class ProvisionManifest:
          entry = self.data['linecards'].get(cardName)
          if not entry:
             logging.warning('%s: entry missing for %s', self, lc)
-            entry = self.data['linecards'].setdefault(cardName, {})
-            entry['serial'] = curSerial
-         if entry['provision_state'] == ProvisionState.COMPLETE:
+            entry = self.data['linecards'].setdefault(
+               cardName,
+               self._getUnprovisionedLinecardEntry(eeprom)
+            )
+         provisionState = self._getEntryProvisionState(entry)
+         if provisionState == ProvisionState.COMPLETE:
             return
-         if entry['provision_state'] != ProvisionState.PENDING:
+         if provisionState != ProvisionState.PENDING:
             logging.warning('%s: %s provisioning status was %s, not pending\n',
-                            self, lc, entry['provision_state'])
+                            self, lc, provisionState)
          entry['provisioned'] = True
          entry['provision_state'] = ProvisionState.COMPLETE
          self._write()
@@ -241,4 +254,4 @@ class ProvisionManifest:
          entry = self.data['linecards'].get(cardName)
          if not entry:
             return None
-         return entry['provision_state']
+         return self._getEntryProvisionState(entry)

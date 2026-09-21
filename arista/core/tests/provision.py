@@ -1,10 +1,15 @@
 
+import contextlib
+import copy
+import io
+import json
 import os
 from tempfile import TemporaryDirectory
 from unittest import IsolatedAsyncioTestCase, TestCase
 
 from .mockchassis import MockLinecard, MockSupervisor
-from ..provision import ProvisionManifest
+from ..log import setupLogging
+from ..provision import ProvisionManifest, ProvisionState
 
 def serialForLinecard(lcId):
    return f'LC{lcId}'
@@ -70,8 +75,52 @@ class ProvisionTest(TestCase):
          serialForLinecard(0)
       assert not self.manifest.data['linecards'][cardName]['provisioned']
 
+class ProvisionUpgradeTest(TestCase):
+   MANIFEST_BASE = {
+      'version': 1,
+      'linecards': {}
+   }
+   def setUp(self):
+      self.sup = MockSupervisor()
+      self.sup.createLinecardSlots()
+      for lcId in range(self.sup.getChassis().NUM_LINECARDS - 1):
+         self.sup.insertLinecard(lcId=lcId, cls=MockLinecard,
+                                 serial=serialForLinecard(lcId))
+
+      # pylint: disable-next=consider-using-with
+      self.tempdir = TemporaryDirectory(prefix='unittest-arista-provision-manifest-')
+
+   def tearDown(self):
+      self.tempdir.cleanup()
+
+   def testUpgradeInit(self):
+      manifestData = copy.deepcopy(self.MANIFEST_BASE)
+      for lcId in range(self.sup.getChassis().NUM_LINECARDS - 1):
+         manifestData['linecards'][f'LINE-CARD{lcId}'] = {
+            'serial': 'A00{lcId}',
+            'provisioned': True
+      }
+      with open(os.path.join(self.tempdir.name, 'manifest.json'),
+                'w', encoding='utf-8') as f:
+         json.dump(manifestData, f)
+
+      manifest = ProvisionManifest(
+         self.sup, os.path.join(self.tempdir.name, 'manifest.json'))
+      manifest.read(init=True)
+
+      assert 'version' in manifest.data
+      self.assertEqual(manifest.data['version'], manifest.FILE_VERSION)
+      assert 'linecards' in manifest.data
+      for lc in self.sup.getChassis().iterLinecards():
+         lcName = f'LINE-CARD{lc.getRelativeSlotId()}'
+         assert lcName in manifest.data['linecards']
+         lcData = manifest.data['linecards'][lcName]
+         assert 'provision_state' in lcData
+         assert lcData['provision_state'] == ProvisionState.COMPLETE
+
 class AsyncProvisionTest(IsolatedAsyncioTestCase):
    def setUp(self):
+      setupLogging(verbosity='.*/DEBUG')
       self.sup = MockSupervisor()
       self.sup.createLinecardSlots()
       for lcId in range(self.sup.getChassis().NUM_LINECARDS - 1):
@@ -93,13 +142,22 @@ class AsyncProvisionTest(IsolatedAsyncioTestCase):
       self.manifest.data['linecards'][cardName]['provisioned'] = False
       await self.manifest.setLinecardProvisioned(lc)
       self.assertTrue(self.manifest.data['linecards'][cardName]['provisioned'])
+      self.assertEqual(self.manifest.data['linecards'][cardName]['provision_state'],
+                       ProvisionState.COMPLETE)
 
    async def testSetProvisionedAbsent(self):
       lc = getFirstLinecard(self.sup)
       cardName = getCardName(lc)
       del self.manifest.data['linecards'][cardName]
-      await self.manifest.setLinecardProvisioned(lc)
+      self.manifest._write() # pylint: disable=protected-access
+      buffer = io.StringIO()
+      with contextlib.redirect_stdout(buffer):
+         await self.manifest.setLinecardProvisioned(lc)
+      self.assertIn(f"WARNING: {self.manifest}: entry missing for {lc}",
+                    buffer.getvalue().splitlines())
       assert cardName in self.manifest.data['linecards']
       self.assertEqual(self.manifest.data['linecards'][cardName]['serial'],
                        serialForLinecard(0))
       self.assertTrue(self.manifest.data['linecards'][cardName]['provisioned'])
+      self.assertEqual(self.manifest.data['linecards'][cardName]['provision_state'],
+                       ProvisionState.COMPLETE)

@@ -18,6 +18,7 @@ from ...components.max6658 import Max6658
 from ...components.scd import Scd, ScdCause
 
 from ...descs.cause import ReloadCauseAltSource
+from ...descs.rail import RailDesc
 from ...descs.sensor import Position, SensorDesc
 
 class LorikeetCpu(Cpu):
@@ -77,13 +78,28 @@ class LorikeetCpu(Cpu):
    def addCpuDpm(self, addr=None, causes=None):
       addr = addr or self.cpuDpmAddr()
       return self.cpld.newComponent(Adm1266, addr=addr, causes=causes or [
-         AdmCauseOH(AdmCauseOH.CPU_S5,       AdmPdio(13), activeLow=True),
-         AdmCauseOH(AdmCauseOH.CPU_S3,       AdmPdio(14), activeLow=True),
+         AdmCauseOH(AdmCauseOH.CPU_S3,       AdmPdio(13), activeLow=True),
+         AdmCauseOH(AdmCauseOH.CPU_S5,       AdmPdio(14), activeLow=True),
          AdmCauseOH(AdmCauseOH.NO_FANS,      AdmGpio(5)),
          AdmCauseOH(AdmCauseOH.OVERTEMP,     AdmGpio(6)),
          AdmCauseOH(AdmCauseOH.CPU,          AdmGpio(7), priority=AdmPriority.LOW),
          AdmCauseOH(AdmCauseOH.CPU_OVERTEMP, AdmGpio(8), activeLow=True),
-      ], causePriority=AdmPriority.HARDWARE_SECONDARY,
+      ], rails=[
+         RailDesc(railId=1, name='POS3V3', expectedVoltage=3.3),
+         RailDesc(railId=2, name='POS5V', expectedVoltage=5),
+         RailDesc(railId=3, name='POS12V', expectedVoltage=12),
+         RailDesc(railId=5, name='POS1V8', expectedVoltage=1.8),
+         RailDesc(railId=6, name='POS1V2_CPLD', expectedVoltage=1.2),
+         RailDesc(railId=7, name='POS0V9', expectedVoltage=0.9),
+         RailDesc(railId=8, name='POS1V2_VDD_MEM', expectedVoltage=1.2),
+         RailDesc(railId=9, name='POS0V6_VTT', expectedVoltage=0.6),
+         RailDesc(railId=10, name='POS2V5_VPP', expectedVoltage=2.5),
+         RailDesc(railId=11, name='POS3V3_S0', expectedVoltage=3.3),
+         RailDesc(railId=12, name='POS1V8_S0', expectedVoltage=1.8),
+         RailDesc(railId=15, name='POS1V5_RTC', expectedVoltage=1.5),
+         RailDesc(railId=16, name='POS1V2_LAN', expectedVoltage=1.2),
+      ],
+         causePriority=AdmPriority.HARDWARE_SECONDARY,
          altSource=[ReloadCauseAltSource.CPU])
 
    def cpuDpmAddr(self, addr=0x4f, t=3, **kwargs):
@@ -97,7 +113,7 @@ class LorikeetCpu(Cpu):
 
 
 class LorikeetPrimeCpu(LorikeetCpu):
-   def addCpuDpm(self, addr=None, causes=None):
+   def addCpuReloadCauseProvider(self):
       self.cpld.addReloadCauseProvider(causes=[
          ScdCause(0x01, ScdCause.OVERTEMP),
          ScdCause(0x08, ScdCause.REBOOT, 'Software Reboot'),

@@ -15,6 +15,7 @@ from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 
 from ..descs.cause import ReloadCauseDesc
 from ..descs.gpio import GpioDesc
+from ..descs.rail import RailDesc
 from ..descs.sensor import Position, SensorDesc
 from ..descs.reset import ResetDesc
 from ..descs.xcvr import Osfp, QsfpDD, Sfp
@@ -46,12 +47,28 @@ class SilverstrandP(FixedSystem):
       self.cpu.cpld.newComponent(Ucd90320, addr=self.cpu.switchDpmAddr(0x11),
          causes=[
             UcdGpi(1, ReloadCauseDesc.OVERTEMP),
+            UcdGpi(2, ReloadCauseDesc.SEU, 'SCD SEU ERROR'),
             UcdGpi(3, ReloadCauseDesc.POWERLOSS, 'PSU AC'),
             UcdGpi(4, ReloadCauseDesc.POWERLOSS, 'PSU DC'),
             UcdGpi(5, ReloadCauseDesc.WATCHDOG),
-            UcdGpi(6, ReloadCauseDesc.REBOOT),
-            UcdGpi(7, ReloadCauseDesc.REBOOT),
-            UcdGpi(8, ReloadCauseDesc.REBOOT),
+            UcdGpi(6, ReloadCauseDesc.CPU, 'CPU Hardware Power Cycle'),
+      ], rails=[
+         RailDesc(railId=1, name='P12V_L_CORE_FUSED', expectedVoltage=12),
+         RailDesc(railId=2, name='P12V_R_CORE_FUSED', expectedVoltage=12),
+         RailDesc(railId=3, name='P12V_L_OPTICS_FUSED', expectedVoltage=12),
+         RailDesc(railId=4, name='P12V_R_OPTICS_FUSED', expectedVoltage=12),
+         RailDesc(railId=5, name='P12V_AVDD_FUSED', expectedVoltage=12),
+         RailDesc(railId=6, name='P12V_STDBY', expectedVoltage=12),
+         RailDesc(railId=7, name='P5V0_EN', expectedVoltage=5),
+         RailDesc(railId=8, name='P3V3_EN', expectedVoltage=3.3),
+         RailDesc(railId=9, name='P3V3_OPTICS_A_EN', expectedVoltage=3.3),
+         RailDesc(railId=10, name='P3V3_OPTICS_B_EN', expectedVoltage=3.3),
+         RailDesc(railId=11, name='P1V8_EN', expectedVoltage=1.8),
+         RailDesc(railId=12, name='P1V5_EN', expectedVoltage=1.5),
+         RailDesc(railId=13, name='P1V2_EN', expectedVoltage=1.2),
+         RailDesc(railId=14, name='P0V8_VDD_EN', expectedVoltage=0.8),
+         RailDesc(railId=15, name='P0V9_AVDD_EN', expectedVoltage=0.9),
+         RailDesc(railId=16, name='P0V75_AVDD_EN', expectedVoltage=0.75),
       ], causePriority=UcdPriority.HARDWARE_MAIN)
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)

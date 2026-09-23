@@ -46,10 +46,14 @@ class CatalinaDD(FixedSystem):
    def __init__(self):
       super().__init__()
 
-      cpuCls = LorikeetCpu if self.getHwApi() < HwApi(6) else LorikeetPrimeCpu
+      isLorikeetPrime = self.getHwApi() >= HwApi(6)
+      cpuCls = LorikeetPrimeCpu if isLorikeetPrime else LorikeetCpu
       self.cpu = self.newComponent(cpuCls)
       self.syscpld = self.cpu.syscpld
-      self.cpu.addCpuDpm()
+      if isLorikeetPrime:
+         self.cpu.addCpuReloadCauseProvider()
+      else:
+         self.cpu.addCpuDpm()
       self.addSwitchDpm()
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)

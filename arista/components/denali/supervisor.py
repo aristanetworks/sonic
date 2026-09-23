@@ -99,10 +99,7 @@ class DenaliSupervisor(Supervisor):
          pci = self.pciSwitch.addPciPort(self.LINECARD_PORTS[lcId])
          bus = self.scd.getSmbus(self.linecardSmbus[lcId])
          presenceGpio = self.scd.inventory.getGpio("%s_present" % name)
-         presenceChangedGpio = self.scd.inventory.getGpio(
-            "%s_present_changed" % name)
-         slot = DenaliLinecardSlot(self, slotId, pci, bus, presenceGpio=presenceGpio,
-                                   presenceChangedGpio=presenceChangedGpio)
+         slot = DenaliLinecardSlot(self, slotId, pci, bus, presenceGpio=presenceGpio)
          self.linecardSlots.append(slot)
 
    def createFabricCards(self):

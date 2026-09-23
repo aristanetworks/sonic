@@ -7,7 +7,6 @@ import json
 from ...core.cause import getLinecardReloadCauseManager
 from ...core.config import Config, flashPath
 from ...core.log import getLogger
-from ...core.provision import LockBusyError, ProvisionManifest
 from ...core.supervisor import Supervisor
 from ...core.utils import inSimulation
 
@@ -217,15 +216,6 @@ class RpcSupervisorApi(RpcApi):
    @registerLinecardToSupMethod
    async def getRebootCause(self, lc):
       return {'status': True, 'reboot_cause' : getAndSetLcRebootCause(lc)}
-
-   @registerLinecardToSupMethod
-   async def provisionComplete(self, lc):
-      manifest = ProvisionManifest(self.platform)
-      try:
-         await manifest.setLinecardProvisioned(lc)
-         return {'status': True}
-      except LockBusyError:
-         return {'status': False, 'reason': 'failed to acquire lock for linecard manifest'}
 
 class RpcLinecardApi(RpcApi):
 

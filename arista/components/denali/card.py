@@ -250,14 +250,12 @@ class DenaliCardSlot(CardSlot):
 
    CARD_CLS = None
 
-   def __init__(self, parent, slotId, pci, bus, presenceGpio=None,
-                presenceChangedGpio=None, card=None):
+   def __init__(self, parent, slotId, pci, bus, presenceGpio=None, card=None):
       super(DenaliCardSlot, self).__init__(parent, slotId)
       self.pci = pci
       self.bus = bus
       self.card = card
       self.presenceGpio = presenceGpio
-      self.presenceChangedGpio = presenceChangedGpio
       if not self.card:
          self._loadCard(self.CARD_CLS(self))
 
@@ -266,15 +264,6 @@ class DenaliCardSlot(CardSlot):
          return self.card.pca.ping()
 
       return self.presenceGpio.isActive()
-
-   def getPresenceChanged(self):
-      if self.presenceChangedGpio is None:
-         return None
-
-      ret = self.presenceChangedGpio.isActive()
-      if ret:
-         self.presenceChangedGpio.setActive(True)
-      return ret
 
    def getEeprom(self):
       if not self.getPresence() or self.getFault():

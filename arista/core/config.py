@@ -10,7 +10,6 @@ from ..libs.procfs import getCmdlineDict
 logging = getLogger(__name__)
 
 DEFAULT_FLASH_PATH = '/host'
-DEFAULT_PROVISION_PATH = os.path.join(DEFAULT_FLASH_PATH, 'provision')
 CONFIG_PATH = "/etc/sonic/arista.config"
 FLASH_CONFIG_PATH = os.path.join(DEFAULT_FLASH_PATH, 'arista-platform.config')
 
@@ -40,8 +39,6 @@ class DefaultConfig:
    api_sfp_reset_lpmode: bool = True
    api_event_use_interrupts: bool = False
    flash_path: str = DEFAULT_FLASH_PATH
-   provision_path: str = DEFAULT_PROVISION_PATH
-   provision_max_lock_retries: int = 15
    tmpfs_path: str = '/var/run/platform_cache/arista'
    etc_path: str = '/etc/sonic'
    api_rpc_sup: str = '127.100.1.1'
@@ -216,6 +213,3 @@ def tmpfsPath(*args):
 
 def etcPath(*args):
    return os.path.join(Config().etc_path, *args)
-
-def provisionPath(*args):
-   return os.path.join(Config().provision_path, *args)

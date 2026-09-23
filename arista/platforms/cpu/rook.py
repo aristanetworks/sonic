@@ -20,6 +20,7 @@ from ...components.scd import Scd
 
 from ...descs.fan import FanDesc, FanPosition
 from ...descs.led import LedDesc, LedColor
+from ...descs.rail import RailDesc
 from ...descs.sensor import Position, SensorDesc
 from ...descs.cause import ReloadCauseDesc
 
@@ -109,7 +110,23 @@ class RookCpu(Cpu):
          UcdGpi(3, ReloadCauseDesc.OVERTEMP),
          UcdGpi(4, ReloadCauseDesc.CPU_CATERR, priority=UcdPriority.LOW),
          UcdGpi(5, ReloadCauseDesc.NO_FANS),
-      ], rails=rails,
+      ], rails=rails if rails is not None else [
+         RailDesc(railId=1, name='1.7V VCCIN', expectedVoltage=1.5),
+         RailDesc(railId=2, name='0.6V VTT', expectedVoltage=0.6),
+         RailDesc(railId=3, name='1.2V VDDQ', expectedVoltage=1.2),
+         RailDesc(railId=4, name='2.5V VPP', expectedVoltage=2.5),
+         RailDesc(railId=5, name='1.5V PCH', expectedVoltage=1.5),
+         RailDesc(railId=6, name='1.05V COM', expectedVoltage=1.05),
+         RailDesc(railId=7, name='1.3V KRHV', expectedVoltage=1.3),
+         RailDesc(railId=8, name='1.7V SCFUSE', expectedVoltage=1.7),
+         RailDesc(railId=9, name='3.3V TPS54821', expectedVoltage=3.3),
+         RailDesc(railId=10, name='5V TPS54821', expectedVoltage=5),
+         RailDesc(railId=11, name='1.2V ALW', expectedVoltage=1.2),
+         RailDesc(railId=12, name='3.3V ALW', expectedVoltage=3.3),
+         RailDesc(railId=13, name='12V Power Cable', expectedVoltage=12),
+         RailDesc(railId=14, name='1.2V LAN1', expectedVoltage=1.2),
+         RailDesc(railId=15, name='1.2V LAN2', expectedVoltage=1.2),
+      ],
          causePriority=UcdPriority.HARDWARE_SECONDARY)
 
    def cpuDpmAddr(self, addr=0x4e, t=3, **kwargs):

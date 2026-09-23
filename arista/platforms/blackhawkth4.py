@@ -66,7 +66,7 @@ class BlackhawkTH4DD(FixedSystem):
 
       self.cpu = self.newComponent(LorikeetPrimeCpu,
                                    cpldRegisterCls=BlackhawkTH4CpldRegisters)
-      self.cpu.addCpuDpm()
+      self.cpu.addCpuReloadCauseProvider()
       self.syscpld = self.cpu.syscpld
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_SCD0)

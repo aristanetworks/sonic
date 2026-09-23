@@ -16,6 +16,7 @@ from ..components.scd import Scd
 
 from ..descs.cause import ReloadCauseDesc
 from ..descs.gpio import GpioDesc
+from ..descs.rail import RailDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
 from ..descs.xcvr import Qsfp28, Sfp
@@ -55,6 +56,20 @@ class Gardena(FixedSystem):
          UcdGpi(2, ReloadCauseDesc.REBOOT),
          UcdGpi(3, ReloadCauseDesc.WATCHDOG),
          UcdGpi(4, ReloadCauseDesc.OVERTEMP),
+         UcdGpi(5, ReloadCauseDesc.SEU),
+      ], rails=[
+         RailDesc(railId=1, name='0.9V', expectedVoltage=0.9),
+         RailDesc(railId=2, name='0.8V', expectedVoltage=0.8),
+         RailDesc(railId=3, name='1.8V', expectedVoltage=1.8),
+         RailDesc(railId=4, name='3.3V Ports', expectedVoltage=3.3),
+         RailDesc(railId=5, name='3.3V Tomahawk2', expectedVoltage=3.3),
+         RailDesc(railId=6, name='1.2V', expectedVoltage=1.2),
+         RailDesc(railId=7, name='3.3V', expectedVoltage=3.3),
+         RailDesc(railId=8, name='1.2V', expectedVoltage=1.2),
+         RailDesc(railId=9, name='1.5V', expectedVoltage=1.5),
+         RailDesc(railId=10, name='5V', expectedVoltage=5),
+         RailDesc(railId=11, name='3.3V ALW', expectedVoltage=3.3),
+         RailDesc(railId=12, name='12V System rail', expectedVoltage=12),
       ], causePriority=UcdPriority.HARDWARE_MAIN)
       self.cpu = cpu
       self.syscpld = cpu.syscpld

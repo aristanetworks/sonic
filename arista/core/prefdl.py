@@ -55,6 +55,8 @@ class TlvMacField(TlvStrField):
 
 class TlvIntTupleField(TlvStrField):
    def parse(self, value):
+      if isinstance(value, (list, tuple)):
+         return tuple(int(v) for v in value)
       value = super().parse(value)
       return tuple(int(v) for v in value.split('.'))
 

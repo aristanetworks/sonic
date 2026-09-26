@@ -51,6 +51,13 @@ class PrefdlTest(unittest.TestCase):
       pfdl = Prefdl.fromDict(PREFDL_EXPECT)
       self._checkPrefdl(pfdl, PREFDL_EXPECT)
 
+   def testPrefdlFromJsonData(self):
+      data = PREFDL_EXPECT.copy()
+      data['HwApi'] = [2, 0]
+      data['HwRev'] = [2, 11]
+      pfdl = Prefdl.fromDict(data)
+      self._checkPrefdl(pfdl, PREFDL_EXPECT)
+
    def testEmptyPrefdl(self):
       self._checkPrefdl(Prefdl.fromBytes(PREFDL_EMPTY), {})
 

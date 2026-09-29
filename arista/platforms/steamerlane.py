@@ -410,7 +410,7 @@ class SteamerLaneBase(FixedSystem):
 
       port = self.cpu.getPciPort(self.cpu.PCI_PORT_ASIC1)
       self.asic = port.newComponent(Tomahawk6, addr=port.addr,
-         qspiAddr=scd0.i2cAddr(4, 0x47),
+         qspiAddr=scd0.i2cAddr(miscBus + 4, 0x47),
          coreResets=[
             scd0.inventory.getReset('switch_chip_reset'),
          ],

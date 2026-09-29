@@ -3,7 +3,6 @@ import re
 import subprocess
 from collections import namedtuple
 
-from .. import platforms
 from ..core import platform
 from ..libs.docker import runningInContainer
 

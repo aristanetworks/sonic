@@ -1,57 +1,24 @@
+from __future__ import annotations
+
 import re
 
-from .dynload import importSubmodules
 from .exception import UnknownPlatformError
 from .identity.bmc import PlatformIdentityBmc
 from .identity.factory import createPlatformIdentity
 from .log import getLogger
-
-from ..libs.benchmark import timeit
+from .platform_loader import platform_loader
 
 logging = getLogger(__name__)
 
 syseeprom = None
 syseepromData = None
 
+
 class PlatformManager:
+   _loader = platform_loader
+
    def __init__(self):
-      self.cpus = []
-      self.platforms = []
-      self.platformSidIndex = {}
-      self.platformSkuIndex = {}
-      self.bmcIndex = {}
-      self.bmcSubsystemIndex = {}
       self.identity = createPlatformIdentity(self)
-
-   def registerPlatform(self, cls):
-      self.platforms.append(cls)
-
-      for sid in cls.SID:
-         self.platformSidIndex[sid] = cls
-      for sku in cls.SKU:
-         self.platformSkuIndex[sku] = cls
-
-      if cls.PLATFORM is not None:
-         # this is a hack for older platforms that did not provide sid=
-         assert cls.PLATFORM not in self.platformSidIndex
-         self.platformSidIndex[cls.PLATFORM] = cls
-
-      return cls
-
-   def registerCpu(self, cls):
-      self.cpus.append(cls)
-      return cls
-
-   def registerBmc(self, cls):
-      for model in cls.MODEL:
-         self.bmcIndex[model] = cls
-      return cls
-
-   def registerBmcSubsystem(self, cls):
-      for model in cls.BMC_CLS.MODEL:
-         for sid in cls.HOST_SWITCH_CLS.SID:
-            self.bmcSubsystemIndex[(model, sid)] = cls
-      return cls
 
    def detectPlatform(self):
       # TODO: refactor by obtaining a Cpu object based on the platform= from
@@ -60,43 +27,28 @@ class PlatformManager:
       #       today
       getSysEepromData()
 
-      sid = readSid()
-      platformCls = self.platformSidIndex.get(sid)
-      if platformCls is not None:
-         return platformCls
+      names = []
+      for readname in (readSid, readSku, readPlatformName):
+         name = readname()
+         if pc := self._loader.platforms.get(name):
+            return pc
+         names.append(name)
 
-      sku = readSku()
-      platformCls = self.platformSkuIndex.get(sku)
-      if platformCls is not None:
-         return platformCls
-
-      name = readPlatformName()
-      platformCls = self.platformSidIndex.get(name)
-      if platformCls is not None:
-         return platformCls
-
-      raise UnknownPlatformError(sku, sid, name, self.platforms)
+      raise UnknownPlatformError(*names)
 
    def getPlatformCls(self, *names):
-      if not names or not [name for name in names if name]:
+      """Get platform class by SKU or SID (which are assumed to be distinct).
+      First match wins.
+      """
+      if not names or not any(names):
          return self.detectPlatform()
 
       for name in names:
-         if name is None:
-            continue
+         if name and (pc := self._loader.platforms.get(name)):
+            return pc
 
-         platformCls = self.platformSkuIndex.get(name)
-         if platformCls is not None:
-            return platformCls
+      raise UnknownPlatformError(*names)
 
-         platformCls = self.platformSidIndex.get(name)
-         if platformCls is not None:
-            return platformCls
-
-      raise UnknownPlatformError(names, self.platforms)
-
-   def loadPlatforms(self, package):
-      return importSubmodules(package).keys()
 
 manager = PlatformManager()
 
@@ -177,36 +129,17 @@ def getPlatform(name=None):
    platform.refresh()
    return platform
 
-def getPlatformSkus():
-   return manager.platformSkuIndex
-
-def getPlatformSids():
-   return manager.platformSidIndex
-
 def getPlatforms():
-   return manager.platforms
-
-def loadPlatforms():
-   with timeit('Loading platform definitions'):
-      from .. import platforms as _  # pylint: disable=cyclic-import
-   logging.debug('Loaded %d platforms', len(manager.platforms))
+   return platform_loader.all_platforms()
 
 def registerPlatform():
-   def wrapper(cls):
-      return manager.registerPlatform(cls)
-   return wrapper
+   return platform_loader.platforms.add
 
 def registerCpu():
-   def wrapper(cls):
-      return manager.registerCpu(cls)
-   return wrapper
+   return platform_loader.cpus.add
 
 def registerBmc():
-   def wrapper(cls):
-      return manager.registerBmc(cls)
-   return wrapper
+   return platform_loader.bmcs.add
 
 def registerBmcSubsystem():
-   def wrapper(cls):
-      return manager.registerBmcSubsystem(cls)
-   return wrapper
+   return platform_loader.bmc_subsystems.add

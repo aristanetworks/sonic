@@ -9,8 +9,6 @@ import os
 # NOTE: This import comes first as it initializes the logging infrastructure
 from ..core.log import setupLogging, getLogger, LoggerError
 
-from .. import platforms
-
 from ..core import utils
 from ..core.config import Config
 from ..core.backtrace import loadBacktraceHook

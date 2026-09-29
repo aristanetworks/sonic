@@ -1,8 +1,12 @@
+from unittest.mock import Mock
+
 from ....tests.testing import unittest, patch
 
 from ...exception import UnknownPlatformError
 from ...identity.bmc import PlatformIdentityBmc
 from ...prefdl import Prefdl
+
+from .common import DummyLoader
 
 
 class FakeBmc:
@@ -15,15 +19,8 @@ class FakeBmc:
 
 
 class FakeBmcSubsystem:
-   pass
-
-
-class FakeManager:
-   def __init__(self):
-      self.bmcIndex = {'TestBmc': FakeBmc}
-      self.bmcSubsystemIndex = {
-         ('TestBmc', 'TestSid'): FakeBmcSubsystem,
-      }
+   BMC_CLS = FakeBmc
+   HOST_SWITCH_CLS = Mock(SID=['TestSid'])
 
 
 class PlatformIdentityBmcTest(unittest.TestCase):
@@ -33,7 +30,11 @@ class PlatformIdentityBmcTest(unittest.TestCase):
          'SID': 'TestSid',
          'SKU': 'DCS-TEST-42',
       })
-      self.manager = FakeManager()
+      _loader = DummyLoader()
+      _loader.bmcs.add(FakeBmc)
+      _loader.bmc_subsystems.add(FakeBmcSubsystem)
+
+      self.manager = Mock(_loader=_loader)
 
    def _makeIdentity(self):
       return PlatformIdentityBmc(self.manager, cmdline={})

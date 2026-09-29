@@ -7,8 +7,8 @@ from .port import PortLayout
 class Sku(Component):
 
    PLATFORM = None
-   SID = None
-   SKU = None
+   SID: list[str] = []
+   SKU: list[str] = []
 
    COOLING = CoolingConfig()
 

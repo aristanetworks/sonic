@@ -9,12 +9,8 @@ from ...core.linecard import Linecard
 
 from ..card import CardSlot
 from ..component import Priority
-from ..platform import getPlatformSkus
-from ..types import PciAddr
-
+from .helpers import getPlatformSkus
 from .mockchassis import MockSupervisor
-
-from ... import platforms as _
 
 class LinecardTest(unittest.TestCase):
    @classmethod

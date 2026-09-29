@@ -91,14 +91,12 @@ class PlatformIdentityDmi(PlatformIdentityBase):
       platformNames = _readCpuPlatformNamesViaDmi()
       logging.debug('%s: looking for cpu matching %s or %s', lp, sid,
                     platformNames)
-      found = None
-      for cpu in self._manager.cpus:
-         if cpu.SID and sid in cpu.SID:
-            found = cpu
-            break
-         if cpu.PLATFORM in platformNames:
-            found = cpu
-            break
+      # TODO (BUG2021480) remove self._manager
+      _loader = self._manager._loader  # pylint: disable=protected-access
+      if not (found := _loader.cpus.get(sid)):
+         for platform in platformNames:
+            if found := _loader.cpus.get(platform):
+               break
 
       if found is not None:
          logging.debug('%s: found matching cpu definition %s', lp, found)

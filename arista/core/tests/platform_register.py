@@ -1,47 +1,16 @@
 # Copyright (c) 2019 Arista Networks, Inc.  All rights reserved.
 # Arista Networks, Inc. Confidential and Proprietary.
+from collections import Counter
 
-from ...tests.testing import unittest
+from ..platform_loader import platform_loader
 
-from .. import platform
-from ..fixed import FixedSystem
+def test_platform_registry():
+   # Because we keep SKUs and SIDs in the same index, they must be mutually
+   # exclusive. Otherwise, PlatformIndex needs reimplementation.
+   count = Counter()
+   for pc in platform_loader.all_platforms():
+      count.update(platform_loader.platforms._keysof(pc))  # pylint: disable=protected-access
 
-class UniqueKeyDict(dict):
-   def __setitem__(self, key, value):
-      assert key not in self, \
-         'Key %s already exists in %s' % (key, self.keys())
-      dict.__setitem__(self, key, value)
-
-class UniqueList(list):
-   def append(self, value):
-      assert value not in self, \
-         'Value %s already exists in %s' % (value, self)
-      list.append(self, value)
-
-class RegisterTest(unittest.TestCase):
-   @unittest.skip("affect later tests as clearing platform.platforms")
-   def testUniquePlatform(self):
-      platform.platformSkuIndex = UniqueKeyDict()
-      platform.platformSidIndex = UniqueKeyDict()
-      platform.platforms = UniqueList()
-
-      platform.loadPlatforms()
-
-   def testPlatformInfo(self):
-      platform.loadPlatforms()
-
-      for cls in platform.getPlatforms():
-         self.assertIsInstance(cls.PLATFORM, (type(None), str))
-         self.assertIsInstance(cls.SID, list)
-         self.assertIsInstance(cls.SKU, list)
-
-   def testPlatformInstance(self):
-      platform.loadPlatforms()
-
-      for cls in platform.getPlatforms():
-         if not issubclass(cls, FixedSystem):
-            continue
-         cls()
-
-if __name__ == '__main__':
-   unittest.main()
+   assert count, "Did not discover any platforms"
+   duplicates = {k: c for k, c in count.items() if c > 1}
+   assert not duplicates, "SKUs and SIDs must be unique & disjoint."

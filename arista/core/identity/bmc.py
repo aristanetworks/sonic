@@ -14,12 +14,13 @@ class PlatformIdentityBmc(PlatformIdentityBase):
    def __init__(self, *args, **kwargs):
       super().__init__(*args, **kwargs)
       self._model = None
+      self._loader = self._manager._loader # TODO remove dependency on the manager
 
    def _readPrefdl(self):
       model = readBmcDeviceTreeModel()
-      bmcCls = self._manager.bmcIndex.get(model)
+      bmcCls = self._loader.bmcs.get(model)
       if bmcCls is None:
-         supportedModels = ', '.join(sorted(self._manager.bmcIndex))
+         supportedModels = ', '.join(sorted(self._loader.bmcs.keys()))
          raise UnknownPlatformError(
             f'BMC model {model!r} is not registered; supported BMC models: '
             f'{supportedModels}')
@@ -39,7 +40,7 @@ class PlatformIdentityBmc(PlatformIdentityBase):
          raise UnknownPlatformError(
             f'BMC model {self._model!r} has an empty SID in its chassis EEPROM')
 
-      platformCls = self._manager.bmcSubsystemIndex.get((self._model, sid))
+      platformCls = self._loader.bmc_subsystems.get((self._model, sid))
       if platformCls is None:
          raise UnknownPlatformError(
             f'No BMC subsystem is registered for model {self._model!r} '

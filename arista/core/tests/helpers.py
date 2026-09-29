@@ -1,11 +1,10 @@
 from ..fixed import FixedSystem
 from ..linecard import Linecard
-from ..platform import getPlatforms, loadPlatforms
+from ..platform_loader import platform_loader
 from ..supervisor import Supervisor
 
 def _getFixedSystemClasses(ignoreSupervisor=False):
-   loadPlatforms()
-   for platformCls in getPlatforms():
+   for platformCls in platform_loader.all_platforms():
       if ignoreSupervisor and issubclass(platformCls, Supervisor):
          continue
       # NOTE: this leaves behind the following products
@@ -50,3 +49,6 @@ def isAncestorToComponent(component, ancestor):
          return True
       component = component.parent
    return False
+
+def getPlatformSkus():
+   return {sku: pc for pc in platform_loader.all_platforms() for sku in pc.SKU}

@@ -3,7 +3,7 @@ from ....core.fabric import Fabric
 from ....core.fixed import FixedSystem
 from ....core.linecard import Linecard
 from ....core.modular import Modular
-from ....core.platform import getPlatforms
+from ....core.platform_loader import platform_loader
 from ....core.supervisor import Supervisor
 
 from ...args.show.supported import supportedParser
@@ -29,7 +29,7 @@ class ShowSupported(Renderer):
                return k
          raise RuntimeError
       data = {}
-      for platform in getPlatforms():
+      for platform in platform_loader.all_platforms():
          typeCol = data.setdefault(getPlatformType(platform), [])
          typeCol.extend({
             'name': sku

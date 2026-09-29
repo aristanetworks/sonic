@@ -16,9 +16,6 @@ sonic-buildimage, and do:
    from arista.utils.sonic_eeprom import board
 """
 
-# The legacy EEPROM plugin bypasses sonic_platform. PlatformIdentity relies on
-# platform registration decorators, so load the platform definitions explicitly.
-from .. import platforms # pylint: disable=unused-import
 from ..core.platform import getPlatformIdentity
 
 try:

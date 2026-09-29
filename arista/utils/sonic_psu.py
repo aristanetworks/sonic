@@ -1,6 +1,5 @@
 from .sonic_utils import getInventory
 
-from .. import platforms # pylint: disable=unused-import
 from ..core import platform
 from ..core.supervisor import Supervisor
 

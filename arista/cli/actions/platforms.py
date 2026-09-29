@@ -2,11 +2,15 @@
 from . import registerAction
 from ..args.platforms import platformsParser
 from ...core.fixed import FixedSystem
-from ...core.platform import getPlatformSkus
+from ...core.platform_loader import platform_loader
 
 @registerAction(platformsParser, needsPlatform=False)
 def doPlatforms(ctx, args):
    print('supported platforms:')
-   for plat, cls in sorted(getPlatformSkus().items()):
+   fixed = []
+   for cls in platform_loader.all_platforms():
       if issubclass(cls, FixedSystem):
-         print(' -', plat)
+         fixed.extend(cls.SKU)
+   fixed.sort()
+   for sku in fixed:
+      print(' -', sku)

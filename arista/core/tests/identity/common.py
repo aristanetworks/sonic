@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 from ...identity.base import PlatformIdentityBase, Prefdls
 from ...identity.dmi import PlatformIdentityDmi
 from ...identity.non_dmi import PlatformIdentityNonDmi
+from ...platform_loader import _Loader
 from ...prefdl import Prefdl
 
 PREFDL_DATA = {
@@ -22,13 +23,20 @@ SWITCH_PREFDL_DATA = {
    'SKU': 'DCS-SWITCH-42',
 }
 
+class DummyLoader(_Loader):
+   def _discover_all(self):
+      pass
+
 def makePrefdl(data):
    return Prefdl.fromDict(data)
 
 def makeManager(cpus=None):
-   mgr = MagicMock()
-   mgr.cpus = cpus or []
-   return mgr
+   _loader = DummyLoader()
+   if cpus:
+      for cpu in cpus:
+         _loader.cpus.add(cpu)
+
+   return MagicMock(_loader=_loader)
 
 def makeFakeCpu(sids, platform='fakecpu', switchPrefdl=None):
    cpu = MagicMock()

@@ -8,11 +8,9 @@ from ...core.fabric import Fabric
 
 from ..card import CardSlot
 from ..component import Priority
-from ..platform import getPlatformSkus
 
+from .helpers import getPlatformSkus
 from .mockchassis import MockSupervisor
-
-from ... import platforms as _
 
 class FabricTest(unittest.TestCase):
    @classmethod

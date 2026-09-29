@@ -11,10 +11,8 @@ from ....components.denali.linecard import DenaliLinecard
 from ....core.card import CardSlot
 from ....core.component import Priority
 from ....core.linecard import Linecard
-from ....core.platform import getPlatformSkus
+from ....core.tests.helpers import getPlatformSkus
 from ....core.tests.mockchassis import MockSupervisor
-
-from .... import platforms as _
 
 class FakeProcess():
    async def communicate(self):

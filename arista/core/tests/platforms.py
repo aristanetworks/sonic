@@ -32,21 +32,18 @@ from ..hwapi import HwApi
 from ..identity.bmc import PlatformIdentityBmc
 from ..identity import bmc as bmcIdentityModule
 from .. import platform as platformModule
-from ..platform import getPlatformSkus
 from ..sku import Sku
 from ..types import I2cAddr
 
-from ... import platforms as _
 from ...platforms.bmc.goldfinch import GoldfinchBmc
 from ...platforms.steamerlane import GoldfinchSteamerLane, SteamerLaneHostSwitch
+
+from .helpers import getPlatformSkus
+
 
 def mock_i2cBusFromName(name, idx=0, force=False):
    assert isinstance(name, str)
    return 0
-
-# TODO: remove this type of simulation testing
-def mock_inSimulation():
-   return False
 
 def mock_locateHwmonFolder(devicePath):
    assert isinstance(devicePath, str)
@@ -108,7 +105,6 @@ def _assertIo(*args, **kwargs):
    assert False, "Forbidden IO operation in constructor"
 
 @patch('arista.drivers.scd.driver.i2cBusFromName', mock_i2cBusFromName)
-@patch('arista.core.utils.inSimulation', mock_inSimulation)
 @patch('arista.core.utils.locateHwmonFolder', mock_locateHwmonFolder)
 @patch('arista.core.utils.locateHwmonPath', mock_locateHwmonPath)
 @patch('arista.core.utils.writeConfig', mock_writeConfig)
@@ -151,9 +147,12 @@ class MockPlatformTest(unittest.TestCase):
 
    def testBmcPlatformLookup(self):
       manager = platformModule.manager
-      self.assertIs(manager.bmcIndex['Goldfinch'], GoldfinchBmc)
-      self.assertIs(manager.bmcSubsystemIndex[('Goldfinch', 'SteamerLaneMv3')],
-                    GoldfinchSteamerLane)
+      _loader = manager._loader  # pylint: disable=protected-access
+      self.assertIs(_loader.bmcs.get('Goldfinch'), GoldfinchBmc)
+      self.assertIs(
+         _loader.bmc_subsystems.get(('Goldfinch', 'SteamerLaneMv3')),
+         GoldfinchSteamerLane
+      )
 
       identity = PlatformIdentityBmc(manager, cmdline={})
       with patch.object(platformModule, 'getPlatformIdentity',

@@ -16,7 +16,7 @@ from ....core.fabric import Fabric
 from ....core.inventory import Inventory
 from ....core.linecard import Linecard
 from ....core.modular import Modular
-from ....core.platform import loadPlatforms, getPlatforms
+from ....core.platform_loader import platform_loader
 from ....descs.cause import ReloadCauseDesc
 from ....descs.rail import RailDesc, RailDirection
 from ....drivers.dpm.adm1266 import Adm1266Rail
@@ -108,10 +108,9 @@ class TestAdm1266CauseConfiguration:
          f"PDIO pin masks must be within {bin(maxPdioMask)}"
 
    def testPlatformAdm1266CauseConfigs(self):
-      loadPlatforms()
       ignoreTup = tuple([Modular, Fabric])
 
-      for platformCls in getPlatforms():
+      for platformCls in platform_loader.all_platforms():
          if issubclass(platformCls, ignoreTup):
             continue
          if issubclass(platformCls, Linecard) and not platformCls.CPU_CLS:

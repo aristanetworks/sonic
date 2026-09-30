@@ -35,19 +35,19 @@ class CpuEepromTest(unittest.TestCase):
       cpu.PREFDL_EEPROM_ADDR = 0x50
       return cpu
 
-   @patch('arista.core.cpu.PREREQUISITES', [])
+   @patch('arista.core.cpu.loadPrerequisites')
    @patch('arista.components.eeprom.I2cMsg',
           return_value=_mockMsg(PREFDL_HDR, PREFDL_DATA))
-   def testGetEepromI2cRead(self, mockMsgCls): # pylint: disable=unused-argument
+   def testGetEepromI2cRead(self, mockMsgCls, mockLoadPrereqs): # pylint: disable=unused-argument
       cpu = self._makeCpu(prefdlBus=MagicMock())
       data = cpu.getEeprom()
       self.assertEqual(data.get('HwApi'), (1, 0))
       self.assertEqual(data.get('SID'), 'CpuBoard')
 
-   @patch('arista.core.cpu.PREREQUISITES', [])
+   @patch('arista.core.cpu.loadPrerequisites')
    @patch('arista.components.eeprom.I2cMsg',
           side_effect=IOError('bus error'))
-   def testGetEepromReadFailure(self, mockMsgCls): # pylint: disable=unused-argument
+   def testGetEepromReadFailure(self, mockMsgCls, mockLoadPrereqs): # pylint: disable=unused-argument
       cpu = self._makeCpu(prefdlBus=MagicMock())
       self.assertEqual(cpu.getEeprom(), {})
 
@@ -55,10 +55,10 @@ class CpuEepromTest(unittest.TestCase):
       cpu = self._makeCpu()
       self.assertEqual(cpu.getEeprom(), {})
 
-   @patch('arista.core.cpu.PREREQUISITES', [])
+   @patch('arista.core.cpu.loadPrerequisites')
    @patch('arista.components.eeprom.I2cMsg',
           return_value=_mockMsg(PREFDL_HDR, PREFDL_DATA))
-   def testGetHwApiFromEeprom(self, mockMsgCls): # pylint: disable=unused-argument
+   def testGetHwApiFromEeprom(self, mockMsgCls, mockLoadPrereqs): # pylint: disable=unused-argument
       cpu = self._makeCpu(prefdlBus=MagicMock())
       self.assertEqual(cpu.getHwApi(), HwApi(1, 0))
 

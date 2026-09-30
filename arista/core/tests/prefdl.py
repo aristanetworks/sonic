@@ -1,3 +1,4 @@
+import base64
 import contextlib
 import tempfile
 
@@ -46,6 +47,10 @@ class PrefdlTest(unittest.TestCase):
 
    def testPrefdl3FromBytes(self):
       self._testFromBytes(PREFDL3, PREFDL_EXPECT)
+
+   def testPrefdl3FromBase64(self):
+      data = base64.b64encode(b'\x00' * 4 + PREFDL3)
+      self._checkPrefdl(Prefdl.fromBase64(data, skip=4), PREFDL_EXPECT)
 
    def testPrefdlFromDict(self):
       pfdl = Prefdl.fromDict(PREFDL_EXPECT)

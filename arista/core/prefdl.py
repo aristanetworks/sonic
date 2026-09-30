@@ -1,3 +1,4 @@
+import base64
 from contextlib import closing
 from io import BytesIO
 import re
@@ -157,7 +158,7 @@ class PrefdlBase():
    def addField(self, field, value):
       v = self._data.get(field.name)
       if v is not None:
-         logging.warning('Eeprom field %s already set with %s', field.name, v)
+         logging.debug('Eeprom field %s already set with %s', field.name, v)
       value = field.parse(value)
       if not field.check(value):
          logging.warning('Field value %s does not meet %s expectation', value, field)
@@ -219,6 +220,10 @@ class Prefdl():
          return cls.MAP[version]
       except KeyError:
          raise UnknownPrefdlVersion("unknown prefdl verison %s" % version)
+
+   @classmethod
+   def fromBase64(cls, data, version=None, skip=0):
+      return cls.fromBytes(base64.b64decode(data)[skip:], version=version)
 
    @classmethod
    def fromBinFile(cls, path, version=None, skip=0):

@@ -15,6 +15,7 @@ syseepromData = None
 
 class PlatformManager:
    def __init__(self):
+      self.cpus = []
       self.platforms = []
       self.platformSidIndex = {}
       self.platformSkuIndex = {}
@@ -35,6 +36,10 @@ class PlatformManager:
          assert cls.PLATFORM not in self.platformSidIndex
          self.platformSidIndex[cls.PLATFORM] = cls
 
+      return cls
+
+   def registerCpu(self, cls):
+      self.cpus.append(cls)
       return cls
 
    def registerBmc(self, cls):
@@ -189,6 +194,11 @@ def loadPlatforms():
 def registerPlatform():
    def wrapper(cls):
       return manager.registerPlatform(cls)
+   return wrapper
+
+def registerCpu():
+   def wrapper(cls):
+      return manager.registerCpu(cls)
    return wrapper
 
 def registerBmc():

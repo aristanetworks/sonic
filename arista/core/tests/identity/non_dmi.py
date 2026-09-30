@@ -15,7 +15,7 @@ from .common import (
    PREFDL_DATA,
    makePrefdl,
    makeManager,
-   makeIdentity,
+   makeNonDmiIdentity,
 )
 
 
@@ -136,23 +136,23 @@ class ReadHostPrefdlTest(unittest.TestCase):
 class NonDmiPropertiesTest(unittest.TestCase):
 
    def testSid(self):
-      identity = makeIdentity(cmdline={'sid': 'cmdline-sid'})
+      identity = makeNonDmiIdentity(cmdline={'sid': 'cmdline-sid'})
       self.assertEqual(identity.sid, 'cmdline-sid')
 
    def testSidNone(self):
-      identity = makeIdentity(cmdline={})
+      identity = makeNonDmiIdentity(cmdline={})
       self.assertIsNone(identity.sid)
 
    def testSku(self):
-      identity = makeIdentity(switchData=PREFDL_DATA)
+      identity = makeNonDmiIdentity(switchData=PREFDL_DATA)
       self.assertEqual(identity.sku, 'DCS-TEST-42')
 
    def testPlatformFromCmdline(self):
-      identity = makeIdentity(cmdline={'platform': 'raven'})
+      identity = makeNonDmiIdentity(cmdline={'platform': 'raven'})
       self.assertEqual(identity.platform, 'raven')
 
    def testPlatformNone(self):
-      identity = makeIdentity()
+      identity = makeNonDmiIdentity()
       self.assertIsNone(identity.platform)
 
 

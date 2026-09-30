@@ -26,8 +26,9 @@ class PlatformIdentityBase:
    def _initialized(self):
       return self._prefdls is not None
 
-   def _readCachedPrefdl(self) -> Optional[Prefdl]:
-      cacheFilePath = self._PREFDL_CACHE_PATH
+   def _readCachedPrefdl(self,
+                         cachePath: Optional[str] = None) -> Optional[Prefdl]:
+      cacheFilePath = cachePath or self._PREFDL_CACHE_PATH
       assert cacheFilePath
       if (os.path.isfile(cacheFilePath) and
           os.path.getsize(cacheFilePath) > 0):
@@ -35,8 +36,9 @@ class PlatformIdentityBase:
          return Prefdl.fromTextFile(cacheFilePath)
       return None
 
-   def _writePrefdlCacheFile(self, prefdl: Prefdl) -> None:
-      cacheFilePath = self._PREFDL_CACHE_PATH
+   def _writePrefdlCacheFile(self, prefdl: Prefdl,
+                             cachePath: Optional[str] = None) -> None:
+      cacheFilePath = cachePath or self._PREFDL_CACHE_PATH
       assert cacheFilePath
       parentDir = os.path.dirname(cacheFilePath)
       os.makedirs(parentDir, exist_ok=True)

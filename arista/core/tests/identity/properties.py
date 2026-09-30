@@ -10,15 +10,8 @@ from .common import (
    CPU_PREFDL_DATA,
    makePrefdl,
    makeManager,
+   makeBaseIdentity,
 )
-
-
-def makeBaseIdentity(switchData=None, cpuData=None):
-   identity = PlatformIdentityBase(makeManager(), cmdline={})
-   switchPrefdl = makePrefdl(switchData or {})
-   cpuPrefdl = makePrefdl(cpuData) if cpuData else None
-   identity._prefdls = Prefdls(switchPrefdl, cpuPrefdl)
-   return identity
 
 
 class PlatformIdentityBasePropertiesTest(unittest.TestCase):

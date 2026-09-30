@@ -1,7 +1,11 @@
+from typing import Optional
 
 from .bootloader import Aboot
 from .driver.kernel import KernelDriver
 from .log import getLogger
+from .platform import getPlatformIdentity
+from .prefdl import Prefdl
+from .prerequisites import loadPrerequisites
 from .sku import Sku
 
 from ..components.cookie import (
@@ -28,10 +32,13 @@ class Cpu(Sku):
       self.sonicOsCookie = self.newComponent(SonicReloadCauseCookieComponent)
 
    def getEeprom(self):
+      prefdl = getPlatformIdentity().cpueeprom
+      if prefdl is not None:
+         return prefdl.data()
+
       if self.PREFDL_EEPROM_BUS is None:
          return {}
-      for driver in PREREQUISITES:
-         driver.setup()
+      loadPrerequisites()
       try:
          eeprom = RawI2cPrefdlEeprom(self.PREFDL_EEPROM_BUS,
                                      self.PREFDL_EEPROM_ADDR)
@@ -50,3 +57,7 @@ class Cpu(Sku):
                                       device=desc.device, func=desc.func)
       desc.maybeAddQuirks(bridge.upstream)
       return bridge.downstreamPort(port=desc.port)
+
+   @classmethod
+   def readSwitchEeprom(cls) -> Optional[Prefdl]:
+      return None

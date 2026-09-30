@@ -728,6 +728,7 @@ int scd_smbus_master_add(struct scd_context *ctx, u32 addr, u32 id, u32 bus_coun
    master->cs = addr + SMBUS_CONTROL_STATUS_OFFSET;
    master->resp = addr + SMBUS_RESPONSE_OFFSET;
    master->sp = addr + SMBUS_SPEED_SELECT_OFFSET;
+   master->bus_count = bus_count;
    master->max_retries = smbus_master_max_retries;
    INIT_LIST_HEAD(&master->bus_list);
 

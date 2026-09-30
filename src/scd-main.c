@@ -147,9 +147,13 @@ static ssize_t parse_new_object_smbus_master(struct scd_context *ctx,
       PARSE_END_OR_RETURN(&buf, tmp);
    }
 
+   dev_info(get_scd_dev(ctx), "smbus_master add: addr=%#x id=%u bus_count=%u\n",
+            addr, id, bus_count);
    res = scd_smbus_master_add(ctx, addr, id, bus_count);
-   if (res)
+   if (res) {
+      dev_warn(get_scd_dev(ctx), "smbus_master add failed: %d\n", res);
       return res;
+   }
 
    return count;
 }
@@ -580,12 +584,17 @@ static ssize_t new_object(struct device *dev, struct device_attribute *attr,
       return -ENODEV;
    }
 
+   dev_info(dev, "new_object write (%zu bytes) by pid=%d comm=%s initialized=%d\n",
+            count, current->pid, current->comm, ctx->initialized);
+
    scd_lock(ctx);
    if (ctx->initialized) {
+      dev_warn(dev, "new_object rejected: already initialized\n");
       scd_unlock(ctx);
       return -EBUSY;
    }
    res = parse_lines(ctx, buf, count, parse_new_object);
+   dev_info(dev, "new_object result: %zd\n", res);
    scd_unlock(ctx);
    return res;
 }
@@ -683,6 +692,33 @@ static ssize_t show_smbus_tweaks(struct device *dev, struct device_attribute *at
 static DEVICE_ATTR(smbus_tweaks, S_IRUSR|S_IRGRP|S_IWUSR|S_IWGRP,
                    show_smbus_tweaks, smbus_tweaks);
 
+static ssize_t show_smbus_masters(struct device *dev,
+                                  struct device_attribute *attr, char *buf)
+{
+   struct scd_context *ctx = get_context_for_dev(dev);
+   const struct scd_smbus_master *master;
+   ssize_t count = 0;
+   u32 addr;
+
+   if (!ctx)
+      return -ENODEV;
+
+   scd_lock(ctx);
+   list_for_each_entry(master, &ctx->smbus_master_list, list) {
+      addr = master->req - SMBUS_REQUEST_OFFSET;
+      count += scnprintf(buf + count, PAGE_SIZE - count,
+                         "smbus_master %#x %u %u\n", addr, master->id,
+                         master->bus_count);
+      if (count >= PAGE_SIZE)
+         break;
+   }
+   scd_unlock(ctx);
+
+   return count;
+}
+
+static DEVICE_ATTR(smbus_masters, S_IRUSR|S_IRGRP, show_smbus_masters, NULL);
+
 static int scd_create_sysfs_files(struct scd_context *ctx) {
    int err;
 
@@ -700,8 +736,17 @@ static int scd_create_sysfs_files(struct scd_context *ctx) {
       goto fail_smbus_tweaks;
    }
 
+   err = sysfs_create_file(get_scd_kobj(ctx), &dev_attr_smbus_masters.attr);
+   if (err) {
+      dev_err(get_scd_dev(ctx), "could not create %s attribute: %d",
+              dev_attr_smbus_masters.attr.name, err);
+      goto fail_smbus_masters;
+   }
+
    return 0;
 
+fail_smbus_masters:
+   sysfs_remove_file(get_scd_kobj(ctx), &dev_attr_smbus_tweaks.attr);
 fail_smbus_tweaks:
    sysfs_remove_file(get_scd_kobj(ctx), &dev_attr_new_object.attr);
 fail_new_object:
@@ -794,6 +839,7 @@ static void scd_ext_hwmon_remove(struct device *dev)
 
    sysfs_remove_file(get_scd_kobj(ctx), &dev_attr_new_object.attr);
    sysfs_remove_file(get_scd_kobj(ctx), &dev_attr_smbus_tweaks.attr);
+   sysfs_remove_file(get_scd_kobj(ctx), &dev_attr_smbus_masters.attr);
 
    kobject_put(get_scd_kobj(ctx));
    kfree(ctx);
@@ -809,6 +855,7 @@ static int scd_ext_hwmon_init_trigger(struct device *dev)
       return -ENODEV;
    }
 
+   dev_info(dev, "scd-hwmon init_trigger: locking new_object\n");
    scd_lock(ctx);
    ctx->initialized = true;
    scd_unlock(ctx);

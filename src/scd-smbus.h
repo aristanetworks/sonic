@@ -53,6 +53,7 @@ struct scd_smbus_master {
    u32 cs;
    u32 resp;
    u32 sp;
+   u32 bus_count;
    struct mutex mutex;
    struct list_head bus_list;
 

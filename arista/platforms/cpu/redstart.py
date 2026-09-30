@@ -1,11 +1,15 @@
 from ...core.cpu import Cpu
+from ...core.driver.kernel.pci import PciKernelDriver
 from ...core.pci import PciPortDesc, PciRoot
+from ...core.platform import registerCpu
+from ...core.prerequisites import loadPrerequisites
 
 from ...components.cpu.amd.k10temp import K10Temp
 from ...components.cpu.redstart import (
     RedstartReloadCauseRegisters,
     RedstartSysCpld,
 )
+from ...components.eeprom import At24C512
 from ...components.pci import EcrcPciQuirk
 from ...components.scd import (
     BlackBoxRegisterMap,
@@ -18,6 +22,7 @@ from ...components.scd import (
 from ...descs.cause import ReloadCauseAltSource
 from ...descs.sensor import Position, SensorDesc
 
+@registerCpu()
 class RedstartCpu(Cpu):
 
    PLATFORM = 'redstart'
@@ -36,6 +41,22 @@ class RedstartCpu(Cpu):
    SMBUS_PWR = 8
    SMBUS_FC = 9
 
+   @staticmethod
+   def _createCpld(pciRoot):
+      cpldPort = pciRoot.pciBridge(device=0x02, func=1).downstreamPort(0)
+      cpld = cpldPort.newComponent(Scd, addr=cpldPort.addr)
+      cpld.addSmbusMasterRange(0x8000, 1, 0x80, 6)
+      return cpld
+
+   @classmethod
+   def _addSwitchEeprom(cls, cpld):
+      return cpld.newComponent(
+         At24C512,
+         addr=cpld.i2cAddr(cls.SMBUS_SC, 0x50),
+         hdrSz=0,
+         label='switch',
+      )
+
    def __init__(self, syscpldCls=RedstartSysCpld, **kwargs):
       super().__init__(**kwargs)
 
@@ -47,12 +68,11 @@ class RedstartCpu(Cpu):
                     position=Position.OTHER, target=70, overheat=95, critical=115),
       ])
 
-      port = self.pciRoot.pciBridge(device=0x02, func=1).downstreamPort(0)
-      cpld = port.newComponent(Scd, addr=port.addr)
+      cpld = self._createCpld(self.pciRoot)
       self.cpld = cpld
 
       cpld.createPowerCycle()
-      cpld.addSmbusMasterRange(0x8000, 1, 0x80, 6)
+      self.switchEeprom = self._addSwitchEeprom(cpld)
       cpld.addLeds([
           (0x6050, 'cpu_status'),
       ])
@@ -113,6 +133,20 @@ class RedstartCpu(Cpu):
       ], regmap=RedstartReloadCauseRegisters,
          priority=ScdCause.Priority.HARDWARE_SECONDARY,
          altSource=[ReloadCauseAltSource.CPU])
+
+   @classmethod
+   def readSwitchEeprom(cls):
+      pciRoot = PciRoot()
+      cpld = cls._createCpld(pciRoot)
+      switchEeprom = cls._addSwitchEeprom(cpld)
+
+      scdDriver = cpld.driver
+      PciKernelDriver.setup(scdDriver)
+      loadPrerequisites()
+
+      scdDriver.setupSmbusMasters()
+      switchEeprom.driver.setup()
+      return switchEeprom.readPrefdl()
 
    def getPciPort(self, desc):
       bridge = self.pciRoot.pciBridge(device=desc.device, func=desc.func)

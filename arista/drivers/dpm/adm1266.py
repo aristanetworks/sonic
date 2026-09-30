@@ -236,7 +236,8 @@ class Adm1266UserDriver(PmbusUserDriver):
       _, index, count = self.getBlackboxInfo()
       logging.debug('%s: fault info: index=%d count=%d', self, index, count)
       faults = []
-      for i in reversed(list(cyclicRange(index + 1, count))):
+      # Prioritize the earliest recorded cause.
+      for i in cyclicRange(index + 1, count):
          fault = self.getBlackboxFault(i)
          if fault.isValid():
             faults.append(fault)

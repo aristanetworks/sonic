@@ -75,14 +75,41 @@ class ScdKernelDriver(PciKernelDriver):
       else:
          self.scd.i2cOffset = 2
 
+   def readSmbusMasters(self):
+      path = os.path.join(self.addr.getSysfsPath(), 'smbus_masters')
+      configured = set()
+      try:
+         with open(path, encoding='utf-8') as f:
+            for line in f:
+               parts = line.split()
+               if len(parts) >= 4 and parts[0] == 'smbus_master':
+                  configured.add((int(parts[1], 0), int(parts[2]), int(parts[3])))
+      except (FileNotFoundError, OSError):
+         pass
+      return configured
+
+   def setupSmbusMasters(self):
+      scd = self.scd
+      configured = self.readSmbusMasters()
+      data = []
+      for addr, info in scd.smbusMasters.items():
+         if (addr, info['id'], info['bus']) in configured:
+            logging.debug('smbus master already configured: addr=%#x id=%d bus=%d',
+                          addr, info['id'], info['bus'])
+            continue
+         data.append("smbus_master %#x %d %d" % (addr, info['id'], info['bus']))
+      if data:
+         self.waitReady()
+         self.writeComponents(data, "new_object")
+      self.refresh()
+
    def setup(self):
       super(ScdKernelDriver, self).setup()
 
       scd = self.scd
       data = []
 
-      for addr, info in scd.smbusMasters.items():
-         data += ["smbus_master %#x %d %d" % (addr, info['id'], info['bus'])]
+      self.setupSmbusMasters()
 
       for addr, info in scd.mdioMasters.items():
          data += ["mdio_master %#x %d %d %d" % (addr, info['id'], info['bus'],
@@ -135,7 +162,8 @@ class ScdKernelDriver(PciKernelDriver):
       self.waitReady()
 
       logging.debug('creating scd objects')
-      self.writeComponents(data, "new_object")
+      if data:
+         self.writeComponents(data, "new_object")
 
       if scd.msiRearmOffset:
          path = self.addr.getSysfsPath()

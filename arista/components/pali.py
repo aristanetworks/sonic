@@ -4,7 +4,7 @@ from ..core.component import Priority
 
 from ..drivers.pali import Pali2FanCpldKernelDriver
 
-from .minke import FanBoardBase
+from .fanboard import FanBoardBase
 
 class Pali2FanCpld(I2cComponent):
    DRIVER = Pali2FanCpldKernelDriver

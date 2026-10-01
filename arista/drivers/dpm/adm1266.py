@@ -1,9 +1,12 @@
 
 import datetime
+import math
 import struct
 
 from ...core.log import getLogger
 from ...core.utils import incrange, inSimulation
+from ...descs.rail import RailDirection
+from ...inventory.rail import Rail
 
 from ...libs.date import epochToDatetime
 from ...libs.retry import retryGet
@@ -99,7 +102,95 @@ class Adm1266Fault(object):
    def summary(self):
       return ' '.join('%s=%s' % (k, v) for k, v in self.data().items() if v)
 
+class Adm1266Voltage:
+   def __init__(self, driver, desc):
+      self.driver = driver
+      self.desc = desc
+
+   def getName(self):
+      return renderRailName(self.desc)
+
+   def getInput(self):
+      return self.getVoltage()
+
+   def getVoltage(self):
+      voltage = self.driver.getRailVoltage(self.desc.railId)
+      if voltage is None:
+         return None
+      return voltage * self.desc.voltageScale
+
+   def getLowThreshold(self):
+      return getattr(self.desc, 'minVoltage', None)
+
+   def getHighThreshold(self):
+      return getattr(self.desc, 'maxVoltage', None)
+
+   def getLowCriticalThreshold(self):
+      return None
+
+   def getHighCriticalThreshold(self):
+      return None
+
+class Adm1266Rail(Rail):
+   def __init__(self, driver, desc, **kwargs):
+      self.driver = driver
+      self.desc = desc
+      self.railId = desc.railId
+      self.__dict__.update(**kwargs)
+      self.voltage = Adm1266Voltage(driver, desc)
+
+   def getName(self):
+      return renderRailName(self.desc)
+
+   def getVoltage(self):
+      return self.voltage.getVoltage()
+
+   def getCurrent(self):
+      return None
+
+   def getPower(self):
+      return None
+
+def renderRailName(desc):
+   if desc.name is None:
+      desc.renderName()
+   return desc.name
+
 class Adm1266UserDriver(PmbusUserDriver):
+   # Monitored ADM1266 rails are outputs by default.
+   DEFAULT_RAIL_DIRECTION = RailDirection.OUTPUT
+
+   @staticmethod
+   def _signed5(value):
+      value &= 0x1f
+      return value - 0x20 if value & 0x10 else value
+
+   def _getVoutModeExponent(self):
+      voutMode = self.read_byte_data(self.registers.VOUT_MODE)
+      if voutMode & 0xe0:
+         logging.error('%s: unsupported VOUT_MODE %#x', self, voutMode)
+         return None
+      return self._signed5(voutMode)
+
+   def getRailVoltage(self, railId):
+      page = railId - 1
+      oldPage = self.read_byte_data(self.registers.PAGE)
+      try:
+         if oldPage != page:
+            self.write_byte_data(self.registers.PAGE,  page)
+         exponent = self._getVoutModeExponent()
+         if exponent is None:
+            return None
+         raw = self.read_word_data(self.registers.READ_VOUT)
+         return math.ldexp(raw & 0xffff, exponent)
+      finally:
+         if oldPage != page:
+            self.write_byte_data(self.registers.PAGE,  oldPage)
+
+   def getRail(self, desc, **kwargs):
+      if desc.direction is None:
+         desc.direction = self.DEFAULT_RAIL_DIRECTION
+      return Adm1266Rail(self, desc, **kwargs)
 
    def getBlackboxInfo(self):
       data = self.read_block_data(self.registers.BLACKBOX_INFORMATION)

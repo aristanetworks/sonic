@@ -21,6 +21,10 @@ class PmbusComponent(I2cComponent):
       MFR_DATE = 0x9d
       MFR_SERIAL = 0x9e
 
+      PAGE = 0x00
+      VOUT_MODE = 0x20
+      READ_VOUT = 0x8b
+
    def __init__(self, **kwargs):
       super(PmbusComponent, self).__init__(registers=self.Registers, **kwargs)
 

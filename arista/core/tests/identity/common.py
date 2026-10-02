@@ -30,14 +30,6 @@ class DummyLoader(_Loader):
 def makePrefdl(data):
    return Prefdl.fromDict(data)
 
-def makeManager(cpus=None):
-   _loader = DummyLoader()
-   if cpus:
-      for cpu in cpus:
-         _loader.cpus.add(cpu)
-
-   return MagicMock(_loader=_loader)
-
 def makeFakeCpu(sids, platform='fakecpu', switchPrefdl=None):
    cpu = MagicMock()
    cpu.SID = sids
@@ -46,7 +38,7 @@ def makeFakeCpu(sids, platform='fakecpu', switchPrefdl=None):
    return cpu
 
 def _makeIdentity(cls, switchData=None, cpuData=None, cmdline=None):
-   identity = cls(makeManager(), cmdline=cmdline or {})
+   identity = cls(cmdline=cmdline or {})
    switchPrefdl = makePrefdl(switchData or {})
    cpuPrefdl = makePrefdl(cpuData) if cpuData else None
    identity._prefdls = Prefdls(switchPrefdl, cpuPrefdl)  # pylint: disable=protected-access

@@ -1,5 +1,3 @@
-from unittest.mock import Mock
-
 from ....tests.testing import unittest, patch
 
 from ...identity.bmc import PlatformIdentityBmc
@@ -12,18 +10,17 @@ class PlatformIdentityFactoryTest(unittest.TestCase):
 
    @patch('arista.core.identity.factory.isBmcEnvironment', return_value=True)
    def testBmcIdentity(self, _mockIsBmc):
-      identity = createPlatformIdentity(Mock(), cmdline={})
+      identity = createPlatformIdentity(cmdline={})
       self.assertIsInstance(identity, PlatformIdentityBmc)
 
    @patch('arista.core.identity.factory.isBmcEnvironment', return_value=False)
    def testDmiIdentity(self, _mockIsBmc):
-      identity = createPlatformIdentity(
-         Mock(), cmdline={'arista.identify_dmi': '1'})
+      identity = createPlatformIdentity(cmdline={'arista.identify_dmi': '1'})
       self.assertIsInstance(identity, PlatformIdentityDmi)
 
    @patch('arista.core.identity.factory.isBmcEnvironment', return_value=False)
    def testNonDmiIdentity(self, _mockIsBmc):
-      identity = createPlatformIdentity(Mock(), cmdline={})
+      identity = createPlatformIdentity(cmdline={})
       self.assertIsInstance(identity, PlatformIdentityNonDmi)
 
 

@@ -5,11 +5,11 @@ from .dmi import PlatformIdentityDmi
 from .non_dmi import PlatformIdentityNonDmi
 
 
-def createPlatformIdentity(manager, cmdline=None):
+def createPlatformIdentity(cmdline=None):
    if cmdline is None:
       cmdline = getCmdlineDict()
    if isBmcEnvironment():
-      return PlatformIdentityBmc(manager, cmdline=cmdline)
+      return PlatformIdentityBmc(cmdline=cmdline)
    if cmdline.get('arista.identify_dmi') == '1':
-      return PlatformIdentityDmi(manager, cmdline=cmdline)
-   return PlatformIdentityNonDmi(manager, cmdline=cmdline)
+      return PlatformIdentityDmi(cmdline=cmdline)
+   return PlatformIdentityNonDmi(cmdline=cmdline)

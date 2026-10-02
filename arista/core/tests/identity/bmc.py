@@ -34,10 +34,12 @@ class PlatformIdentityBmcTest(unittest.TestCase):
       _loader.bmcs.add(FakeBmc)
       _loader.bmc_subsystems.add(FakeBmcSubsystem)
 
-      self.manager = Mock(_loader=_loader)
+      self._loader = _loader
 
    def _makeIdentity(self):
-      return PlatformIdentityBmc(self.manager, cmdline={})
+      identity = PlatformIdentityBmc(cmdline={})
+      identity._loader = self._loader  # pylint: disable=protected-access
+      return identity
 
    def testPlatformLookup(self):
       identity = self._makeIdentity()

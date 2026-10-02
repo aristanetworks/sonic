@@ -14,7 +14,6 @@ class PlatformIdentityBmc(PlatformIdentityBase):
    def __init__(self, *args, **kwargs):
       super().__init__(*args, **kwargs)
       self._model = None
-      self._loader = self._manager._loader # TODO remove dependency on the manager
 
    def _readPrefdl(self):
       model = readBmcDeviceTreeModel()

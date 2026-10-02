@@ -14,7 +14,6 @@ from ...prefdl import Prefdl
 from .common import (
    PREFDL_DATA,
    makePrefdl,
-   makeManager,
    makeNonDmiIdentity,
 )
 
@@ -22,7 +21,7 @@ from .common import (
 class ReadPrefdlNonDmiTest(unittest.TestCase):
 
    def _makeIdentity(self):
-      return PlatformIdentityNonDmi(makeManager(), cmdline={})
+      return PlatformIdentityNonDmi(cmdline={})
 
    def _patchSimulation(self):
       return patch('arista.core.identity.non_dmi.inSimulation', return_value=False)
@@ -69,7 +68,7 @@ class ReadCachedPrefdlTest(unittest.TestCase):
       shutil.rmtree(self.tmpdir)
 
    def _makeIdentity(self):
-      identity = PlatformIdentityNonDmi(makeManager(), cmdline={})
+      identity = PlatformIdentityNonDmi(cmdline={})
       identity._PREFDL_CACHE_PATH = self.cachePath
       return identity
 
@@ -105,7 +104,7 @@ class ReadHostPrefdlTest(unittest.TestCase):
       shutil.rmtree(self.tmpdir)
 
    def _makeIdentity(self):
-      identity = PlatformIdentityNonDmi(makeManager(), cmdline={})
+      identity = PlatformIdentityNonDmi(cmdline={})
       identity._HOST_PREFDL_PATH = self.textPath
       identity._HOST_PREFDL_BINPATH = self.binPath
       return identity

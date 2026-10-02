@@ -3,6 +3,7 @@ import tempfile
 from dataclasses import dataclass
 from typing import Optional
 
+from arista.core.platform_loader import platform_loader
 from ..log import getLogger
 from ..prefdl import Prefdl
 from ..utils import getCmdlineDict
@@ -16,9 +17,10 @@ class Prefdls:
 
 class PlatformIdentityBase:
    _PREFDL_CACHE_PATH: Optional[str] = None
-   def __init__(self, manager: 'PlatformManager',
-                cmdline: Optional[dict[str, Optional[str]]] = None):
-      self._manager = manager
+
+   _loader = platform_loader  # overridable in tests
+
+   def __init__(self, cmdline: Optional[dict[str, Optional[str]]] = None):
       self._cmdline = getCmdlineDict() if cmdline is None else cmdline
       self._prefdls = None
 

@@ -8,9 +8,8 @@ from ...identity.base import PlatformIdentityBase, Prefdls
 from .common import (
    PREFDL_DATA,
    CPU_PREFDL_DATA,
-   makePrefdl,
-   makeManager,
    makeBaseIdentity,
+   makePrefdl,
 )
 
 
@@ -22,7 +21,7 @@ class PlatformIdentityBasePropertiesTest(unittest.TestCase):
 
    def testSyseepromTriggersLazyInit(self):
       prefdls = Prefdls(makePrefdl(PREFDL_DATA), None)
-      identity = PlatformIdentityBase(makeManager(), cmdline={})
+      identity = PlatformIdentityBase(cmdline={})
       self.assertFalse(identity._initialized)
       def doRead():
          identity._prefdls = prefdls

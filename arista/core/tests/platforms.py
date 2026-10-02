@@ -32,6 +32,7 @@ from ..hwapi import HwApi
 from ..identity.bmc import PlatformIdentityBmc
 from ..identity import bmc as bmcIdentityModule
 from .. import platform as platformModule
+from ..platform_loader import platform_loader
 from ..sku import Sku
 from ..types import I2cAddr
 
@@ -146,15 +147,13 @@ class MockPlatformTest(unittest.TestCase):
          platform()
 
    def testBmcPlatformLookup(self):
-      manager = platformModule.manager
-      _loader = manager._loader  # pylint: disable=protected-access
-      self.assertIs(_loader.bmcs.get('Goldfinch'), GoldfinchBmc)
+      self.assertIs(platform_loader.bmcs.get('Goldfinch'), GoldfinchBmc)
       self.assertIs(
-         _loader.bmc_subsystems.get(('Goldfinch', 'SteamerLaneMv3')),
+         platform_loader.bmc_subsystems.get(('Goldfinch', 'SteamerLaneMv3')),
          GoldfinchSteamerLane
       )
 
-      identity = PlatformIdentityBmc(manager, cmdline={})
+      identity = PlatformIdentityBmc(cmdline={})
       with patch.object(platformModule, 'getPlatformIdentity',
                         return_value=identity), \
            patch.object(bmcIdentityModule, 'readBmcDeviceTreeModel',

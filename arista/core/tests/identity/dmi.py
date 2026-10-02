@@ -7,11 +7,11 @@ from ...identity.base import Prefdls
 from ...identity.dmi import PlatformIdentityDmi
 
 from .common import (
+   DummyLoader,
    PREFDL_DATA,
    CPU_PREFDL_DATA,
    SWITCH_PREFDL_DATA,
    makePrefdl,
-   makeManager,
    makeFakeCpu,
    makeDmiIdentity,
 )
@@ -34,8 +34,14 @@ class ReadPrefdlDmiTest(unittest.TestCase):
       self._patchDmiRead.stop()
       self._patchNames.stop()
 
-   def _makeIdentity(self, cpus=None):
-      return PlatformIdentityDmi(makeManager(cpus=cpus), cmdline={})
+   def _makeIdentity(self, cpus=()):
+      _loader = DummyLoader()
+      for cpu in cpus:
+         _loader.cpus.add(cpu)
+
+      identity = PlatformIdentityDmi(cmdline={})
+      identity._loader = _loader
+      return identity
 
    def testCpuMatchBySid(self):
       switchPrefdl = makePrefdl(SWITCH_PREFDL_DATA)

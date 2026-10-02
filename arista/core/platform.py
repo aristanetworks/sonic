@@ -18,7 +18,7 @@ class PlatformManager:
    _loader = platform_loader
 
    def __init__(self):
-      self.identity = createPlatformIdentity(self)
+      self.identity = createPlatformIdentity()
 
    def detectPlatform(self):
       # TODO: refactor by obtaining a Cpu object based on the platform= from
@@ -51,9 +51,6 @@ class PlatformManager:
 
 
 manager = PlatformManager()
-
-def getManager():
-   return manager
 
 def getPlatformIdentity():
    return manager.identity

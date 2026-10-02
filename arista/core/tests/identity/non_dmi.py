@@ -49,24 +49,11 @@ class ReadPrefdlNonDmiTest(unittest.TestCase):
       self.assertIs(identity._prefdls.switch, prefdl)
       mockWrite.assert_called_once_with(prefdl)
 
-   def testI2cFallback(self):
-      prefdl = makePrefdl(PREFDL_DATA)
+   def testNoPrefdlSources(self):
       identity = self._makeIdentity()
       with self._patchSimulation(), \
            patch.object(identity, '_readCachedPrefdl', return_value=None), \
            patch.object(identity, '_readHostPrefdl', return_value=None), \
-           patch.object(identity, '_readI2cPrefdl', return_value=prefdl), \
-           patch.object(identity, '_writePrefdlCacheFile') as mockWrite:
-         identity._readPrefdl()
-      self.assertIs(identity._prefdls.switch, prefdl)
-      mockWrite.assert_called_once_with(prefdl)
-
-   def testAllSourcesFail(self):
-      identity = self._makeIdentity()
-      with self._patchSimulation(), \
-           patch.object(identity, '_readCachedPrefdl', return_value=None), \
-           patch.object(identity, '_readHostPrefdl', return_value=None), \
-           patch.object(identity, '_readI2cPrefdl', return_value=None), \
            patch.object(identity, '_writePrefdlCacheFile'):
          with self.assertRaises(UnknownPlatformError):
             identity._readPrefdl()

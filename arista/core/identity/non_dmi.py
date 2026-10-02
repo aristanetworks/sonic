@@ -46,15 +46,6 @@ class PlatformIdentityNonDmi(PlatformIdentityBase):
          return Prefdl.fromTextFile(self._HOST_PREFDL_PATH)
       return None
 
-   def _fallbackPrefdlFromOniePlatform(self) -> Optional[Prefdl]:
-      prefdl = None
-      sku = self._manager.skuFromOniePlatform()
-      if sku:
-         prefdl = Prefdl.fromDict({
-            'SKU': sku,
-         })
-      return prefdl
-
    def _readI2cPrefdl(self) -> Optional[Prefdl]:
       return _readPrefdlFromStaticEepromAddress(
             busName='SMBus PIIX4 adapter port 1 at 0b20',
@@ -73,9 +64,7 @@ class PlatformIdentityNonDmi(PlatformIdentityBase):
          self._prefdls = Prefdls(prefdl, None)
          return
 
-      prefdl = (self._readHostPrefdl() or
-                self._fallbackPrefdlFromOniePlatform() or
-                self._readI2cPrefdl())
+      prefdl = self._readHostPrefdl() or self._readI2cPrefdl()
 
       if not prefdl:
          lp = f'{self.__class__.__name__}'

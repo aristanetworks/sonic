@@ -110,7 +110,10 @@ build-py3:
 	echo "$$library_version" > $(BASE_DIR)/$(PACKAGE_NAME)/__version__.py
 	$(PYTHON3) setup.py build $(PY3_BUILD_ARGS)
 
-build-py3whl:
+build-registry:
+	PYTHONPATH=. $(PYTHON3) scripts/build-registry
+
+build-py3whl: build-registry
 	echo "$$library_version" > $(BASE_DIR)/$(PACKAGE_NAME)/__version__.py
 	$(PYTHON3) -m build --wheel --no-isolation --outdir $(BUILD_DIR)
 
@@ -203,7 +206,7 @@ install: install-py install-drivers install-libs install-fs
 
 test-py2:
 
-test-py3:
+test-py3: build-registry
 	$(PYTHON3) -m pytest $(PYTEST_ARGS)
 
 test-py: $(addprefix test-,$(PY_TARGETS))

@@ -211,6 +211,8 @@ arista/core/pci.py:
 arista/core/platform.py:
 - global-statement
 - import-outside-toplevel
+arista/core/platform_registry/_auto_bmcs.py:
+- line-too-long
 arista/core/prefdl.py:
 - raise-missing-from
 - unspecified-encoding

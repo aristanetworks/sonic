@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+
+# pylint: disable=protected-access
+
+import os.path
+from pprint import pprint
+
+from arista.core.platform_loader import _Index, platform_loader
+import arista.core.platform_registry
+from arista.core.platform_registry import BaseDescriptor
+
+def _generate_registry(index: _Index):
+   index._loader._discover_all()
+   descriptors = [
+      BaseDescriptor(module=cls.__module__, keys=tuple(index._keysof(cls)))
+      for cls in index._items
+   ]
+
+   fname = os.path.join(
+      arista.core.platform_registry.__path__[0], f"{index._registry_module}.py",
+   )
+   with open(fname, "w", encoding="utf-8") as f:
+      f.write('''"""DO NOT EDIT. Regenerate with:
+   make build-registry
+   # or
+   scripts/build-registry
+This shall be done automatically within `make build-py3whl` and `make test`.
+"""
+from . import BaseDescriptor
+DESCRIPTORS=''')
+      pprint(descriptors, stream=f)
+
+
+def main():
+   for index in platform_loader._indexes():
+      _generate_registry(index)
+
+if __name__ == '__main__':
+   main()

@@ -24,6 +24,11 @@ SWITCH_PREFDL_DATA = {
 }
 
 class DummyLoader(_Loader):
+   def __init__(self):
+      super().__init__()
+      for index in self._indexes():
+         index._descriptors = {}  # setting descriptors prevents registry loading
+
    def _discover_all(self):
       pass
 

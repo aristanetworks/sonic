@@ -21,7 +21,22 @@ CROSS_COMPILE  ?=
 # sources
 BIN_SRC        := $(wildcard $(BASE_DIR)/utils/*)
 RULE_SRC       := $(wildcard $(BASE_DIR)/udev/*)
-SERVICE_SRC    := $(wildcard $(BASE_DIR)/systemd/*)
+ALL_SERVICE_SRC := $(wildcard $(BASE_DIR)/systemd/*)
+# Services restricted to switch supervisor, linecard, Aboot, or switch SKU modes.
+ARM64_EXCLUDED_SERVICE_SRC := \
+	$(BASE_DIR)/systemd/platform-arista-chassis-network.service \
+	$(BASE_DIR)/systemd/platform-arista-chassis-provision.service \
+	$(BASE_DIR)/systemd/platform-arista-early-watchdog-stop.service \
+	$(BASE_DIR)/systemd/platform-arista-fabric.service \
+	$(BASE_DIR)/systemd/platform-arista-init-watchdog-start.service \
+	$(BASE_DIR)/systemd/platform-arista-init-watchdog-stop.service \
+	$(BASE_DIR)/systemd/platform-arista-linecard-network.service \
+	$(BASE_DIR)/systemd/platform-arista-linecard.service
+ifeq ($(DEB_HOST_ARCH),arm64)
+SERVICE_SRC := $(filter-out $(ARM64_EXCLUDED_SERVICE_SRC),$(ALL_SERVICE_SRC))
+else
+SERVICE_SRC := $(ALL_SERVICE_SRC)
+endif
 LOGROTATE_SRC  := $(wildcard $(BASE_DIR)/logrotate/*)
 DBGDUMP_SRC    := $(wildcard $(BASE_DIR)/debug-dump/*)
 
@@ -219,4 +234,3 @@ $(PY3_VENV_PATH):
 
 print-%:
 	@echo $($*)
-

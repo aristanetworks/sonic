@@ -47,8 +47,7 @@ override_dh_auto_install:
 	   DESTDIR=$(CURDIR)/debian/$(DEB_SOURCE)
 
 	$(MAKE) install-py3whl install-fs \
-	   DESTDIR=$(CURDIR)/debian/$(DEB_SOURCE)-all \
-	   ARCH=$(DEB_HOST_ARCH)
+	   DESTDIR=$(CURDIR)/debian/$(DEB_SOURCE)-all
 ifneq ($(DEB_HOST_ARCH),arm64)
 	$(MAKE) install-drivers \
 	   DESTDIR=$(CURDIR)/debian/$(DEB_SOURCE)-all

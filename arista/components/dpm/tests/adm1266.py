@@ -1,3 +1,4 @@
+import datetime
 import pytest
 
 
@@ -33,18 +34,22 @@ class MockBlackboxFault:
    GPIO_MAP = [1, 2, 3, None, None, None, 8, 9, 4, 5, 6, 7, None, None, None, None]
 
    def __init__(self, current=0, action=0, gpio_in=0, gpio_out=0,
-                pdio_in=0, pdio_out=0, powerup=1, timestamp=None):
+                pdio_in=0, pdio_out=0, powerup=1, timestamp=None,
+                vhx=0, vp_ov=0, vp_uv=0):
       self.current = current
       self.action = action
       self.gpio_in = gpio_in
       self.gpio_out = gpio_out
       self.pdio_in = pdio_in
       self.pdio_out = pdio_out
+      self.vhx = vhx
+      self.vp_ov = vp_ov
+      self.vp_uv = vp_uv
       self.powerup = powerup
       self.timestamp = timestamp or b'\x00' * 8
 
    def getTime(self):
-      return "2025-01-01 00:00:00 UTC"
+      return datetime.datetime(2025, 1, 1)
 
    def summary(self):
       return f"current={self.current} action={self.action} gpio_in={self.gpio_in} "\
@@ -239,6 +244,48 @@ class TestAdm1266Rails:
       assert ('read_word_data', driver.registers.READ_VOUT) not in calls
       assert calls[-1] == ('write_byte_data', driver.registers.PAGE, 7)
 
+   def testGetReloadCauseDescsIncludesFaultRails(self):
+      adm = Adm1266(
+         inventory=Inventory(),
+         causes=[AdmCauseOneHot(ReloadCauseDesc.REBOOT, AdmGpio(1))],
+         rails=[
+            RailDesc(railId=Adm1266.VH1, name='POS12V'),
+            RailDesc(railId=Adm1266.VP1, name='POS0V75_ALW'),
+         ],
+      )
+      provider = adm.inventory.getReloadCauseProviders()[0]
+      descs = provider.getReloadCauseDescs()
+
+      assert len(descs) == 3
+      assert descs[1].codeStr == 'rail1'
+      assert descs[1].typ == ReloadCauseDesc.RAIL.typ
+      assert descs[1].description == 'Rail fault - POS12V'
+      assert descs[2].codeStr == 'rail5'
+      assert descs[2].description == 'Rail fault - POS0V75_ALW'
+
+   @pytest.mark.parametrize("railId, faultType, faultKwargs", [
+      (Adm1266.VH2, 'over-voltage', {'vhx': 1 << 1}),
+      (Adm1266.VH3, 'under-voltage', {'vhx': 1 << 6}),
+      (Adm1266.VP2, 'over-voltage', {'vp_ov': 1 << 1}),
+      (Adm1266.VP13, 'under-voltage', {'vp_uv': 1 << 12}),
+   ])
+   def testRailFaults(self, railId, faultType, faultKwargs, monkeypatch):
+      railName = f'RAIL{railId}'
+      adm = Adm1266(
+         inventory=Inventory(),
+         causes=[],
+         rails=[RailDesc(railId=railId, name=railName)],
+      )
+      adm.driver.getBlackboxFaults = lambda: [MockBlackboxFault(**faultKwargs)]
+      adm.driver.clearBlackboxFaults = lambda: None
+      monkeypatch.setattr(
+         'arista.components.dpm.adm1266.inSimulation', lambda: False)
+      causes = adm.getReloadCauses()
+
+      assert len(causes) == 1
+      assert causes[0].cause == ReloadCauseDesc.RAIL.typ
+      assert causes[0].description == (
+         f'{faultType} on rail {railId} - {railName}')
 
 @pytest.mark.usefixtures("logger")
 class TestAdmCauseOneHot:

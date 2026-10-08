@@ -76,9 +76,10 @@ def testPlatformReloadCauseDescs(platformCls):
             f'{classname(platform)}/{provider.getSourceName()}: '
             f'expected {expectedDescs} descs, got {len(descs)}')
       elif isinstance(provider, AdmReloadCauseProvider):
-         assert len(descs) == len(provider.adm.causes), (
+         expectedDescs = len(provider.adm.causes) + len(provider.adm.rails)
+         assert len(descs) == expectedDescs, (
             f'{classname(platform)}/{provider.getSourceName()}: '
-            f'expected {len(provider.adm.causes)} descs, got {len(descs)}')
+            f'expected {expectedDescs} descs, got {len(descs)}')
 
 @pytest.mark.parametrize('platformCls', tuple(getAllSystemClasses()), ids=classname)
 def testPlatformReloadCauseProviderPriorities(platformCls):

@@ -1,5 +1,4 @@
 import datetime
-
 from ...core.cause import (
    ReloadCauseEntry,
    HardwareReloadCauseProvider,
@@ -102,7 +101,7 @@ class UcdFaultRegister():
       self.fan = fan
       self.pages = pages
 
-   def parse(self, reg):
+   def parse(self, _reg):
       return UcdFaultRegister()
 
 class UcdProgrammable(Programmable):
@@ -139,6 +138,9 @@ class Ucd(PmbusDpm):
    ]}
 
    class Registers(PmbusDpm.Registers):
+      PAGE = 0x00
+      VOUT_MODE = 0x20
+
       REAL_TIME_CLOCK = 0xd7
 
       LOGGED_FAULTS = 0xea
@@ -156,6 +158,7 @@ class Ucd(PmbusDpm):
    gpiSize = 1
    npfSize = 1
    faultValueSize = 2
+   voltageFaultTypes = (0, 1, 2)
 
    faultTimeBase = datetime.datetime(1970, 1, 1)
    daysOffset = 0
@@ -185,10 +188,47 @@ class Ucd(PmbusDpm):
       return rail.fmt % values
 
    def _getRailName(self, page):
+      rail = self._getRail(page)
+      return self.formatRailName(rail) if rail is not None else None
+
+   def _getRail(self, page):
       for rail in self.rails:
          if rail.railId == page:
-            return self.formatRailName(rail)
+            return rail
       return None
+
+   def _formatVoltage(self, value):
+      return f'{value:.4f}V'
+
+   def _getRailExpectedVoltage(self, rail):
+      if rail is None:
+         return None
+      return getattr(rail, 'expectedVoltage', None)
+
+   def _decodeVoltageFaultValue(self, value, exponent):
+      # UCD stores voltage fault values as a VOUT mantissa. The exponent comes
+      # from the per-rail VOUT_MODE register.
+      if exponent is None:
+         return None
+      return (value & 0xffff) * (2 ** exponent)
+
+   def _getFaultVoltageDetails(self, fault, value, page, valueExponent):
+      if not fault.paged or fault.typ not in self.voltageFaultTypes:
+         return None
+      if value is None:
+         return None
+      value = self._decodeVoltageFaultValue(value, valueExponent)
+      if value is None:
+         return None
+      rail = self._getRail(page)
+      if rail is None:
+         return None
+      actual = self._formatVoltage(value)
+      expected = self._getRailExpectedVoltage(rail)
+      if expected is None:
+         return f'actual voltage {actual}'
+      return (f'actual voltage {actual}, '
+              f'expected voltage {self._formatVoltage(expected)}')
 
    def setRealTimeClock(self, dt):
       diff = dt - self.oldestTime
@@ -224,22 +264,27 @@ class Ucd(PmbusDpm):
       ftype = (fid >> 27) & 0xf
       page = ((fid >> 23) & 0xf) + 1
       days = fid & 0x7fffff
-      value = (reg[9] << 8) | reg[8]
+      value = listToIntLsb(reg[8:12])
       return paged, ftype, page, value, days, msecs
 
-   def _decodeFaultDetail(self, reg):
-      paged, ftype, page, value, days, msecs = self._parseFaultDetail(reg)
+   def _decodeParsedFaultDetail(self, paged, ftype, page, value, days, msecs):
       days = int(days)
       secs = int(msecs / 1000)
       usecs = int((msecs - secs * 1000) * 1000)
 
       time = self.faultTimeBase + datetime.timedelta(days=days, seconds=secs,
                                                      microseconds=usecs)
-      logging.debug('paged=%d type=%d page=%d value=0x%04x time=%s',
+      logging.debug('paged=%d type=%d page=%d value=0x%08x time=%s',
                     paged, ftype, page, value, time)
-      return paged, ftype, page, time
+      return paged, ftype, page, value, time
 
-   def _getFaultNum(self, paged, ftype, page, time, debugInfo):
+   def _decodeFaultDetail(self, reg):
+      paged, ftype, page, value, days, msecs = self._parseFaultDetail(reg)
+      return self._decodeParsedFaultDetail(
+         paged, ftype, page, value, days, msecs)
+
+   def _getFaultNum(self, paged, ftype, page, value, time, debugInfo,
+                    valueExponent=None):
       causes = []
 
       found = False
@@ -282,6 +327,8 @@ class Ucd(PmbusDpm):
       if not found:
          fault = self.FAULTS.get((paged, ftype))
          if fault is not None:
+            voltageDetails = self._getFaultVoltageDetails(
+               fault, value, page, valueExponent)
             cause = UcdReloadCauseEntry(
                cause=fault.description,
                rcTime=datetimeToStr(time),
@@ -292,7 +339,11 @@ class Ucd(PmbusDpm):
                priority=ReloadCausePriority.UNKNOWN,
                debugInfo=debugInfo,
             )
-            logging.debug('found detailed fault: %s', cause.description)
+            if voltageDetails is None:
+               logging.debug('found detailed fault: %s', cause.description)
+            else:
+               logging.debug('found detailed fault: %s (%s)',
+                             cause.description, voltageDetails)
             causes.append(cause)
          else:
             logging.debug('unhandled detailed fault')
@@ -384,12 +435,21 @@ class Ucd(PmbusDpm):
          if len(reg) < self.Registers.LOGGED_FAULT_DETAIL_COUNT:
             logging.debug('invalid unknown cause %s', reg)
             continue
-         paged, ftype, page, time = self._decodeFaultDetail(reg)
+         paged, ftype, page, value, days, msecs = self._parseFaultDetail(reg)
+         valueExponent = None
+         if paged and ftype in self.voltageFaultTypes:
+            try:
+               valueExponent = drv.getVoutExponent(page)
+            except OSError:
+               logging.exception(
+                  'failed to decode voltage fault value on page %s', page)
+         paged, ftype, page, value, time = self._decodeParsedFaultDetail(
+            paged, ftype, page, value, days, msecs)
          # Record the GPI bit number of the detailed causes, whether known or not
          if not paged and ftype == 9:
             detailedCauses.append(page)
-         causes.extend(self._getFaultNum(paged, ftype, page, time,
-                                         _formatBytes(reg)))
+         causes.extend(self._getFaultNum(
+            paged, ftype, page, value, time, _formatBytes(reg), valueExponent))
 
       causes.extend(self._getSimpleFaults(drv.readFaults(), detailedCauses))
 
@@ -399,10 +459,14 @@ class Ucd(PmbusDpm):
       if simulated:
          return []
 
-      with self.driver as drv:
+      drv = self.driver
+      assert drv is not None
+      try:
          causes = self._getReloadCauses(drv)
          logging.debug('clearing faults')
          drv.clearFaults()
+      finally:
+         drv.close()
 
       return causes
 
@@ -443,7 +507,7 @@ class Ucd90320(Ucd):
       paged = (fid >> 31) & 0x1
       ftype = (fid >> 27) & 0xf
       days = (fid >> 11) & 0xffff
-      value = (reg[11] << 24) | (reg[10] << 16) | (reg[9] << 8) | reg[8]
+      value = listToIntLsb(reg[8:12])
       return paged, ftype, page, value, days, msecs
 
 class Ucd9090(Ucd):

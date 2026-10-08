@@ -5,9 +5,10 @@ from ..core.types import I2cBusAddr
 from ..libs.i2c import i2cBusFromName
 
 class I2cMuxBus(object):
-   def __init__(self, parent, channel):
+   def __init__(self, parent, channel, smbusBlock=True):
       self.parent = parent
       self.channel = channel
+      self.smbusBlock = smbusBlock
       self.bus_ = None
       self.name_ = None
 
@@ -32,13 +33,14 @@ class I2cMuxBus(object):
       return self.bus_
 
    def i2cAddr(self, address, **kwargs):
-      return I2cBusAddr(self, address, **kwargs)
+      return I2cBusAddr(self, address, block=self.smbusBlock, **kwargs)
 
 class I2cMuxKernelDriver(I2cKernelDriver):
 
    NUM_CHANNELS = 0
    I2C_BUS_CLS = I2cMuxBus
+   SMBUS_BLOCK = True
 
    def getBus(self, channel):
       assert 0 <= channel < self.NUM_CHANNELS
-      return self.I2C_BUS_CLS(self, channel)
+      return self.I2C_BUS_CLS(self, channel, smbusBlock=self.SMBUS_BLOCK)

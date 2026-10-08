@@ -20,6 +20,7 @@ from ..ucd import (
    UcdMon,
    UcdReloadCauseEntry,
    UcdReloadCauseProvider,
+   logging,
 )
 
 validCauseDesc = [value for value in vars(ReloadCauseDesc).values()
@@ -68,6 +69,7 @@ class MockUcdDriver(UcdUserDriver):
          self.registers.LOGGED_FAULT_DETAIL_INDEX : 0x0,
          self.registers.LOGGED_FAULT_DETAIL : {},
       }
+      self.voutExponents = {}
 
    def getVersion(self):
       return "SERIAL UCDMOC 2.3.4.0005 241218"
@@ -102,6 +104,12 @@ class MockUcdDriver(UcdUserDriver):
 
    def setDetailedFault(self, num, data):
       self._dataFeeder(self.registers.LOGGED_FAULT_DETAIL, data, num=num)
+
+   def getVoutExponent(self, page):
+      return self.voutExponents.get(page, -12)
+
+   def setVoutExponent(self, page, exponent):
+      self.voutExponents[page] = exponent
 
 ucdClasses = Ucd.__subclasses__()
 ucdGpiClsMap = [
@@ -143,7 +151,8 @@ class TestUcdCause:
       self._assertEqual("priority", cause.priority, expectedCause.priority)
       self._assertEqual("altSource", cause.altSource, expectedCause.altSource)
 
-   def _encodeDetailedFaultReg(self, ucdCls, paged, ftype, page):
+   def _encodeDetailedFaultReg(self, ucdCls, paged, ftype, page,
+                               value=FAULT_VALUE_BASE):
       reg = [0] * 10
       timestamp = int(self.FAULT_MSEC_BASE.total_seconds() * 1000)
       days = self.FAULT_DAYS_BASE
@@ -157,7 +166,11 @@ class TestUcdCause:
                    ((days >> 13) & 0x7))
          reg[5] = (days >> 5) & 0xff
          reg[6] = (days & 0x1f) << 3
+         reg[8] = value & 0xff
+         reg[9] = (value >> 8) & 0xff
          reg.extend([0, 0])
+         reg[10] = (value >> 16) & 0xff
+         reg[11] = (value >> 24) & 0xff
       else:
          reg[0] = (timestamp >> 24) & 0xff
          reg[1] = (timestamp >> 16) & 0xff
@@ -169,6 +182,8 @@ class TestUcdCause:
          reg[5] = (((page - 1) & 0x1) << 7) | ((days >> 16) & 0x7f)
          reg[6] = (days >> 8) & 0xff
          reg[7] = days & 0xff
+         reg[8] = value & 0xff
+         reg[9] = (value >> 8) & 0xff
       return reg
 
    def testDebugInfoSimpleFaults(self):
@@ -450,6 +465,74 @@ class TestUcdCause:
          causes[0].description,
          f'under-voltage on rail {faultPage}',
       )
+
+   def _captureUcdDebugLogs(self, monkeypatch):
+      logMessages = []
+      def captureLog(msg, *args, **_kwargs):
+         rendered = msg % args
+         if rendered.startswith('found detailed fault:'):
+            logMessages.append(rendered)
+      monkeypatch.setattr(logging, 'debug', captureLog)
+      return logMessages
+
+   def _getDetailedPagedFaultCause(self, ucdCls, ftype, faultPage, rawValue,
+                                   rails, exponent=-12):
+      ucd = ucdCls(inventory=Inventory(), rails=rails)
+      ucd.driver.setVoutExponent(faultPage, exponent)
+      reg = self._encodeDetailedFaultReg(
+         ucdCls, 1, ftype, faultPage, value=rawValue)
+      ucd.driver.setDetailedFaultCount(1)
+      ucd.driver.setDetailedFault(0, reg)
+      causes = ucd.getReloadCauses(False)
+      assert len(causes) == 1, f"Expected one cause, get {len(causes)}"
+      return causes[0]
+
+   def testDetailedVoltageFaultWithoutRailNameDoesNotLog(self, monkeypatch):
+      logMessages = self._captureUcdDebugLogs(monkeypatch)
+      self._getDetailedPagedFaultCause(
+         Ucd, 1, 2, 0,
+         [RailDesc(railId=1, name='P3V3_ALW')],
+      )
+      assert logMessages == ['found detailed fault: under-voltage on rail 2']
+
+   def testDetailedVoltageFaultWithoutExpectedVoltageLogsActual(
+         self, monkeypatch):
+      logMessages = self._captureUcdDebugLogs(monkeypatch)
+      rawValue = round(1.3857 * (1 << 12))
+      self._getDetailedPagedFaultCause(
+         Ucd, 1, 2, rawValue,
+         [RailDesc(railId=2, name='P1V2')],
+      )
+      assert logMessages == [
+         'found detailed fault: under-voltage on rail 2 - P1V2 '
+         '(actual voltage 1.3857V)'
+      ]
+
+   @pytest.mark.parametrize("ftype, desc, shouldLogVoltage", [
+      (0, 'over-voltage', True),
+      (1, 'under-voltage', True),
+      (2, 'timeout-power-good', True),
+      (3, 'over-current', False),
+      (4, 'under-current', False),
+      (5, 'over-temperature', False),
+      (6, 'seq-on-timeout', False),
+      (7, 'seq-off-timeout', False),
+   ])
+   def testDetailedPagedFaultLogsVoltageOnlyForOvUv(
+         self, monkeypatch, ftype, desc, shouldLogVoltage):
+      logMessages = self._captureUcdDebugLogs(monkeypatch)
+      rawValue = round(1.3857 * (1 << 12))
+      cause = self._getDetailedPagedFaultCause(
+         Ucd, ftype, 11, rawValue,
+         [RailDesc(railId=11, name='P1V2', expectedVoltage=1.2)])
+
+      self._assertEqual("cause", cause.cause, desc)
+      self._assertEqual(
+         "description", cause.description, f'{desc} on rail 11 - P1V2')
+      expectedLog = f'found detailed fault: {desc} on rail 11 - P1V2'
+      if shouldLogVoltage:
+         expectedLog += ' (actual voltage 1.3857V, expected voltage 1.2000V)'
+      assert logMessages == [expectedLog]
 
    # Test complex cases:
    # * if all faults are logged up to the storage limit

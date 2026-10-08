@@ -31,6 +31,10 @@ try:
       LinecardSupervisorModule,
    )
    from arista.utils.sonic_platform.psu import Psu
+   from arista.utils.sonic_platform.sensor import (
+      VoltageSensor,
+      CurrentSensor,
+   )
    from arista.utils.sonic_platform.sfp import Sfp
    from arista.utils.sonic_platform.sfp import SfpOptoe
    from arista.utils.sonic_platform.thermal import Thermal
@@ -138,8 +142,14 @@ class Chassis(ChassisBase):
 
       # TODO: index used here to allow thermal.get_position_in_parent() to return
       # unique values but we want a proper way of uniquely identifying sensors
-      for index, thermal in enumerate(self._inventory.getTemps()):
-         self._thermal_list.append(Thermal(index + 1, thermal))
+      for index, thermal in enumerate(self._inventory.getTemps(), 1):
+         self._thermal_list.append(Thermal(index, thermal))
+
+      for index, rail in enumerate(self._inventory.getRails(), 1):
+         if getattr(rail, 'voltage', None) is not None:
+            self._voltage_sensor_list.append(VoltageSensor(index, rail.voltage))
+         if getattr(rail, 'current', None) is not None:
+            self._current_sensor_list.append(CurrentSensor(index, rail.current))
 
       watchdogs = self._inventory.getWatchdogs()
       if watchdogs:

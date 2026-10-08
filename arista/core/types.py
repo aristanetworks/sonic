@@ -57,8 +57,8 @@ class PciAddr(SysfsPath):
       return os.path.join('/sys/bus/pci/devices', str(self))
 
 class I2cBusAddr(I2cAddr):
-   def __init__(self, bus, address):
-      super().__init__(bus, address)
+   def __init__(self, bus, address, **kwargs):
+      super().__init__(bus, address, **kwargs)
 
    @property
    def bus(self):

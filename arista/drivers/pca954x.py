@@ -7,3 +7,4 @@ class Pca954xKernelDriver(I2cMuxKernelDriver):
 class Pca9548KernelDriver(Pca954xKernelDriver):
    NAME = 'pca9548'
    NUM_CHANNELS = 8
+   SMBUS_BLOCK = False

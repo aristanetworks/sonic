@@ -15,7 +15,7 @@ from ...core.utils import inSimulation
 
 from ...descs.cause import ReloadCausePriority
 
-from ...drivers.dpm.adm1266 import Adm1266UserDriver
+from ...drivers.dpm.adm1266 import Adm1266UserDriver, renderRailName
 
 from ...inventory.programmable import Programmable
 
@@ -223,7 +223,15 @@ class AdmReloadCauseProvider(HardwareReloadCauseProvider):
       }
 
    def getReloadCauseDescs(self):
-      return tuple(self.adm.causes)
+      descs = tuple(self.adm.causes)
+      descs += tuple(
+         ReloadCauseDesc(
+            f'rail{rail.railId}',
+            ReloadCauseDesc.RAIL,
+            description=renderRailName(rail),
+         ) for rail in self.adm.rails
+      )
+      return descs
 
 class AdmProgrammable(Programmable):
    def __init__(self, adm):
@@ -275,8 +283,10 @@ class Adm1266(PmbusDpm):
       USER_DATA = 0xe3
       POWERUP_COUNTER = 0xe4
 
-   def __init__(self, addr=None, causes=None, altSource=None, **kwargs):
-      super().__init__(addr=addr, **kwargs)
+   def __init__(self, addr=None, causes=None, rails=None, altSource=None,
+                **kwargs):
+      self.rails = tuple(rails) if rails else ()
+      super().__init__(addr=addr, rails=self.rails, **kwargs)
       self.causes = causes
       self.inventory.addReloadCauseProvider(
          AdmReloadCauseProvider(
@@ -293,6 +303,35 @@ class Adm1266(PmbusDpm):
 
    def getVersion(self):
       return self.driver.getVersion()
+
+   def _getRailFaults(self, fault):
+      causes = []
+      for rail in self.rails:
+         railId = rail.railId
+         if railId <= self.VH4:
+            bit = railId - self.VH1
+            overVoltage = isBitSet(bit, fault.vhx)
+            underVoltage = isBitSet(bit + 4, fault.vhx)
+         else:
+            bit = railId - self.VP1
+            overVoltage = isBitSet(bit, fault.vp_ov)
+            underVoltage = isBitSet(bit, fault.vp_uv)
+
+         for faultType, active in (
+            ('over-voltage', overVoltage),
+            ('under-voltage', underVoltage),
+         ):
+            if active:
+               causes.append(AdmReloadCauseEntry(
+                  cause=ReloadCauseDesc.RAIL.typ,
+                  rcTime=datetimeToStr(fault.getTime()),
+                  rcDesc=(
+                     f'{faultType} on rail {railId} - '
+                     f'{renderRailName(rail)}'
+                  ),
+                  priority=ReloadCausePriority.UNKNOWN,
+               ))
+      return causes
 
    def getRealTimeClock(self):
       return self.driver.getRealTimeClock()
@@ -314,6 +353,7 @@ class Adm1266(PmbusDpm):
                   priority=cause.priority,
                   altSource=cause.altSource,
                ))
+         causes.extend(self._getRailFaults(fault))
       return causes
 
    def getReloadCauses(self):

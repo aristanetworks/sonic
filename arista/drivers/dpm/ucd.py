@@ -7,6 +7,23 @@ from .pmbus import PmbusUserDriver
 logging = getLogger(__name__)
 
 class UcdUserDriver(PmbusUserDriver):
+   def _decodeVoutModeExponent(self, value):
+      exponent = value & 0x1f
+      if exponent & 0x10:
+         exponent -= 0x20
+      return exponent
+
+   def getVoutExponent(self, page):
+      if inSimulation():
+         return None
+      oldPage = self.read_byte_data(self.registers.PAGE)
+      try:
+         self.write_byte_data(self.registers.PAGE, page - 1)
+         return self._decodeVoutModeExponent(
+            self.read_byte_data(self.registers.VOUT_MODE))
+      finally:
+         self.write_byte_data(self.registers.PAGE, oldPage)
+
    def dumpReg(self, name, data):
       logging.debug('%s reg: %s', name, ' '.join('%02x' % s for s in data))
 

@@ -375,6 +375,9 @@ class PsuSlot(SlotComponent):
       return self._getGpioActiveOr(self.outputOkGpio)
 
    def isPowerGood(self):
+      # Refer BUG2027860 for more details
+      if not self.psu:
+         return False
       if not self.getPresence():
          return False
       if not self.isInputGood():

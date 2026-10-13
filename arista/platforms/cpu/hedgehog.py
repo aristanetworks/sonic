@@ -16,6 +16,7 @@ from ...components.dpm.adm1266 import (
 from ...components.pci import CompletionTimeoutPciQuirk
 from ...components.rpc import LinecardRpcClient
 from ...components.scd import Scd
+from ...components.vrm.isl68137 import Isl69144
 
 from ...descs.cause import ReloadCausePriority
 from ...descs.led import LedDesc, LedColor
@@ -66,6 +67,10 @@ class HedgehogCpuBase(Cpu):
    def addScdComponents(self, scd):
       self.rpc.addSeuReporter(scd)
       scd.createWatchdog(intr=scd.getInterrupt(0), bit=10)
+      scd.newComponent(Isl69144, addr=scd.i2cAddr(11, 0x60), sensors=[
+         SensorDesc(diode=0, name="Vrm temp sensor",
+                    target=60, overheat=90, critical=95),
+       ])
 
    def getSlotId(self):
       # NOTE: this slotId value is used by Plx to deduce the lcpu upstreamPort

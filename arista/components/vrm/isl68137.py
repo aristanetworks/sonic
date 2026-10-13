@@ -24,3 +24,7 @@ class Isl68225(Isl68137):
 
 class Isl68226(Isl68137):
    DRIVER = Isl68226KernelDriver
+
+class Isl69144(Isl68137):
+   # BUG2004143
+   pass

@@ -82,6 +82,18 @@ class ScdBlackBoxDriverTest(unittest.TestCase):
          'Cypress FM25V05')
       runFlashromCmd.assert_called_once_with(op='-r', outputPath='/tmp/blackbox.bin')
 
+   @patch.object(ScdBlackBoxDriver, '_runFlashromCmd')
+   def testRepeatedDumpReplacesCachedModel(self, runFlashromCmd):
+      runFlashromCmd.return_value = \
+         'Found TotallyFakeFlash flash chip "ABC123"'
+
+      self.driver.dump('/tmp/blackbox.bin')
+      self.driver.dump('/tmp/blackbox.bin')
+
+      self.assertEqual(
+         self.makeStoredData('blackbox0.1_fram_model').read(),
+         'TotallyFakeFlash ABC123')
+
    @patch.object(ScdBlackBoxDriver, '_detectFramModel')
    def testEnabledBlackboxUsesCacheWithoutDetection(self, detectFramModel):
       self.makeStoredData('blackbox0.1_fram_model').write('Cypress FM25V05')

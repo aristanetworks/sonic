@@ -83,7 +83,8 @@ class ScdBlackBoxDriver(SpidevDriver):
       return ScdBlackBoxImpl(component)
 
    def _framModelStore(self):
-      return StoredData(f'blackbox{self.addr.bus}.{self.addr.cs}_fram_model')
+      return StoredData(
+         f'blackbox{self.addr.bus}.{self.addr.cs}_fram_model', append=False)
 
    def _cacheFramModel(self, model):
       if model:

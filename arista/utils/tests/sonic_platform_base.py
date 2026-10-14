@@ -1,6 +1,14 @@
 import sys
 from unittest.mock import MagicMock
 
+from .mocks.liquid import (
+   MockLeakageSensorBase,
+   MockLeakageSensorTestBase,
+   MockLeakSensorProfileBase,
+   MockLeakSeverity,
+   MockLiquidCoolingBase
+)
+
 # Purpose of this testlib: mock the sonic_platform_base lib so that
 # we can test complex correlated functionalities between arista core and utils
 
@@ -28,7 +36,16 @@ def mock():
    sys.modules['sonic_platform_base.component_base'] = MagicMock()
    sys.modules['sonic_platform_base.fan_base'] = MagicMock()
    sys.modules['sonic_platform_base.fan_drawer_base'] = MagicMock()
-   sys.modules['sonic_platform_base.liquid_cooling_base'] = MagicMock()
+   liquidCoolingBase = MagicMock()
+   liquidCoolingBase.LeakageSensorBase = MockLeakageSensorBase
+   liquidCoolingBase.LeakSensorProfileBase = MockLeakSensorProfileBase
+   liquidCoolingBase.LeakSeverity = MockLeakSeverity
+   liquidCoolingBase.LiquidCoolingBase = MockLiquidCoolingBase
+   sys.modules['sonic_platform_base.liquid_cooling_base'] = liquidCoolingBase
+   leakageSensorTestBase = MagicMock()
+   leakageSensorTestBase.LeakageSensorTestBase = MockLeakageSensorTestBase
+   sys.modules['sonic_platform_base.leakage_sensor_test_base'] = \
+      leakageSensorTestBase
    sys.modules['sonic_platform_base.module_base'] = MagicMock()
    sys.modules['sonic_platform_base.platform_base'] = MagicMock()
    sys.modules['sonic_platform_base.psu_base'] = MagicMock()

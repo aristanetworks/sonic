@@ -27,6 +27,17 @@ def setupXcvrs(platform):
          except NotImplementedError:
             pass
 
+def disableLeakTriggeredMitigation(platform):
+   for desc in platform.getInventory().getLiquidCooling():
+      try:
+         interface = desc.interface(desc.component)
+         if not interface.ensureLeakTriggeredMitigationDisabled():
+            logging.error(
+               'failed to disable leak-triggered hardware mitigation')
+      except Exception: # pylint: disable=broad-except
+         logging.exception(
+            'failed to disable leak-triggered hardware mitigation')
+
 @registerAction(setupParser)
 def doSetup(ctx, args):
    platform = ctx.platform
@@ -53,6 +64,7 @@ def doSetup(ctx, args):
 
       if args.late or not args.early:
          platform.setup(Priority.lateFilter)
+         disableLeakTriggeredMitigation(platform)
 
       if args.early or not args.late:
          platform.waitForIt()

@@ -183,6 +183,43 @@ class TestAdapterFieldNames(unittest.TestCase):
                setter(-1)
 
 
+class TestEnsureLeakTriggeredMitigationDisabled(unittest.TestCase):
+   def setUp(self):
+      self.regs = RecordingRegs()
+      self.adapter = _adapter(self.regs)
+
+   def testDisablesAndVerifiesLeakActionsOnly(self):
+      for ropeType in ROPE_TYPES:
+         self.adapter.setLiquidDomainPowerDownEnabled(ropeType, True)
+         self.adapter.setSystemPowerCycleEnabled(ropeType, True)
+         self.adapter.setWatchdogLiquidDomainPowerDownEnabled(ropeType, True)
+         self.adapter.setWatchdogSystemPowerCycleEnabled(ropeType, True)
+
+      self.assertTrue(self.adapter.ensureLeakTriggeredMitigationDisabled())
+      for ropeType in ROPE_TYPES:
+         self.assertFalse(self.adapter.isLiquidDomainPowerDownEnabled(ropeType))
+         self.assertFalse(self.adapter.isSystemPowerCycleEnabled(ropeType))
+         self.assertTrue(
+            self.adapter.isWatchdogLiquidDomainPowerDownEnabled(ropeType))
+         self.assertTrue(self.adapter.isWatchdogSystemPowerCycleEnabled(
+            ropeType))
+
+   def testReturnsFalseWhenMitigationCannotBeDisabled(self):
+      self.adapter.setSystemPowerCycleEnabled(LeakSensorType.ROPE_MINOR, True)
+      originalSetter = self.adapter.setSystemPowerCycleEnabled
+
+      def ignoreMinorDisable(ropeType, enabled):
+         if ropeType is LeakSensorType.ROPE_MINOR and not enabled:
+            return
+         originalSetter(ropeType, enabled)
+
+      self.adapter.setSystemPowerCycleEnabled = ignoreMinorDisable
+
+      self.assertFalse(self.adapter.ensureLeakTriggeredMitigationDisabled())
+      self.assertTrue(self.adapter.isSystemPowerCycleEnabled(
+         LeakSensorType.ROPE_MINOR))
+
+
 class FakeAddressDriver:
    """Address-keyed dict driver — the 'parent' interface a RegisterMap needs."""
    def __init__(self):

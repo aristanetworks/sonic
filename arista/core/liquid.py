@@ -18,6 +18,33 @@ class LeakDetectionInterface(ABC):
    exist in the cross-vendor API.
    """
 
+   def ensureLeakTriggeredMitigationDisabled(self) -> bool:
+      """Disable and verify the hardware actions triggered by leak bits.
+
+      Watchdog timeout actions are separate and are intentionally unchanged.
+      """
+      success = True
+      ropeTypes = (LeakSensorType.ROPE_MINOR, LeakSensorType.ROPE_MAJOR)
+
+      for ropeType in ropeTypes:
+         for setter in (self.setLiquidDomainPowerDownEnabled,
+                        self.setSystemPowerCycleEnabled):
+            try:
+               setter(ropeType, False)
+            except Exception: # pylint: disable=broad-except
+               success = False
+
+      for ropeType in ropeTypes:
+         for getter in (self.isLiquidDomainPowerDownEnabled,
+                        self.isSystemPowerCycleEnabled):
+            try:
+               if getter(ropeType):
+                  success = False
+            except Exception: # pylint: disable=broad-except
+               success = False
+
+      return success
+
    @abstractmethod
    def isRopePresent(self, ropeType: LeakSensorType, ropeNum: int) -> bool:
       """

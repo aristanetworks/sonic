@@ -6,6 +6,7 @@ from ...components.cpu.amd.k10temp import K10Temp
 from ...components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ...components.lm75 import Tmp75
 from ...components.scd import (
+   LeakDetectionPcieRegistersV1,
    Scd,
    ScdCause,
    ScdReloadCauseRegisters,
@@ -57,7 +58,8 @@ class MarconiCpu(Cpu):
       )
 
       cpldPort = self.pciRoot.pciBridge(device=0x2, func=2).downstreamPort(0)
-      self.cpld = cpldPort.newComponent(Scd, addr=cpldPort.addr)
+      self.cpld = cpldPort.newComponent(Scd, addr=cpldPort.addr,
+                                        registerCls=LeakDetectionPcieRegistersV1)
       # In BMC mode, writing 0xDE00 will power cycle the liquid cooled
       # domain (CPU + SWC). In CPU mode, writing 0xDE00 will power cycle the
       # entire chassis.

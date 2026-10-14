@@ -25,7 +25,6 @@ from ..components.max31732 import Max31732
 from ..components.pca954x import Pca9548
 from ..components.psu.ecb import createPmbusECB, Tps16890
 from ..components.scd import (
-   LeakDetectionPcieRegistersV1,
    Scd,
    ScdInterruptDesc,
 )
@@ -116,6 +115,22 @@ class Windsurf(object):
 
 class SteamerLaneChassis(FixedChassis):
    HEIGHT_RU = 2
+
+   @classmethod
+   def createLiquidCooling(cls, parent):
+      parent.addLiquidCooling(
+         LiquidCoolingDesc(
+            LeakDetectionInterfaceV1,
+            sensors=[
+               LeakSensorDesc(
+                  name="dripTrayRope", sensorType=LeakSensorType.ROPE_MAJOR,
+                  addr=0, location="drip tray"),
+               LeakSensorDesc(
+                  name="connectorsRope", sensorType=LeakSensorType.ROPE_MINOR,
+                  addr=0, location="internal"),
+            ]
+         )
+      )
 
 class SteamerLaneBase(FixedSystem):
    CHASSIS = SteamerLaneChassis
@@ -339,10 +354,7 @@ class SteamerLaneBase(FixedSystem):
       miscBus = self.OSFP_PORTS_PER_SCD if hasDualScds else 0
       osfpBus = 0 if hasDualScds else 8
 
-      scd0 = self._createScd(
-         self.cpu.PCI_PORT_SCD0,
-         registerCls=LeakDetectionPcieRegistersV1,
-      )
+      scd0 = self._createScd(self.cpu.PCI_PORT_SCD0)
       self.scd0 = scd0
 
       scd1 = None
@@ -424,15 +436,7 @@ class SteamerLaneBase(FixedSystem):
       self.windsurf = Windsurf(self.cpu, psuSlotId=self.psuCounter)
       self.psuCounter += 1
 
-      # TODO: update locations.
-      self.cpu.cpld.addLiquidCooling(
-         LiquidCoolingDesc(LeakDetectionInterfaceV1, sensors=[
-            LeakSensorDesc(name="trayLeak", sensorType=LeakSensorType.ROPE_MAJOR,
-                           addr=0, location="drip tray"),
-            LeakSensorDesc(name="smallLeak", sensorType=LeakSensorType.ROPE_MINOR,
-                           addr=0, location="unspecified"),
-         ])
-      )
+      SteamerLaneChassis.createLiquidCooling(self.cpu.cpld)
 
       scd0.createWatchdog(intr=scd0.getInterrupt(0), bit=20)
 
@@ -533,16 +537,7 @@ class SteamerLaneHostSwitch(BmcHostSwitch):
       self.cpld = self.newComponent(SysCpld,
                                     addr=self.parent.cpuCpldAddr(),
                                     registerCls=MarconiCpldRegisters)
-
-      # TODO: update locations.
-      self.cpld.addLiquidCooling(
-         LiquidCoolingDesc(LeakDetectionInterfaceV1, sensors=[
-            LeakSensorDesc(name="trayLeak", sensorType=LeakSensorType.ROPE_MAJOR,
-                           addr=0, location="drip tray"),
-            LeakSensorDesc(name="smallLeak", sensorType=LeakSensorType.ROPE_MINOR,
-                           addr=0, location="unspecified"),
-         ])
-      )
+      SteamerLaneChassis.createLiquidCooling(self.cpld)
 
 @registerBmcSubsystem()
 class GoldfinchSteamerLane(BmcSubsystem):

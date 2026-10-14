@@ -1,0 +1,5 @@
+#!/bin/bash
+
+source "$(dirname "$0")/arista-debug-helpers.sh"
+
+runcmd arista show platform blackbox --all

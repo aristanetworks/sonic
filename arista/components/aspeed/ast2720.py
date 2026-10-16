@@ -19,5 +19,6 @@ class Ast2720(AspeedSoc):
    I2C_BASE   = 0x14c0f000
    I2C_STRIDE = 0x100
    I2C_SUFFIX = 'i2c-bus'
-
+   def __str__(self):
+      return 'Ast2720()'
    RELOAD_CAUSE_REGMAP = Ast2720ReloadCauseRegisters

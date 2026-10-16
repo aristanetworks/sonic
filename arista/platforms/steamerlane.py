@@ -170,25 +170,38 @@ class SteamerLaneBase(FixedSystem):
          causes=[
             UcdMon(1, ReloadCauseDesc.POWERLOSS, "Busbar"),
             UcdMon(2, ReloadCauseDesc.POWERLOSS, "ECB output"),
+            UcdGpi(1, ReloadCauseDesc.POWERLOSS, "TH6 power disable"),
             UcdGpi(12, ReloadCauseDesc.CPU,
                    altSource=ReloadCauseAltSource.CPU),
             UcdGpi(13, ReloadCauseDesc.OVERTEMP),
             UcdGpi(14, ReloadCauseDesc.OVERTEMP),
             UcdGpi(15, ReloadCauseDesc.OVERTEMP),
+            UcdGpi(16, ReloadCauseDesc.SEU, "SCD CRC"),
             UcdGpi(17, ReloadCauseDesc.WATCHDOG),
             UcdGpi(22, ReloadCauseDesc.LEAK_DETECTED, "Rope 2"),
             UcdGpi(23, ReloadCauseDesc.LEAK_DETECTED, "Rope 1"),
             UcdGpi(24, ReloadCauseDesc.RAIL, "CPU"),
             UcdGpi(25, ReloadCauseDesc.RMC_REBOOT), # Not used on MV3
-            UcdGpi(27, ReloadCauseDesc.RAIL, "TH6"),
+            UcdGpi(26, ReloadCauseDesc.RAIL, "POL alert"),
+            UcdGpi(27, ReloadCauseDesc.RAIL, "TH6 DPM",
+                   altSource=ReloadCauseAltSource.SWITCH_CARD_SECONDARY),
             UcdGpi(32, ReloadCauseDesc.POWERLOSS, "ECB enable"),
          ],
-         causePriority=UcdPriority.HARDWARE_MAIN
+         causePriority=UcdPriority.HARDWARE_SECONDARY,
+         altSource=[ReloadCauseAltSource.SWITCH_CARD]
       )
       self.cpu.cpld.newComponent(
          Ucd90320,
          addr=polBus.i2cAddr(0x13),
-         causePriority=UcdPriority.HARDWARE_SECONDARY
+         causes=[
+            UcdGpi(1, ReloadCauseDesc.RAIL, "System DPM"),
+            UcdGpi(2, ReloadCauseDesc.RAIL, "Left optics ECB"),
+            UcdGpi(3, ReloadCauseDesc.RAIL, "Left optics ECB"),
+            UcdGpi(4, ReloadCauseDesc.RAIL, "Right optics ECB"),
+            UcdGpi(5, ReloadCauseDesc.RAIL, "Right optics ECB"),
+         ],
+         causePriority=UcdPriority.HARDWARE_SECONDARY,
+         altSource=[ReloadCauseAltSource.SWITCH_CARD_SECONDARY]
       )
 
       pwrBus = self.cpu.getSmbus(self.cpu.SMBUS_PWR)

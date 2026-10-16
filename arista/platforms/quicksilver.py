@@ -227,7 +227,7 @@ class QuicksilverBase(FixedSystem):
       self.syscpld.addReloadCauseProvider(causes=[
          SysCpldCause(0x00, SysCpldCause.UNKNOWN),
          SysCpldCause(0x01, SysCpldCause.OVERTEMP),
-         SysCpldCause(0x02, SysCpldCause.SEU),
+         # All Quicksilver FPGAs are SEU-immune; code 0x02 is unused.
          SysCpldCause(0x03, SysCpldCause.WATCHDOG,
                       priority=SysCpldCause.Priority.HIGH),
          SysCpldCause(0x04, SysCpldCause.CPU, 'CPU source or CPU PGOOD',
@@ -236,6 +236,7 @@ class QuicksilverBase(FixedSystem):
          SysCpldCause(0x08, SysCpldCause.REBOOT),
          SysCpldCause(0x09, SysCpldCause.POWERLOSS, 'PSU AC'),
          SysCpldCause(0x0a, SysCpldCause.POWERLOSS, 'PSU DC'),
+         SysCpldCause(0x0b, SysCpldCause.NO_FANS),
          SysCpldCause(0x0f, SysCpldCause.SEU, 'bitshadow rx parity error'),
          SysCpldCause(0x10, SysCpldCause.REBOOT, 'Software Reboot via CPLD'),
          SysCpldCause(0x11, SysCpldCause.SUP_UNSEATED),

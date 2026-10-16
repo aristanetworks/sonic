@@ -18,6 +18,7 @@ from ...descs.cause import (
    ReloadCauseDesc,
 )
 from ...descs.led import LedDesc, LedKind
+from ...descs.rail import RailDesc
 from ...descs.sensor import Position, SensorDesc
 
 class MarconiCpu(Cpu):
@@ -148,6 +149,37 @@ class MarconiCpu(Cpu):
             UcdGpi(20, ReloadCauseDesc.RAIL, 'DDR5 SODIMM power loss'),
             UcdGpi(21, ReloadCauseDesc.REBOOT, 'Rebooted by CPU'),
          ],
+         rails=(
+            RailDesc(railId=1, name='POS12V_STDBY', expectedVoltage=12.0),
+            RailDesc(railId=2, name='POS0V75_ALW', expectedVoltage=0.75),
+            RailDesc(railId=3, name='POS1V8_ALW', expectedVoltage=1.8),
+            RailDesc(railId=4, name='POS3V3_ALW', expectedVoltage=3.3),
+            RailDesc(railId=5, name='POS1V2_CPLD', expectedVoltage=1.2),
+            RailDesc(railId=6, name='POS1V0_MSW', expectedVoltage=1.0),
+            RailDesc(railId=7, name='POS2V5_CPLD', expectedVoltage=2.5),
+            RailDesc(railId=8, name='POS5V', expectedVoltage=5.0),
+            RailDesc(railId=9, name='POS3V3_ETH'),
+            RailDesc(railId=10, name='POS3V3_CPLD_VPP'),
+            RailDesc(railId=11, name='POS1V8_MSW_LDO', expectedVoltage=1.9),
+            RailDesc(railId=12, name='POS3V3_RGMII', expectedVoltage=3.3),
+            RailDesc(railId=13, name='BMC_POS0V86', expectedVoltage=0.86),
+            RailDesc(railId=14, name='BMC_1V2_MON', expectedVoltage=1.2),
+            RailDesc(railId=15, name='BMC_POS1V8', expectedVoltage=1.8),
+            RailDesc(railId=16, name='BMC_0V9_MON', expectedVoltage=0.91),
+            RailDesc(railId=17, name='POS12V_CPU', expectedVoltage=12.0),
+            RailDesc(railId=18, name='POS5V_SODIMM'),
+            RailDesc(railId=19, name='SODIMM1_5V'),
+            RailDesc(railId=20, name='POS3V3_CPU', expectedVoltage=3.3),
+            RailDesc(railId=21, name='POS1V8_CPU', expectedVoltage=1.8),
+            RailDesc(railId=22, name='POS1V1_MEM', expectedVoltage=1.1),
+            RailDesc(railId=23, name='POS0V8_VDDSOC', expectedVoltage=0.8),
+            RailDesc(railId=24, name='POS0V8_VDDMISC', expectedVoltage=0.8),
+            RailDesc(railId=25, name='POS0V8_VDDCR', expectedVoltage=0.8),
+            RailDesc(railId=26, name='POS3V3_DPMVRM'),
+            RailDesc(railId=27, name='POS1V27_MPHY', expectedVoltage=1.27),
+            RailDesc(railId=28, name='SODIMM2_5V'),
+            RailDesc(railId=29, name='CMOS_BATT', expectedVoltage=3.0),
+         ),
          causePriority=UcdPriority.HARDWARE_SECONDARY,
          altSource=[ReloadCauseAltSource.CPU_SECONDARY]
       )

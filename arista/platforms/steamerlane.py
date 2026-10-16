@@ -118,7 +118,6 @@ class SteamerLaneChassis(FixedChassis):
 
 class SteamerLaneBase(FixedSystem):
    CHASSIS = SteamerLaneChassis
-   HAS_WINDSURF = False
    OSFP_PORTS_PER_SCD = 32
 
    PORTS = PortLayout(
@@ -356,9 +355,8 @@ class SteamerLaneBase(FixedSystem):
                sensors=sensors,
             )
 
-      if self.HAS_WINDSURF:
-         self.windsurf = Windsurf(self.cpu, psuSlotId=self.psuCounter)
-         self.psuCounter += 1
+      self.windsurf = Windsurf(self.cpu, psuSlotId=self.psuCounter)
+      self.psuCounter += 1
 
       # TODO: update locations.
       self.cpu.cpld.addLiquidCooling(
@@ -458,8 +456,6 @@ class SteamerLaneBase(FixedSystem):
 
 @registerPlatform()
 class SteamerLaneMv3(SteamerLaneBase):
-   HAS_WINDSURF = True
-
    SID = ['SteamerLaneMv3']
    SKU = ['7060XE7-64PRS-MV3-L', 'DCS-7060XE7-64PRS-MV3-L']
 

@@ -4,6 +4,12 @@ from enum import Enum
 class ReloadCauseAltSource(Enum):
    # The CPU main hardware controller
    CPU = 'CPU'
+   # The CPU secondary hardware controller
+   CPU_SECONDARY = 'CPU_SECONDARY'
+   # The switch card main hardware controller
+   SWITCH_CARD = 'SWITCH_CARD'
+   # The switch card secondary hardware controller
+   SWITCH_CARD_SECONDARY = 'SWITCH_CARD_SECONDARY'
 
 class ReloadCauseScore:
    # Temporary compatibility value for one-release downgrade.

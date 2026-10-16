@@ -78,7 +78,8 @@ class MarconiCpu(Cpu):
       self.cpld.addReloadCauseProvider(
          causes=[
             ScdCause(0x01, ScdCause.OVERTEMP),
-            ScdCause(0x05, ScdCause.SWITCH_CARD),
+            ScdCause(0x05, ScdCause.SWITCH_CARD,
+                     altSource=ReloadCauseAltSource.SWITCH_CARD),
             ScdCause(0x08, ScdCause.REBOOT, 'Software Reboot'),
             ScdCause(0x09, ScdCause.POWERLOSS, 'DC to CPU'),
             ScdCause(0x0b, ScdCause.NO_FANS), # Only used if air cooled
@@ -89,10 +90,12 @@ class MarconiCpu(Cpu):
             ScdCause(0x11, ScdCause.SWITCH_CARD, 'switch-card unseated'),
             ScdCause(0x15, ScdCause.LEAK_ROPE_FAIL),
             ScdCause(0x16, ScdCause.LEAK_DETECTED),
-            ScdCause(0x20, ScdCause.RAIL, 'DPM detected rail fault'),
+            ScdCause(0x17, ScdCause.REBOOT, 'Power down request from BMC'),
+            ScdCause(0x20, ScdCause.RAIL, 'DPM detected rail fault',
+                     altSource=ReloadCauseAltSource.CPU_SECONDARY),
          ],
          regmap=ScdReloadCauseRegisters,
-         priority=ScdCause.Priority.HARDWARE_SECONDARY,
+         priority=ScdCause.Priority.HARDWARE_MAIN,
          altSource=[ReloadCauseAltSource.CPU]
       )
 
@@ -138,15 +141,15 @@ class MarconiCpu(Cpu):
             UcdGpi(13, ReloadCauseDesc.CPU, 'APU warm reset'),
             UcdGpi(14, ReloadCauseDesc.SWITCH_CARD, 'Switch card power loss'),
             UcdGpi(15, ReloadCauseDesc.OVERTEMP),
-            UcdGpi(16, ReloadCauseDesc.REBOOT, 'Power cycled by BMC'),
+            UcdGpi(16, ReloadCauseDesc.REBOOT, 'Power cycle request from BMC'),
             UcdGpi(17, ReloadCauseDesc.CPU_OVERTEMP, 'PROCHOT'),
             UcdGpi(18, ReloadCauseDesc.SWITCH_CARD, 'Switch card power cycle'),
-            UcdGpi(19, ReloadCauseDesc.REBOOT, 'Powered off by BMC'),
+            UcdGpi(19, ReloadCauseDesc.REBOOT, 'Power down request from BMC'),
             UcdGpi(20, ReloadCauseDesc.RAIL, 'DDR5 SODIMM power loss'),
             UcdGpi(21, ReloadCauseDesc.REBOOT, 'Rebooted by CPU'),
          ],
          causePriority=UcdPriority.HARDWARE_SECONDARY,
-         altSource=[ReloadCauseAltSource.CPU]
+         altSource=[ReloadCauseAltSource.CPU_SECONDARY]
       )
 
       # Front panel shim board

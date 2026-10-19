@@ -8,21 +8,6 @@ from .utils import inSimulation
 
 from ..libs.wait import waitForPath
 
-class PciPortDesc:
-   def __init__(self, device, func, port=0, domain=0, bus=0, root=False,
-                quirks=None):
-      self.domain = domain
-      self.bus = bus
-      self.device = device
-      self.func = func
-      self.port = port
-      self.root = root
-      self.quirks = quirks or []
-
-   def maybeAddQuirks(self, port):
-      # FIXME: do something better by removing this requirement altogether
-      port.quirks.extend(self.quirks)
-
 class PciNotReady(Exception):
    pass
 
@@ -191,10 +176,6 @@ class PciPort(PciComponent):
       if not self.upstream.reachable():
          return False
       return os.path.exists(self.addr.getSysfsPath())
-
-   def setup(self, **kwargs):
-      super().setup(**kwargs)
-      self.applyQuirks()
 
    def pciAddr(self, device=0, func=0):
       addr = self.addrs.get((device, func))

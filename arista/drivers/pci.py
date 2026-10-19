@@ -2,7 +2,7 @@ import enum
 import os
 
 from ..core.driver import Driver
-from ..core.register import RegBitField, RegBitRange, RegisterMap, Register
+from ..core.register import RegBitField, RegisterMap, Register
 from ..core.utils import FileResource, FileWaiter
 
 from ..libs.wait import waitFor
@@ -24,18 +24,8 @@ class PciRegister16(PciRegister):
    def write(self, value):
       return self.parent.write16(self.addr, value)
 
-class PciRegister32(PciRegister):
-   def read(self):
-      return self.parent.read32(self.addr)
-
-   def write(self, value):
-      return self.parent.write32(self.addr, value)
-
 class PciCapability(enum.IntEnum):
    PCI_EXPRESS = 0x10
-
-class PciExtCapability(enum.IntEnum):
-   AER = 0x1
 
 class PciHeader(RegisterMap):
    STATUS = PciRegister16(0x6,
@@ -48,17 +38,6 @@ class PcieCapability(RegisterMap):
       RegBitField(4, 'disabled', ro=False)
    )
    LINK_STATUS = PciRegister16(0x12)
-   DEV_CTL2 = PciRegister16(0x28,
-      RegBitRange(0, 3, 'completionTimeoutValue', ro=False)
-   )
-
-class AerCapability(RegisterMap):
-   ERR_CAP = PciRegister32(0x18,
-      RegBitField(5, 'ecrcGenc'),
-      RegBitField(6, 'ecrcGene', ro=False),
-      RegBitField(7, 'ecrcChkc'),
-      RegBitField(8, 'ecrcChke', ro=False),
-   )
 
 class PciConfig(object):
    def __init__(self, addr=None):
@@ -92,12 +71,6 @@ class PciConfig(object):
    def read16(self, addr):
       return self.config.read16(addr)
 
-   def write32(self, addr, value):
-      self.config.write32(addr, value)
-
-   def read32(self, addr):
-      return self.config.read32(addr)
-
    def write(self, addr, value):
       self.config.write32(addr, value)
 
@@ -130,32 +103,10 @@ class PciConfig(object):
 
       return None
 
-   def findExtendedCapabilityHeader(self, capId):
-      if self.findCapabilityHeader(PciCapability.PCI_EXPRESS) is None:
-         return None
-
-      curCapOffset = 0x100 # First offset for extended capability
-
-      while curCapOffset != 0x0:
-         header = self.config.read32(curCapOffset)
-         if header == 0xffffffff:
-            break
-         curCapId = header & 0xffff
-         if curCapId == capId:
-            return curCapOffset
-         curCapOffset = (header >> 20) & ~3
-
-      return None
-
    def pcieCapability(self):
       registerOffset = self.findCapabilityHeader(PciCapability.PCI_EXPRESS)
       assert registerOffset, "Device doesn't support PCIe capability"
       return PcieCapability(self, offset=registerOffset)
-
-   def aerCapability(self):
-      offset = self.findExtendedCapabilityHeader(PciExtCapability.AER)
-      assert offset, "Device doesn't support AER capability"
-      return AerCapability(self, offset=offset)
 
    def disabled(self):
       return self.pcieCapability().disabled()

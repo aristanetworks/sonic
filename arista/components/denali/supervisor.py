@@ -74,7 +74,7 @@ class DenaliSupervisor(Supervisor):
       ]
 
    def createPciSwitch(self):
-      port = self.cpu.getPciPort(self.cpu.PCI_PORT_PCISWITCH)
+      port = self.cpu.pciRoot.rootPort(device=0x03)
       uport = port.pciEndpoint(func=1)
       self.pciSwitch = uport.newComponent(
          self.pciSwitchCls,

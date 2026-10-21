@@ -61,7 +61,9 @@ class MarconiCpu(Cpu):
       # In BMC mode, writing 0xDE00 will power cycle the liquid cooled
       # domain (CPU + SWC). In CPU mode, writing 0xDE00 will power cycle the
       # entire chassis.
-      self.cpld.createPowerCycle(wr=0xDE00)
+      # The CPLD waits 4 seconds before resetting the system. Wait 5s after
+      # the write to avoid the reboot script reverting to an OS-level reboot.
+      self.cpld.createPowerCycle(wr=0xDE00, delay=5)
       self.cpld.addSmbusMasterRange(0x8000, 2, 0x80, 7)
       self.cpld.createInterrupt(addr=0x3000, num=0)
       self.cpld.addLeds([

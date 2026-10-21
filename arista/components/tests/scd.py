@@ -1,8 +1,9 @@
 from collections import OrderedDict
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
-from ..scd import Scd, ScdI2cAddr
+from ..scd import Scd, ScdI2cAddr, ScdPowerCycle
 from ...drivers.scd.driver import ScdKernelDriver
 
 
@@ -81,3 +82,44 @@ class TestScdSmbusMasterBus:
       for bus in [-1, 40]:
          with pytest.raises(IndexError):
             scd.getSmbusMasterBus(bus)
+
+
+class TestScdPowerCycle:
+   @pytest.mark.parametrize('kwargs, reg, wr, delay', [
+      pytest.param({}, 0x7000, 0xDEAD, 0, id='defaults'),
+      pytest.param({'delay': 0}, 0x7000, 0xDEAD, 0, id='zero-delay'),
+      pytest.param({'delay': 5}, 0x7000, 0xDEAD, 5, id='delayed'),
+      pytest.param({'reg': 0x10, 'wr': 0xDE}, 0x10, 0xDE, 0, id='custom-write'),
+   ])
+   def testPowerCycle(self, kwargs, reg, wr, delay):
+      scd = MagicMock()
+      scd.powerCycles = []
+      powerCycle = Scd.createPowerCycle(scd, **kwargs)
+      assert scd.powerCycles == [powerCycle]
+      scd.inventory.addPowerCycle.assert_called_once_with(powerCycle)
+      mmap = scd.getMmap.return_value
+      events = MagicMock()
+      events.attach_mock(mmap.__enter__.return_value.write32, 'write')
+      events.attach_mock(mmap.__exit__, 'unmap')
+
+      with patch('arista.components.scd.time.sleep') as sleep:
+         events.attach_mock(sleep, 'sleep')
+         assert powerCycle.powerCycle() is True
+
+      expected = [call.write(reg, wr), call.unmap(None, None, None)]
+      if delay:
+         expected.append(call.sleep(delay))
+      assert events.mock_calls == expected
+
+   @pytest.mark.parametrize('failure', ['map', 'write'])
+   def testFailureSkipsDelay(self, failure):
+      scd = MagicMock()
+      if failure == 'map':
+         scd.getMmap.return_value.__enter__.side_effect = RuntimeError('map failed')
+      elif failure == 'write':
+         mmap = scd.getMmap.return_value.__enter__.return_value
+         mmap.write32.side_effect = RuntimeError('write failed')
+
+      with patch('arista.components.scd.time.sleep') as sleep:
+         assert ScdPowerCycle(scd, delay=5).powerCycle() is False
+         sleep.assert_not_called()

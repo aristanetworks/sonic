@@ -426,6 +426,10 @@ class ReloadCauseManager(object):
       self.reports.insert(0, report)
 
    def _getArchivePath(self, existingName):
+      # There are cases where path name is not resolved when the cause manager is
+      # initialized.
+      if existingName is None:
+         existingName = 'Unknown'
       oldName = existingName.replace('/', '-')
       prefix, ext = os.path.splitext(self.path)
       return f'{prefix}_{oldName}{ext}'

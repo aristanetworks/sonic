@@ -126,17 +126,21 @@ class CitrineBase(FixedSystem):
                        target=95, overheat=100, critical=105),
       ])
 
+      if self.getHwApi().majorOnly() >= HwApi(4):
+         q3dTempParams = {'target': 94, 'overheat': 100, 'critical': 105}
+      else:
+         q3dTempParams = {'target': 85, 'overheat': 90, 'critical': 95}
       scd.newComponent(Max31732, addr=scd.i2cAddr(0, 0x1c), sensors=[
             SensorDesc(diode=0, name='PCB Temp Near Q3D', position=Position.OTHER,
-                       target=94, overheat=100, critical=105),
+                       **q3dTempParams),
             SensorDesc(diode=1, name='D0 Temp diode 0', position=Position.OTHER,
-                       target=94, overheat=100, critical=105),
+                       **q3dTempParams),
             SensorDesc(diode=2, name='D0 Temp diode 1', position=Position.OTHER,
-                       target=94, overheat=100, critical=105),
+                       **q3dTempParams),
             SensorDesc(diode=3, name='D1 Temp diode 0', position=Position.OTHER,
-                       target=94, overheat=100, critical=105),
+                       **q3dTempParams),
             SensorDesc(diode=4, name='D1 Temp diode 1', position=Position.OTHER,
-                       target=94, overheat=100, critical=105),
+                       **q3dTempParams),
       ])
 
       vrmTempParams = {'target': 100, 'overheat': 115, 'critical': 120}

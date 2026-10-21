@@ -13,6 +13,7 @@ from ...components.scd import (
 
 from ...descs.sensor import Position, SensorDesc
 from ...descs.cause import ReloadCauseDesc, ReloadCauseAltSource
+from ...descs.rail import RailDesc
 
 class WoodpeckerCpu(Cpu):
 
@@ -65,6 +66,25 @@ class WoodpeckerCpu(Cpu):
 
    def addCpuDpm(self, addr=None, causes=None, rails=None):
       addr = addr or self.cpuDpmAddr()
+      if rails is None:
+         rails = [
+            RailDesc(railId=1, name='12V', expectedVoltage=12),
+            RailDesc(railId=2, name='5V ALW', expectedVoltage=5),
+            RailDesc(railId=3, name='3.3V ALW', expectedVoltage=3.3),
+            RailDesc(railId=4, name='1.8V ALW', expectedVoltage=1.8),
+            RailDesc(railId=5, name='1.5V ALW', expectedVoltage=1.5),
+            RailDesc(railId=6, name='1.2V ALW', expectedVoltage=1.2),
+            RailDesc(railId=7, name='1.05V VDDP ALW', expectedVoltage=1.05),
+            RailDesc(railId=8, name='0.775V VDDFCH ALW', expectedVoltage=0.775),
+            RailDesc(railId=9, name='1.2V TPS51716', expectedVoltage=1.2),
+            RailDesc(railId=10, name='2.5V TPS82130', expectedVoltage=2.5),
+            RailDesc(railId=11, name='0.6V TPS51716', expectedVoltage=0.6),
+            RailDesc(railId=12, name='1.05V TPS543B20', expectedVoltage=1.05),
+            RailDesc(railId=13, name='1.2V LAN', expectedVoltage=1.2),
+            RailDesc(railId=14, name='1.65V APU VDD CORE', expectedVoltage=1.65),
+            RailDesc(railId=15, name='1.65V APU VDD NB', expectedVoltage=1.65),
+            RailDesc(railId=16, name='1.65V APU VDD GFX', expectedVoltage=1.65),
+         ]
       return self.cpld.newComponent(Ucd90160, addr=addr, causes=causes or [
          UcdGpi(5, ReloadCauseDesc.NO_FANS),
          UcdGpi(6, ReloadCauseDesc.OVERTEMP),

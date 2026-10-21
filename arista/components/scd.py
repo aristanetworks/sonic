@@ -3,6 +3,7 @@
 import copy
 import datetime
 import os
+import time
 
 from collections import OrderedDict, namedtuple
 from dataclasses import dataclass, field
@@ -107,10 +108,11 @@ class ScdSpiAddr(SpiAddr):
                           str(self))
 
 class ScdPowerCycle(PowerCycle):
-   def __init__(self, scd, reg=0x7000, wr=0xDEAD):
+   def __init__(self, scd, reg=0x7000, wr=0xDEAD, delay=0):
       self.scd = scd
       self.reg = reg
       self.wr = wr
+      self.delay = delay
 
    def ensureAvailable(self):
       pass
@@ -120,8 +122,10 @@ class ScdPowerCycle(PowerCycle):
       try:
          with self.scd.getMmap() as mmap:
             mmap.write32(self.reg, self.wr)
-            logging.info("Powercycle triggered by SCD")
-            return True
+         logging.info("Powercycle triggered by SCD")
+         if self.delay:
+            time.sleep(self.delay)
+         return True
       except RuntimeError as e:
          logging.error("powercycle error: %s", e)
          return False
@@ -547,8 +551,8 @@ class Scd(PciComponent):
    def setNmiConfig(self, nmiConfig):
       self.nmiConfig = nmiConfig
 
-   def createPowerCycle(self, reg=0x7000, wr=0xDEAD):
-      powerCycle = ScdPowerCycle(self, reg=reg, wr=wr)
+   def createPowerCycle(self, reg=0x7000, wr=0xDEAD, delay=0):
+      powerCycle = ScdPowerCycle(self, reg=reg, wr=wr, delay=delay)
       self.powerCycles.append(powerCycle)
       self.inventory.addPowerCycle(powerCycle)
       return powerCycle

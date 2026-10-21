@@ -26,6 +26,7 @@ from ..components.tmp464 import Tmp464
 
 from ..descs.cause import ReloadCauseDesc, ReloadCauseAltSource
 from ..descs.gpio import GpioDesc
+from ..descs.rail import RailDesc
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
 from ..descs.xcvr import Qsfp28, Sfp, Sfp28
@@ -155,9 +156,21 @@ class Marysville(MarysvilleBase):
             UcdGpi(1, ReloadCauseDesc.POWERLOSS),
             UcdGpi(3, ReloadCauseDesc.REBOOT),
             UcdGpi(4, ReloadCauseDesc.WATCHDOG),
+            UcdGpi(5, ReloadCauseDesc.SEU),
             UcdGpi(6, ReloadCauseDesc.OVERTEMP),
             UcdGpi(7, ReloadCauseDesc.CPU,
                    altSource=ReloadCauseAltSource.CPU),
+      ], rails=[
+         RailDesc(railId=1, name='12V', expectedVoltage=12),
+         RailDesc(railId=2, name='5V', expectedVoltage=5),
+         RailDesc(railId=3, name='3.3V Early', expectedVoltage=3.3),
+         RailDesc(railId=4, name='3.3V', expectedVoltage=3.3),
+         RailDesc(railId=5, name='3.3V Optics', expectedVoltage=3.3),
+         RailDesc(railId=6, name='1.8V', expectedVoltage=1.8),
+         RailDesc(railId=7, name='1.2V', expectedVoltage=1.2),
+         RailDesc(railId=8, name='1.2V TD', expectedVoltage=1.2),
+         RailDesc(railId=9, name='0.9V C', expectedVoltage=0.9),
+         RailDesc(railId=10, name='0.8V A', expectedVoltage=0.8),
       ], causePriority=UcdPriority.HARDWARE_MAIN)
 
       self.syscpld = self.cpu.cpld.newComponent(
@@ -250,6 +263,6 @@ class MarysvillePrime(MarysvilleBase):
          SysCpldCause(0x26, SysCpldCause.RAIL, "POS1V2_TD FAULT"),
          SysCpldCause(0x27, SysCpldCause.RAIL, "POS1V8_TD FAULT"),
          SysCpldCause(0x28, SysCpldCause.RAIL, "POS0V8_A FAULT"),
-         SysCpldCause(0x28, SysCpldCause.RAIL, "POS3V3_OPTICS FAULT"),
+         SysCpldCause(0x29, SysCpldCause.RAIL, "POS3V3_OPTICS FAULT"),
       ], regmap=SysCpldReloadCauseRegistersV2,
          priority=ReloadCausePriority.HARDWARE_MAIN)

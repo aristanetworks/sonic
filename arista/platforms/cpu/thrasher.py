@@ -1,5 +1,8 @@
 from ...core.cpu import Cpu
+from ...core.driver.kernel.pci import PciKernelDriver
 from ...core.pci import PciPortDesc, PciRoot
+from ...core.platform import registerCpu
+from ...core.prerequisites import loadPrerequisites
 
 from ...components.cpu.amd.designware import DesignWareI2cBus
 from ...components.cpu.amd.k10temp import K10Temp
@@ -17,6 +20,7 @@ from ...components.dpm.adm1266 import (
    maxV,
    minV
 )
+from ...components.eeprom import At24C512
 from ...components.scd import Scd
 from ...components.lm75 import Tmp75
 
@@ -24,6 +28,7 @@ from ...descs.cause import ReloadCauseAltSource
 from ...descs.sensor import Position, SensorDesc
 from ...descs.rail import RailDesc
 
+@registerCpu()
 class ThrasherCpu(Cpu):
 
    PLATFORM = 'thrasher'
@@ -42,6 +47,22 @@ class ThrasherCpu(Cpu):
    SMBUS_PWR = 10
    SMBUS_FC = 11
 
+   @staticmethod
+   def _createCpld(pciRoot):
+      cpldPort = pciRoot.pciBridge(device=0x02, func=1).downstreamPort(0)
+      cpld = cpldPort.newComponent(Scd, addr=cpldPort.addr)
+      cpld.addSmbusMasterRange(0x8000, 1, 0x80)
+      return cpld
+
+   @classmethod
+   def _addSwitchEeprom(cls, cpld):
+      return cpld.newComponent(
+         At24C512,
+         addr=cpld.i2cAddr(cls.SMBUS_SC, 0x50),
+         hdrSz=0,
+         label='switch',
+      )
+
    def __init__(self, **kwargs):
       super().__init__(**kwargs)
 
@@ -53,12 +74,11 @@ class ThrasherCpu(Cpu):
                     position=Position.OTHER, target=80, overheat=95, critical=105),
       ])
 
-      port = self.pciRoot.pciBridge(device=0x02, func=1).downstreamPort(0)
-      cpld = port.newComponent(Scd, addr=port.addr)
+      cpld = self._createCpld(self.pciRoot)
       self.cpld = cpld
 
       cpld.createPowerCycle()
-      cpld.addSmbusMasterRange(0x8000, 1, 0x80)
+      self.switchEeprom = self._addSwitchEeprom(cpld)
 
       gpioInMask = 0b000111000
       pdioInMask = 0b0010011010110000
@@ -155,6 +175,20 @@ class ThrasherCpu(Cpu):
 
       self.syscpld = cpld.newComponent(ThrasherSysCpld, addr=cpld.i2cAddr(8, 0x23),
                                        quirks=[CpuScdPowerCycleOnWdFaultQuirk()])
+
+   @classmethod
+   def readSwitchEeprom(cls):
+      pciRoot = PciRoot()
+      cpld = cls._createCpld(pciRoot)
+      switchEeprom = cls._addSwitchEeprom(cpld)
+
+      scdDriver = cpld.driver
+      PciKernelDriver.setup(scdDriver)
+      loadPrerequisites()
+
+      scdDriver.setupSmbusMasters()
+      switchEeprom.driver.setup()
+      return switchEeprom.readPrefdl()
 
    def getSmbus(self, desc):
       return self.cpld.getSmbus(desc)

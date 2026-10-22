@@ -11,7 +11,12 @@ from ..core.register import (
 from ..core.utils import incrange
 
 from ..components.asic.xgs.trident3 import Trident3
-from ..components.cpld import SysCpldCause, SysCpldReloadCauseRegistersV2
+from ..components.cpld import (
+   SysCpld,
+   SysCpldCause,
+   SysCpldCommonRegistersV2,
+   SysCpldReloadCauseRegistersV2,
+)
 from ..components.dpm.ucd import Ucd90320, UcdGpi, UcdPriority
 from ..components.max6658 import Max6658
 from ..components.psu.delta import DPS500AB
@@ -131,6 +136,9 @@ class MarysvilleBase(FixedSystem):
          ],
       )
 
+class MarysvilleSysCpld(SysCpld):
+   REGISTER_CLS = SysCpldCommonRegistersV2
+
 @registerPlatform()
 class Marysville(MarysvilleBase):
 
@@ -151,6 +159,10 @@ class Marysville(MarysvilleBase):
             UcdGpi(7, ReloadCauseDesc.CPU,
                    altSource=ReloadCauseAltSource.CPU),
       ], causePriority=UcdPriority.HARDWARE_MAIN)
+
+      self.syscpld = self.cpu.cpld.newComponent(
+         MarysvilleSysCpld, addr=self.cpu.cpld.i2cAddr(4, 0x23),
+      )
 
       self.scd.newComponent(Tmp464, addr=self.scd.i2cAddr(2, 0x48), sensors=[
          SensorDesc(diode=0, name='Switch Card temp sensor', position=Position.OTHER,

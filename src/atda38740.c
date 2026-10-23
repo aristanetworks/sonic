@@ -401,6 +401,11 @@ static int tda38740_get_device_id(struct i2c_client *client)
 		dev_err(dev, "Failed to read Device Id\n");
 		return status;
 	}
+	if (status < 1 || device_id[0] >= status) {
+		dev_err(dev, "Received invalid Device ID block\n");
+		return -EPROTO;
+	}
+
 	status = device_id[0];
 	memmove(device_id, device_id + 1, status);
 

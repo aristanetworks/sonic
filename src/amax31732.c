@@ -614,6 +614,11 @@ static int max31732_probe(struct i2c_client *client)
 
     dev_set_drvdata(dev, data);
 
+    data->hwmon_dev = devm_hwmon_device_register_with_info(dev, client->name, data,
+                                   &max31732_chip_info, max31732_extra_groups);
+    if (IS_ERR(data->hwmon_dev))
+        return PTR_ERR(data->hwmon_dev);
+
     data->irqs[0] = fwnode_irq_get_byname(dev_fwnode(dev), "ALARM1");
     if (data->irqs[0] > 0) {
         ret = devm_request_threaded_irq(dev, data->irqs[0], NULL, max31732_irq_handler,
@@ -650,10 +655,7 @@ static int max31732_probe(struct i2c_client *client)
             return ret;
     }
 
-    data->hwmon_dev = devm_hwmon_device_register_with_info(dev, client->name, data,
-                                   &max31732_chip_info, max31732_extra_groups);
-
-    return PTR_ERR_OR_ZERO(data->hwmon_dev);
+    return 0;
 }
 
 static const struct i2c_device_id max31732_ids[] = {

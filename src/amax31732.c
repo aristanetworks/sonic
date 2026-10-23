@@ -178,8 +178,10 @@ static int max31732_read(struct device *dev, enum hwmon_sensor_types type, u32 a
         if (ret < 0)
             return ret;
 
-        if (!ret)
+        if (!ret) {
+            *val = 0;
             return 0;
+        }
 
         ret = regmap_read(data->regmap, MAX31732_REG_TEMP_OFFSET, &reg_val);
         if (ret)

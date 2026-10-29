@@ -13,14 +13,14 @@ class HwApi():
 
    def _greater(self, other):
       for a, b in itertools.zip_longest(self.values, other.values, fillvalue=0):
-         if a > b:
-            return True
+         if a != b:
+            return a > b
       return False
 
    def _less(self, other):
       for a, b in itertools.zip_longest(self.values, other.values, fillvalue=0):
-         if a < b:
-            return True
+         if a != b:
+            return a < b
       return False
 
    def __gt__(self, other):

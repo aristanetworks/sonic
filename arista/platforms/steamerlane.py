@@ -430,7 +430,7 @@ class SteamerLaneBase(FixedSystem):
          ])
       )
 
-      scd0.createWatchdog(intr=scd0.getInterrupt(0), bit=20)
+      scd0.createWatchdog()
 
       osfpPorts = self.PORTS.getOsfps()
       scd0OsfpPorts = osfpPorts if scd1 is None else [

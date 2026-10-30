@@ -71,7 +71,8 @@ class DBHelper(object):
             # For multi-asic, need to load sonic global config manually.
             if not SonicDBConfig.isGlobalInit():
                SonicDBConfig.load_sonic_global_db_config()
-         db = DBConnector(name, 0, True, self.namespace)
+         use_tcp = name != 'STATE_DB' or SonicDBConfig.getDbPort(name, self.namespace) != 0
+         db = DBConnector(name, 0, use_tcp, self.namespace)
          self._dbs[name] = db
       return db
 

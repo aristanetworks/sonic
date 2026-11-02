@@ -46,12 +46,14 @@ class Sensor(SensorBase):
 
    def get_value(self):
       value = self._sensor.getInput()
+      if value is None:
+         return None
       value = round(value, 3) if isinstance(value, float) else value
       if self._minimum is None or self._minimum > value:
          self._minimum = value
       if self._maximum is None or self._maximum < value:
          self._maximum = value
-      return value or 0.
+      return value
 
    def get_high_threshold(self):
       value = self._sensor.getHighThreshold()

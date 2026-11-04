@@ -26,6 +26,18 @@ class ReadPrefdlNonDmiTest(unittest.TestCase):
    def _patchSimulation(self):
       return patch('arista.core.identity.non_dmi.inSimulation', return_value=False)
 
+   def testLazyInit(self):
+      identity = PlatformIdentityNonDmi(cmdline={})
+      prefdl = makePrefdl(PREFDL_DATA)
+      with patch('arista.core.identity.non_dmi.inSimulation', return_value=False), \
+           patch.object(identity, '_readCachedPrefdl', return_value=prefdl) as read:
+         self.assertIsNone(identity.cpueeprom)
+         read.assert_not_called()
+         self.assertIs(identity.syseeprom, prefdl)
+         self.assertEqual(identity.sku, 'DCS-TEST-42')
+         self.assertIs(identity.syseeprom, prefdl)
+      read.assert_called_once()
+
    def testCacheHit(self):
       prefdl = makePrefdl(PREFDL_DATA)
       identity = self._makeIdentity()
@@ -33,8 +45,8 @@ class ReadPrefdlNonDmiTest(unittest.TestCase):
            patch.object(identity, '_readCachedPrefdl', return_value=prefdl), \
            patch.object(identity, '_writePrefdlCacheFile') as mockWrite:
          identity._readPrefdl()
-      self.assertIs(identity._prefdls.switch, prefdl)
-      self.assertIsNone(identity._prefdls.cpu)
+      self.assertIs(identity.syseeprom, prefdl)
+      self.assertIsNone(identity.cpueeprom)
       mockWrite.assert_not_called()
 
    def testHostPrefdl(self):
@@ -45,7 +57,7 @@ class ReadPrefdlNonDmiTest(unittest.TestCase):
            patch.object(identity, '_readHostPrefdl', return_value=prefdl), \
            patch.object(identity, '_writePrefdlCacheFile') as mockWrite:
          identity._readPrefdl()
-      self.assertIs(identity._prefdls.switch, prefdl)
+      self.assertIs(identity.syseeprom, prefdl)
       mockWrite.assert_called_once_with(prefdl)
 
    def testNoPrefdlSources(self):
@@ -56,6 +68,21 @@ class ReadPrefdlNonDmiTest(unittest.TestCase):
            patch.object(identity, '_writePrefdlCacheFile'):
          with self.assertRaises(UnknownPlatformError):
             identity._readPrefdl()
+
+   def testReadFailureCanBeRetried(self):
+      """A failed host PreFDL read must not prevent a later EEPROM access
+      from retrying the read and initializing identity successfully.
+      """
+      identity = self._makeIdentity()
+      prefdl = makePrefdl(PREFDL_DATA)
+      with self._patchSimulation(), \
+           patch.object(identity, '_readCachedPrefdl', return_value=None), \
+           patch.object(identity, '_readHostPrefdl',
+                        side_effect=[OSError('read failed'), prefdl]), \
+           patch.object(identity, '_writePrefdlCacheFile'):
+         with self.assertRaises(OSError):
+            _ = identity.syseeprom
+         self.assertIs(identity.syseeprom, prefdl)
 
 
 class ReadCachedPrefdlTest(unittest.TestCase):

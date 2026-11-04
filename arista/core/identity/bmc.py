@@ -1,10 +1,12 @@
+from functools import cached_property
 from typing import Optional
 
 from ..exception import UnknownPlatformError
 from ..prerequisites import loadPrerequisites
+from ..prefdl import Prefdl
 from ..utils import readBmcDeviceTreeModel
 
-from .base import PlatformIdentityBase, Prefdls
+from .base import PlatformIdentityBase
 
 
 class PlatformIdentityBmc(PlatformIdentityBase):
@@ -15,7 +17,18 @@ class PlatformIdentityBmc(PlatformIdentityBase):
       super().__init__(*args, **kwargs)
       self._model = None
 
-   def _readPrefdl(self):
+   # readChassisEeprom() owns the tmpfs cache; identity retains its result
+   # in memory and reads the EEPROM only when requested.
+   @cached_property
+   def _chassisPrefdl(self) -> Prefdl:
+      return self._bmcCls.readChassisEeprom()
+
+   @property
+   def syseeprom(self) -> Prefdl:
+      return self._chassisPrefdl
+
+   @cached_property
+   def _bmcCls(self):
       model = readBmcDeviceTreeModel()
       bmcCls = self._loader.bmcs.get(model)
       if bmcCls is None:
@@ -26,15 +39,14 @@ class PlatformIdentityBmc(PlatformIdentityBase):
 
       loadPrerequisites()
       self._model = model
-      # readChassisEeprom() owns caching for BMC chassis EEPROM reads.
-      self._prefdls = Prefdls(bmcCls.readChassisEeprom(), None)
+      return bmcCls
 
    def getPlatformCls(self, name=None):
       if name is not None:
          raise UnknownPlatformError(
             f'BMC platform identification does not accept name={name!r}')
 
-      sid = self.syseeprom.get('SID')
+      sid = self.sid
       if not sid:
          raise UnknownPlatformError(
             f'BMC model {self._model!r} has an empty SID in its chassis EEPROM')
@@ -48,7 +60,7 @@ class PlatformIdentityBmc(PlatformIdentityBase):
 
    @property
    def sid(self) -> Optional[str]:
-      return self.syseeprom.get('SID')
+      return self._chassisPrefdl.get('SID')
 
    @property
    def sku(self) -> Optional[str]:

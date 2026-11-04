@@ -7,7 +7,7 @@ from ..log import getLogger
 from ..prefdl import Prefdl
 from ..utils import inSimulation
 
-from .base import PlatformIdentityBase, Prefdls
+from .base import PlatformIdentityBase
 
 logging = getLogger(__name__)
 
@@ -15,6 +15,16 @@ class PlatformIdentityNonDmi(PlatformIdentityBase):
    _HOST_PREFDL_PATH = flashPath('.system-prefdl')
    _HOST_PREFDL_BINPATH = flashPath('.system-prefdl-bin')
    _PREFDL_CACHE_PATH = etcPath('.syseeprom')
+
+   def __init__(self, *args, **kwargs):
+      super().__init__(*args, **kwargs)
+      self._prefdl = None
+
+   @property
+   def syseeprom(self) -> Prefdl:
+      if self._prefdl is None:
+         self._readPrefdl()
+      return self._prefdl
 
    def _readHostPrefdl(self) -> Optional[Prefdl]:
       lp = f'{self.__class__.__name__}'
@@ -30,15 +40,15 @@ class PlatformIdentityNonDmi(PlatformIdentityBase):
 
    def _readPrefdl(self):
       if inSimulation():
-         self._prefdls = Prefdls(Prefdl.fromDict({
+         self._prefdl = Prefdl.fromDict({
             'SKU': 'simulation',
             'HwApi': '42',
-         }), None)
+         })
          return
 
       prefdl = self._readCachedPrefdl()
       if prefdl:
-         self._prefdls = Prefdls(prefdl, None)
+         self._prefdl = prefdl
          return
 
       prefdl = self._readHostPrefdl()
@@ -48,7 +58,7 @@ class PlatformIdentityNonDmi(PlatformIdentityBase):
          raise UnknownPlatformError(f'{lp}: Could not identify current platform')
 
       self._writePrefdlCacheFile(prefdl)
-      self._prefdls = Prefdls(prefdl, None)
+      self._prefdl = prefdl
 
    @property
    def sid(self) -> Optional[str]:

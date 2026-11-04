@@ -1,8 +1,7 @@
 
 from unittest.mock import MagicMock
 
-from ...identity.base import PlatformIdentityBase, Prefdls
-from ...identity.dmi import PlatformIdentityDmi
+from ...identity.dmi import _Prefdls, PlatformIdentityDmi
 from ...identity.non_dmi import PlatformIdentityNonDmi
 from ...platform_loader import _Loader
 from ...prefdl import Prefdl
@@ -42,18 +41,14 @@ def makeFakeCpu(sids, platform='fakecpu', switchPrefdl=None):
    cpu.readSwitchEeprom.return_value = switchPrefdl
    return cpu
 
-def _makeIdentity(cls, switchData=None, cpuData=None, cmdline=None):
-   identity = cls(cmdline=cmdline or {})
-   switchPrefdl = makePrefdl(switchData or {})
-   cpuPrefdl = makePrefdl(cpuData) if cpuData else None
-   identity._prefdls = Prefdls(switchPrefdl, cpuPrefdl)  # pylint: disable=protected-access
+def makeNonDmiIdentity(switchData=None, cmdline=None):
+   identity = PlatformIdentityNonDmi(cmdline=cmdline or {})
+   identity._prefdl = makePrefdl(switchData or {})  # pylint: disable=protected-access
    return identity
 
-def makeBaseIdentity(switchData=None, cpuData=None):
-   return _makeIdentity(PlatformIdentityBase, switchData, cpuData)
-
-def makeNonDmiIdentity(switchData=None, cpuData=None, cmdline=None):
-   return _makeIdentity(PlatformIdentityNonDmi, switchData, cpuData, cmdline)
-
 def makeDmiIdentity(switchData=None, cpuData=None):
-   return _makeIdentity(PlatformIdentityDmi, switchData, cpuData)
+   identity = PlatformIdentityDmi(cmdline={})
+   switchPrefdl = makePrefdl(switchData or {})
+   cpuPrefdl = makePrefdl(cpuData) if cpuData else None
+   identity._prefdls = _Prefdls(switchPrefdl, cpuPrefdl)  # pylint: disable=protected-access
+   return identity

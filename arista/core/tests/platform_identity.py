@@ -5,7 +5,6 @@ from ..platform import (
    readSid,
    readSku,
    readPlatformName,
-   readHwApi,
    SysEeprom,
 )
 
@@ -35,12 +34,6 @@ class ReadHelpersDelegationTest(unittest.TestCase):
    def testReadPlatformNameNone(self, mockGetIdentity):
       mockGetIdentity.return_value = makeNonDmiIdentity()
       self.assertIsNone(readPlatformName())
-
-   @patch('arista.core.platform.getPlatformIdentity')
-   def testReadHwApi(self, mockGetIdentity):
-      mockGetIdentity.return_value = makeNonDmiIdentity(
-         switchData={'SKU': 'X', 'HwApi': '03.00'})
-      self.assertEqual(readHwApi(), (3, 0))
 
 
 class SysEepromReadPrefdlTest(unittest.TestCase):

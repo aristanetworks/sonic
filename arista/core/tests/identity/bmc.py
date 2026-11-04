@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, PropertyMock
 
 from ....tests.testing import unittest, patch
 
@@ -53,6 +53,38 @@ class PlatformIdentityBmcTest(unittest.TestCase):
    def testPlatformLookupWithName(self):
       with self.assertRaisesRegex(UnknownPlatformError, 'does not accept name'):
          self._makeIdentity().getPlatformCls('TestBmc')
+
+   def testIdentificationDoesNotUseSyseeprom(self):
+      """Keep chassis-based identification independent of syseeprom so it can
+      expose the BMC EEPROM without changing platform selection.
+      """
+      identity = self._makeIdentity()
+      with patch('arista.core.identity.bmc.readBmcDeviceTreeModel',
+                 return_value='TestBmc'), \
+           patch('arista.core.identity.bmc.loadPrerequisites'), \
+           patch.object(PlatformIdentityBmc, 'syseeprom',
+                        new_callable=PropertyMock) as systemEeprom, \
+           patch.object(FakeBmc, 'readChassisEeprom',
+                        return_value=FakeBmc.prefdl) as read:
+         self.assertEqual(identity.sid, 'TestSid')
+         self.assertIs(identity.getPlatformCls(), FakeBmcSubsystem)
+         self.assertEqual(identity.sid, 'TestSid')
+      systemEeprom.assert_not_called()
+      read.assert_called_once()
+
+   def testReadFailureCanBeRetried(self):
+      """A failed chassis read must leave identity uninitialized so a later
+      platform lookup retries the read and can succeed.
+      """
+      identity = self._makeIdentity()
+      with patch('arista.core.identity.bmc.readBmcDeviceTreeModel',
+                 return_value='TestBmc'), \
+           patch('arista.core.identity.bmc.loadPrerequisites'), \
+           patch.object(FakeBmc, 'readChassisEeprom',
+                        side_effect=[OSError('read failed'), FakeBmc.prefdl]):
+         with self.assertRaises(OSError):
+            identity.getPlatformCls()
+         self.assertIs(identity.getPlatformCls(), FakeBmcSubsystem)
 
    def testPlatformLookupWithUnknownModel(self):
       with patch('arista.core.identity.bmc.readBmcDeviceTreeModel',

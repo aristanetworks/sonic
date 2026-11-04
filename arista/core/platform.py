@@ -108,9 +108,6 @@ def readSid():
 def readPlatformName():
    return getPlatformIdentity().platform
 
-def readHwApi():
-   return getPlatformIdentity().hwApi
-
 def getPlatformCls(*names):
    return manager.getPlatformCls(*names)
 

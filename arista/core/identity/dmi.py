@@ -1,4 +1,5 @@
 import os
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
 from ..config import tmpfsPath
@@ -6,7 +7,7 @@ from ..exception import UnknownPlatformError
 from ..log import getLogger
 from ..prefdl import Prefdl
 
-from .base import PlatformIdentityBase, Prefdls
+from .base import PlatformIdentityBase
 from .common import readSystemPrefdlViaDmi
 
 from ...libs.dmi import DmiType
@@ -15,6 +16,11 @@ if TYPE_CHECKING:
    from ..cpu import Cpu
 
 logging = getLogger(__name__)
+
+@dataclass
+class _Prefdls:
+   switch: Prefdl
+   cpu: Optional[Prefdl]
 
 def _readCpuPlatformNamesViaDmi() -> list[str]:
    entries = [
@@ -39,6 +45,22 @@ class PlatformIdentityDmi(PlatformIdentityBase):
    _PREFDL_CACHE_PATH = tmpfsPath('.syseeprom')
    _CPU_PREFDL_CACHE_PATH = tmpfsPath('.cpueeprom')
 
+   def __init__(self, *args, **kwargs):
+      super().__init__(*args, **kwargs)
+      self._prefdls = None
+
+   @property
+   def syseeprom(self) -> Prefdl:
+      if self._prefdls is None:
+         self._readPrefdl()
+      return self._prefdls.switch
+
+   @property
+   def cpueeprom(self) -> Optional[Prefdl]:
+      if self._prefdls is None:
+         self._readPrefdl()
+      return self._prefdls.cpu
+
    @staticmethod
    def _createEmptyMarkerFile(path):
       os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -56,14 +78,14 @@ class PlatformIdentityDmi(PlatformIdentityBase):
                     switchPrefdl.get('SID'))
       return switchPrefdl
 
-   def _readCachedPrefdls(self) -> Optional[Prefdls]:
+   def _readCachedPrefdls(self) -> Optional[_Prefdls]:
       switchPrefdl = self._readCachedPrefdl()
       if not switchPrefdl:
          return None
       if not os.path.exists(self._CPU_PREFDL_CACHE_PATH):
          return None
       cpuPrefdl = self._readCachedPrefdl(self._CPU_PREFDL_CACHE_PATH)
-      return Prefdls(switchPrefdl, cpuPrefdl)
+      return _Prefdls(switchPrefdl, cpuPrefdl)
 
    def _readPrefdl(self):
       lp = f'{self.__class__.__name__}(Dmi)'
@@ -110,7 +132,7 @@ class PlatformIdentityDmi(PlatformIdentityBase):
          self._createEmptyMarkerFile(self._CPU_PREFDL_CACHE_PATH)
 
       self._writePrefdlCacheFile(switchPrefdl)
-      self._prefdls = Prefdls(switchPrefdl, cpuPrefdl)
+      self._prefdls = _Prefdls(switchPrefdl, cpuPrefdl)
 
    @property
    def concatSid(self) -> Optional[str]:

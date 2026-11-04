@@ -3,8 +3,7 @@
 from ....tests.testing import unittest, patch
 
 from ...exception import UnknownPlatformError
-from ...identity.base import Prefdls
-from ...identity.dmi import PlatformIdentityDmi
+from ...identity.dmi import _Prefdls, PlatformIdentityDmi
 
 from .common import (
    DummyLoader,
@@ -43,6 +42,20 @@ class ReadPrefdlDmiTest(unittest.TestCase):
       identity._loader = _loader
       return identity
 
+   def testLazyInit(self):
+      for firstProperty in ('syseeprom', 'cpueeprom'):
+         identity = PlatformIdentityDmi(cmdline={})
+         switch = makePrefdl(PREFDL_DATA)
+         cpu = makePrefdl(CPU_PREFDL_DATA)
+         def doRead(identity=identity, switch=switch, cpu=cpu):
+            identity._prefdls = _Prefdls(switch, cpu)  # pylint: disable=protected-access
+         with patch.object(identity, '_readPrefdl', side_effect=doRead) as read:
+            getattr(identity, firstProperty)
+            self.assertIs(identity.syseeprom, switch)
+            self.assertIs(identity.cpueeprom, cpu)
+            self.assertEqual(identity.sid, 'CpuBoardTestProduct')
+         read.assert_called_once()
+
    def testCpuMatchBySid(self):
       switchPrefdl = makePrefdl(SWITCH_PREFDL_DATA)
       fakeCpu = makeFakeCpu(sids=['CpuBoard'], switchPrefdl=switchPrefdl)
@@ -50,8 +63,8 @@ class ReadPrefdlDmiTest(unittest.TestCase):
       with patch.object(identity, '_readCachedPrefdls', return_value=None), \
            patch.object(identity, '_writePrefdlCacheFile') as mockWrite:
          identity._readPrefdl()
-      self.assertIs(identity._prefdls.switch, switchPrefdl)
-      self.assertIs(identity._prefdls.cpu, self.cpuPrefdl)
+      self.assertIs(identity.syseeprom, switchPrefdl)
+      self.assertIs(identity.cpueeprom, self.cpuPrefdl)
       self.assertEqual(mockWrite.call_count, 2)
       mockWrite.assert_any_call(switchPrefdl)
       mockWrite.assert_any_call(self.cpuPrefdl,
@@ -60,14 +73,14 @@ class ReadPrefdlDmiTest(unittest.TestCase):
    def testCacheHit(self):
       cachedSwitchPrefdl = makePrefdl(SWITCH_PREFDL_DATA)
       cachedCpuPrefdl = makePrefdl(CPU_PREFDL_DATA)
-      cached = Prefdls(cachedSwitchPrefdl, cachedCpuPrefdl)
+      cached = _Prefdls(cachedSwitchPrefdl, cachedCpuPrefdl)
       identity = self._makeIdentity()
       with patch.object(identity, '_readCachedPrefdls',
                         return_value=cached), \
            patch.object(identity, '_writePrefdlCacheFile') as mockWrite:
          identity._readPrefdl()
-      self.assertIs(identity._prefdls.switch, cachedSwitchPrefdl)
-      self.assertIs(identity._prefdls.cpu, cachedCpuPrefdl)
+      self.assertIs(identity.syseeprom, cachedSwitchPrefdl)
+      self.assertIs(identity.cpueeprom, cachedCpuPrefdl)
       self.mockDmiRead.assert_not_called()
       self.mockNames.assert_not_called()
       mockWrite.assert_not_called()
@@ -81,8 +94,8 @@ class ReadPrefdlDmiTest(unittest.TestCase):
       with patch.object(identity, '_readCachedPrefdls', return_value=None), \
            patch.object(identity, '_writePrefdlCacheFile') as mockWrite:
          identity._readPrefdl()
-      self.assertIs(identity._prefdls.switch, switchPrefdl)
-      self.assertIs(identity._prefdls.cpu, self.cpuPrefdl)
+      self.assertIs(identity.syseeprom, switchPrefdl)
+      self.assertIs(identity.cpueeprom, self.cpuPrefdl)
       self.assertEqual(mockWrite.call_count, 2)
       mockWrite.assert_any_call(switchPrefdl)
       mockWrite.assert_any_call(self.cpuPrefdl,
@@ -96,21 +109,21 @@ class ReadPrefdlDmiTest(unittest.TestCase):
            patch.object(identity, '_writePrefdlCacheFile') as mockWrite, \
            patch.object(identity, '_createEmptyMarkerFile') as mockCreateMarker:
          identity._readPrefdl()
-      self.assertIs(identity._prefdls.switch, prefdl)
-      self.assertIsNone(identity._prefdls.cpu)
+      self.assertIs(identity.syseeprom, prefdl)
+      self.assertIsNone(identity.cpueeprom)
       mockWrite.assert_called_once_with(prefdl)
       mockCreateMarker.assert_called_once_with(identity._CPU_PREFDL_CACHE_PATH)
 
    def testCacheHitFixedSystem(self):
       cachedPrefdl = makePrefdl(PREFDL_DATA)
-      cached = Prefdls(cachedPrefdl, None)
+      cached = _Prefdls(cachedPrefdl, None)
       identity = self._makeIdentity()
       with patch.object(identity, '_readCachedPrefdls',
                         return_value=cached), \
            patch.object(identity, '_writePrefdlCacheFile') as mockWrite:
          identity._readPrefdl()
-      self.assertIs(identity._prefdls.switch, cachedPrefdl)
-      self.assertIsNone(identity._prefdls.cpu)
+      self.assertIs(identity.syseeprom, cachedPrefdl)
+      self.assertIsNone(identity.cpueeprom)
       self.mockDmiRead.assert_not_called()
       self.mockNames.assert_not_called()
       mockWrite.assert_not_called()

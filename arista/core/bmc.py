@@ -21,6 +21,11 @@ class Bmc(Component, ABC):
 
    @classmethod
    @abstractmethod
+   def readBmcEeprom(cls):
+      """Read and return the BMC EEPROM PreFDL."""
+
+   @classmethod
+   @abstractmethod
    def readChassisEeprom(cls):
       """Read and return the chassis EEPROM PreFDL."""
 

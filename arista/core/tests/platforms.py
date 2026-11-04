@@ -168,6 +168,25 @@ class MockPlatformTest(unittest.TestCase):
       self.assertIsInstance(platform.hostSwitch, SteamerLaneHostSwitch)
 
    @patch('arista.platforms.bmc.goldfinch.At24C512')
+   def testGoldfinchBmcEepromReturnsPrefdl(self, mockEeprom):
+      bus = MagicMock()
+      eeprom = mockEeprom.return_value
+      eeprom.prefdl.return_value = {
+         'SID': 'Goldfinch',
+         'SKU': 'BMC-TEST',
+      }
+      with patch.object(GoldfinchBmc, 'getSmbus', return_value=bus) as getBus:
+         prefdl = GoldfinchBmc.readBmcEeprom()
+      getBus.assert_called_once_with(14)
+      bus.i2cAddr.assert_called_once_with(0x50)
+      mockEeprom.assert_called_once_with(
+         addr=bus.i2cAddr.return_value, label='bmcEeprom')
+      eeprom.driver.setup.assert_called_once()
+      eeprom.prefdl.assert_called_once()
+      self.assertEqual(prefdl.get('SID'), 'Goldfinch')
+      self.assertTrue(prefdl.toList())
+
+   @patch('arista.platforms.bmc.goldfinch.At24C512')
    def testGoldfinchChassisEepromReturnsPrefdl(self, mockEeprom):
       bus = MagicMock()
       bus.i2cAddr.return_value = MagicMock()

@@ -17,15 +17,19 @@ class PlatformIdentityBmc(PlatformIdentityBase):
       super().__init__(*args, **kwargs)
       self._model = None
 
-   # readChassisEeprom() owns the tmpfs cache; identity retains its result
-   # in memory and reads the EEPROM only when requested.
+   # EEPROM readers own the tmpfs cache; identity retains their results
+   # in memory and reads each EEPROM only when requested.
    @cached_property
    def _chassisPrefdl(self) -> Prefdl:
       return self._bmcCls.readChassisEeprom()
 
+   @cached_property
+   def _bmcPrefdl(self) -> Prefdl:
+      return self._bmcCls.readBmcEeprom()
+
    @property
    def syseeprom(self) -> Prefdl:
-      return self._chassisPrefdl
+      return self._bmcPrefdl
 
    @cached_property
    def _bmcCls(self):

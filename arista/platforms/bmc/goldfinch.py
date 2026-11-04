@@ -16,6 +16,9 @@ from ...descs.sensor import Position, SensorDesc
 class GoldfinchBmc(Bmc, Ast2720):
 
    MODEL = ['Goldfinch']
+   BMC_EEPROM_BUS = 14
+   BMC_EEPROM_ADDR = 0x50
+   BMC_EEPROM_LABEL = 'bmcEeprom'
    CHASSIS_EEPROM_BUS = 9
    CHASSIS_EEPROM_ADDR = 0x53
    CHASSIS_EEPROM_LABEL = 'chassisEeprom'
@@ -36,6 +39,15 @@ class GoldfinchBmc(Bmc, Ast2720):
       self.addReloadCauseProvider(priority=ReloadCausePriority.HARDWARE_MAIN)
 
    @classmethod
+   def readBmcEeprom(cls):
+      eeprom = At24C512(
+         addr=cls.getSmbus(cls.BMC_EEPROM_BUS).i2cAddr(cls.BMC_EEPROM_ADDR),
+         label=cls.BMC_EEPROM_LABEL)
+      eeprom.driver.setup()
+      # Use prefdl() to reuse the component's cached file in tmpfs.
+      return Prefdl.fromDict(eeprom.prefdl())
+
+   @classmethod
    def readChassisEeprom(cls):
       eeprom = At24C512(
          addr=cls._getChassisEepromBus().i2cAddr(cls.CHASSIS_EEPROM_ADDR),
@@ -51,7 +63,9 @@ class GoldfinchBmc(Bmc, Ast2720):
 
    def createBmcEeprom(self):
       return self.newComponent(
-         At24C512, addr=self.getSmbus(14).i2cAddr(0x50), label='bmcEeprom')
+         At24C512,
+         addr=self.getSmbus(self.BMC_EEPROM_BUS).i2cAddr(self.BMC_EEPROM_ADDR),
+         label=self.BMC_EEPROM_LABEL)
 
    def createCpuEeprom(self):
       return self.newComponent(

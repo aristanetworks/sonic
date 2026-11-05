@@ -15,6 +15,7 @@ from ..components.vrm.raa228228 import Raa228926
 
 from ..descs.cause import ReloadCauseAltSource
 from ..descs.gpio import GpioDesc
+from ..descs.led import LedDesc, LedKind
 from ..descs.reset import ResetDesc
 from ..descs.sensor import Position, SensorDesc
 from ..descs.xcvr import Osfp, Sfp
@@ -64,11 +65,11 @@ class MorandaBase(FixedSystem):
       ])
 
       scd.addLeds([
-         (0x6050, 'status'),
-         (0x6060, 'fan_status'),
-         (0x6070, 'psu1'),
-         (0x6080, 'psu2'),
-         (0x6090, 'beacon'),
+         LedDesc(name='status', addr=0x6050, **LedKind.desc(LedKind.RG_F)),
+         LedDesc(name='fan_status', addr=0x6060, **LedKind.desc(LedKind.RG_F)),
+         LedDesc(name='psu1', addr=0x6070, **LedKind.desc(LedKind.RG_F)),
+         LedDesc(name='psu2', addr=0x6080, **LedKind.desc(LedKind.RG_F)),
+         LedDesc(name='beacon', addr=0x6090, **LedKind.desc(LedKind.BLUE)),
       ])
 
       scd.addResets([

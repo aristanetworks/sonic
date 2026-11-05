@@ -18,6 +18,8 @@ class Pwr568(AristaPsu):
          ('primary hotspot', Position.OTHER, 110, 115, 120),
       ],
       maxRpm=25500,
+      outputMinVoltage=11.40,
+      outputMaxVoltage=12.60,
    )
    IDENTIFIERS = [
       PsuIdent('PWR-00568', 'PWR-2011-AC-RED', Airflow.EXHAUST),

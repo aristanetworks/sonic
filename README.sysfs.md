@@ -6,6 +6,56 @@ The kernel drivers in this repository are mostly running on a 4.19 kernel.
 They should be backward compatible to 4.9 and potentially compatible with
 higher kernel version like 5.10.
 
+### AMD PCIe error policy
+
+`arista-amd-pcie` applies and verifies PCIe error settings on supported AMD
+systems through the kernel's System Management Network (SMN) and PCI APIs.
+On every successful load it exposes `/sys/module/arista_amd_pcie/profile`
+with mode `0444`.
+The read-only `profile` contains the detected profile name, or `none` on
+unsupported systems. Read it before applying the policy.
+When a profile is detected, `/sys/module/arista_amd_pcie/apply_policy` is also
+exposed with mode `0644`. Writing `1` applies or reapplies the detected CPU's
+policy. Reading returns `1` if the last application succeeded, or `0` before
+application or after failure. Both files end their output with a newline.
+The profile is available when module loading completes; userspace does not
+need to poll for it.
+
+The CPU family/model and host-bridge identity at `0000:00:00.0` must match a
+profile:
+
+| Profile | CPU family/model | Host bridge | SMN base | Port count |
+| --- | --- | --- | --- | --- |
+| V3000 | 19h/44h | 1022:14b5 | 0x13b20118 | 13 |
+| Snowy Owl | 17h/01h | 1022:1450 | 0x13b20180 | 16 |
+| Fire Range | 1ah/44h | 1022:14d8 | 0x13b200f0 | 18 |
+
+The policy clears mask `0x18` at each port's SMN base plus `port * 0x20` and
+at that address plus `0x0c`. On AMD PCIe root ports, it unmasks AER Completion
+Timeout and sets DPC Completion Control when those capabilities are present.
+Updates preserve unrelated bits, including DPC Trigger Enable, and verify
+readback. Failures can leave partial changes applied.
+
+The module is built and installed with the other platform drivers. Platform
+initialization loads it only on x86-64 systems whose first CPU record in
+`/proc/cpuinfo` reports `AuthenticAMD` and a supported family/model. The kernel
+independently checks the CPU profile and host bridge. Userspace requires its
+detected profile to match the kernel's `profile` before accessing `apply_policy`.
+A mismatch, including kernel profile `none`,
+logs both profiles as an error and skips policy application while platform
+initialization continues. CPU-info read failures also log an error and skip
+loading. Successful applications are skipped on repeated setup; failures are
+logged and retried on later setup while platform initialization continues.
+
+To apply or reapply the policy manually as root:
+
+```sh
+if profile=$(cat /sys/module/arista_amd_pcie/profile) && [ "$profile" != none ]; then
+    echo 1 > /sys/module/arista_amd_pcie/apply_policy
+    cat /sys/module/arista_amd_pcie/apply_policy
+fi
+```
+
 ### scd-hwmon
 
 The `scd-hwmon` is a central kernel module on Arista devices and gets loaded on

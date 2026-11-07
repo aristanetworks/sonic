@@ -3,6 +3,7 @@ import re
 
 from .config import etcPath, flashPath
 from .driver.kernel import KernelDriver
+from .driver.kernel.amd_pcie import AmdPcieKernelDriver
 from .dynload import importSubmodules
 from .exception import UnknownPlatformError
 from .log import getLogger
@@ -27,6 +28,7 @@ host_prefdl_path_bin = flashPath('.system-prefdl-bin')
 fmted_prefdl_path = etcPath('.syseeprom')
 
 PREREQUISITES = [
+   AmdPcieKernelDriver(),
    KernelDriver(module='i2c-dev'),
 ]
 IDENT_BUS_NAMES = [

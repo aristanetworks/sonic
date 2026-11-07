@@ -28,3 +28,9 @@ obj-m += tmp468.o
 obj-m += amax31732.o
 obj-m += amax31790.o
 obj-m += arista-fan-cpld.o
+
+ifeq ($(CONFIG_X86_64),y)
+ifeq ($(CONFIG_AMD_NB),y)
+obj-m += arista-amd-pcie.o
+endif
+endif

@@ -47,6 +47,9 @@ class _Index(Generic[K, V]):
       return obj
 
    def get(self, key: K) -> V | None:
+      if not key:
+         return None
+
       if result := self._index.get(key):
          return result
 

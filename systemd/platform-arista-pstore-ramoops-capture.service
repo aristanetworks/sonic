@@ -1,0 +1,13 @@
+[Unit]
+Description=Capture ramoops hash before systemd-pstore moves files
+After=systemd-remount-fs.service
+Before=systemd-pstore.service
+ConditionPathExists=/sys/fs/pstore/dmesg-ramoops-0
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'sha256sum /sys/fs/pstore/dmesg-ramoops-0 | cut -d" " -f1 > /run/pstore-dmesg-ramoops-0-current-hash'
+
+[Install]
+WantedBy=sysinit.target

@@ -32,10 +32,13 @@ ARM64_EXCLUDED_SERVICE_SRC := \
 	$(BASE_DIR)/systemd/platform-arista-init-watchdog-stop.service \
 	$(BASE_DIR)/systemd/platform-arista-linecard-network.service \
 	$(BASE_DIR)/systemd/platform-arista-linecard.service
+# Services restricted to BMC (arm64) builds.
+AMD64_EXCLUDED_SERVICE_SRC := \
+	$(BASE_DIR)/systemd/platform-arista-pstore-ramoops-capture.service
 ifeq ($(DEB_HOST_ARCH),arm64)
 SERVICE_SRC := $(filter-out $(ARM64_EXCLUDED_SERVICE_SRC),$(ALL_SERVICE_SRC))
 else
-SERVICE_SRC := $(ALL_SERVICE_SRC)
+SERVICE_SRC := $(filter-out $(AMD64_EXCLUDED_SERVICE_SRC),$(ALL_SERVICE_SRC))
 endif
 LOGROTATE_SRC  := $(wildcard $(BASE_DIR)/logrotate/*)
 DBGDUMP_SRC    := $(wildcard $(BASE_DIR)/debug-dump/*)

@@ -27,6 +27,8 @@ class AspeedSoc(Component):
    I2C_STRIDE = None
    I2C_SUFFIX = None
    RELOAD_CAUSE_REGMAP = None
+   WDT_BOOTSTATUS_PATHS = []
+   WDT_BOOTSTATUS_VAL_REASON_MAP = {}
 
    def __init__(self, *args, **kwargs):
       super().__init__(*args, **kwargs)
@@ -57,5 +59,10 @@ class AspeedSoc(Component):
          return
       driver = AspeedScuDriver()
       regs = self.RELOAD_CAUSE_REGMAP(driver) # pylint: disable=not-callable
-      provider = AspeedReloadCauseProvider(regs, priority=priority)
+      provider = AspeedReloadCauseProvider(
+         regs,
+         priority=priority,
+         wdtBootstatusPaths=self.WDT_BOOTSTATUS_PATHS,
+         wdtBootstatusMap=self.WDT_BOOTSTATUS_VAL_REASON_MAP,
+      )
       self.inventory.addReloadCauseProvider(provider)

@@ -75,6 +75,7 @@ class ReloadCauseDesc:
    LEAK_ROPE_FAIL = CauseDesc('leak-rope-fail', 'No rope or rope broken')
    LEAK_DETECTED = CauseDesc('leak-detected', 'Leak detected')
    RMC_REBOOT = CauseDesc('rmc-reboot', 'Rebooted by RMC')
+   KERNEL_PANIC = CauseDesc('kernel-panic', 'Kernel Panic')
 
    Priority = ReloadCausePriority
 

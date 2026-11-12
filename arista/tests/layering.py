@@ -32,6 +32,8 @@ RULES = (
       excludes=(),
       forbidden=('arista.components', 'arista.drivers'),
       allowlist={
+         # Legacy I2C PreFDL fallback for non-DMI identification.
+         ('core/identity/non_dmi.py', 'arista.components'),
          ('core/cpu.py', 'arista.components'),
          ('core/psu.py', 'arista.drivers'),
          ('core/xcvr.py', 'arista.components'),

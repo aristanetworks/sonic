@@ -10,6 +10,7 @@ from ....tests.testing import unittest, patch
 from ...exception import UnknownPlatformError
 from ...identity.non_dmi import PlatformIdentityNonDmi
 from ...prefdl import Prefdl
+from ....components.eeprom import I2cEeprom
 
 from .common import (
    PREFDL_DATA,
@@ -55,16 +56,59 @@ class ReadPrefdlNonDmiTest(unittest.TestCase):
       with self._patchSimulation(), \
            patch.object(identity, '_readCachedPrefdl', return_value=None), \
            patch.object(identity, '_readHostPrefdl', return_value=prefdl), \
+           patch.object(identity, '_readUpperlakeI2cPrefdl') as mockI2c, \
            patch.object(identity, '_writePrefdlCacheFile') as mockWrite:
          identity._readPrefdl()
       self.assertIs(identity.syseeprom, prefdl)
       mockWrite.assert_called_once_with(prefdl)
+      mockI2c.assert_not_called()
 
-   def testNoPrefdlSources(self):
-      identity = self._makeIdentity()
+   def testUpperlakeI2cFallback(self):
+      prefdl = makePrefdl(PREFDL_DATA)
+      identity = PlatformIdentityNonDmi(cmdline={'sid': 'Upperlake-Test'})
       with self._patchSimulation(), \
            patch.object(identity, '_readCachedPrefdl', return_value=None), \
            patch.object(identity, '_readHostPrefdl', return_value=None), \
+           patch.object(identity, '_readUpperlakeI2cPrefdl',
+                        return_value=prefdl) as mockI2c, \
+           patch.object(identity, '_writePrefdlCacheFile') as mockWrite:
+         self.assertIs(identity.syseeprom, prefdl)
+         self.assertIs(identity.syseeprom, prefdl)
+      mockI2c.assert_called_once_with()
+      mockWrite.assert_called_once_with(prefdl)
+
+   def testI2cFallbackSkippedForOtherSids(self):
+      for sid in (None, '', 'OtherPlatform'):
+         with self.subTest(sid=sid):
+            identity = PlatformIdentityNonDmi(cmdline={'sid': sid})
+            with self._patchSimulation(), \
+                 patch.object(identity, '_readCachedPrefdl', return_value=None), \
+                 patch.object(identity, '_readHostPrefdl', return_value=None), \
+                 patch.object(identity, '_readUpperlakeI2cPrefdl') as mockI2c, \
+                 patch.object(identity, '_writePrefdlCacheFile') as mockWrite:
+               with self.assertRaises(UnknownPlatformError):
+                  _ = identity.syseeprom
+            mockI2c.assert_not_called()
+            mockWrite.assert_not_called()
+
+   def testI2cPrefdlSetup(self):
+      """Exercise real component setup with hardware operations mocked."""
+      prefdl = makePrefdl(PREFDL_DATA)
+      identity = self._makeIdentity()
+      with patch('arista.core.identity.non_dmi.loadPrerequisites'), \
+           patch('arista.core.identity.non_dmi.I2cBus'), \
+           patch.object(I2cEeprom, 'DRIVER') as driverCls, \
+           patch.object(I2cEeprom, 'readPrefdl', return_value=prefdl):
+         self.assertIs(identity._readUpperlakeI2cPrefdl(), prefdl)
+      driverCls.return_value.setup.assert_called_once_with()
+      driverCls.return_value.finish.assert_called_once_with()
+
+   def testNoPrefdlSources(self):
+      identity = PlatformIdentityNonDmi(cmdline={'sid': 'Upperlake'})
+      with self._patchSimulation(), \
+           patch.object(identity, '_readCachedPrefdl', return_value=None), \
+           patch.object(identity, '_readHostPrefdl', return_value=None), \
+           patch.object(identity, '_readUpperlakeI2cPrefdl', return_value=None), \
            patch.object(identity, '_writePrefdlCacheFile'):
          with self.assertRaises(UnknownPlatformError):
             identity._readPrefdl()

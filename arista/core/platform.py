@@ -175,6 +175,13 @@ def getSonicSku(prefdlData):
 
    return newSku
 
+def sanitizeProductName(name):
+   suffixes = ['-ES', '-M', '-SSD']
+   for suffix in suffixes:
+      if name.endswith(suffix):
+         return name[:-len(suffix)]
+   return name
+
 class SysEeprom(object):
    def prefdlSim(self):
       logging.debug('bypass prefdl reading by returning default values')

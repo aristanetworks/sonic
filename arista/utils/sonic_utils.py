@@ -6,6 +6,7 @@ from collections import namedtuple
 from .. import platforms
 from ..core import platform
 from ..libs.docker import runningInContainer
+from ..libs.onie import getPlatformName
 
 Port = namedtuple('Port', ['portNum', 'lanes', 'offset', 'singular', 'alias'])
 
@@ -57,7 +58,12 @@ def getSonicVersVar(name):
                                   text=True).strip()
 def getSonicPlatformName():
    platformKey = "DEVICE_METADATA['localhost']['platform']"
-   return getSonicConfigVar(platformKey)
+   try:
+      return getSonicConfigVar(platformKey)
+   except subprocess.CalledProcessError:
+      if name := getPlatformName():
+         return name
+      raise
 
 def getSonicHwSkuName():
    hwSkuKey = "DEVICE_METADATA['localhost']['hwsku']"

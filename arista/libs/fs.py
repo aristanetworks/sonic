@@ -1,7 +1,21 @@
 import gzip
 import os
 import shutil
+import tempfile
 from contextlib import contextmanager
+
+def atomicWrite(path, content, mode=0o644):
+   outDir = os.path.dirname(path)
+   with tempfile.NamedTemporaryFile('w', dir=outDir, delete=False, suffix='.tmp') \
+         as tmp:
+      try:
+         tmp.write(content)
+         os.fsync(tmp.fileno())
+         os.chmod(tmp.name, mode)
+         os.replace(tmp.name, path)
+      except BaseException:
+         os.unlink(tmp.name)
+         raise
 
 def readFileContent(path):
    with open(path) as f:

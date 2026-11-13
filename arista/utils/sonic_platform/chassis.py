@@ -8,7 +8,12 @@ try:
    from arista.core.cause import getReloadCauseManager
    from arista.core.config import Config
    from arista.core.onie import OnieEeprom
-   from arista.core.platform import getPlatform, readPrefdl, getSonicSku
+   from arista.core.platform import (
+      getPlatform,
+      readPrefdl,
+      getSonicSku,
+      sanitizeProductName,
+   )
    from arista.core.supervisor import Supervisor
    from arista.core.linecard import Linecard
    from arista.utils.sonic_platform.component import Component
@@ -34,16 +39,6 @@ try:
    from arista.utils.sonic_platform.event import EventWatcher
 except ImportError as e:
    raise ImportError("%s - required module not found" % e)
-
-def sanitizeProductName(name):
-   # NOTE: sonic-mgmt tests expect exact match with platform.json
-   #       however since we use the same platform folder for variants it leads
-   #       to tests failing.
-   suffixes = ['-ES', '-M', '-SSD']
-   for suffix in suffixes:
-      if name.endswith(suffix):
-         return name[:-len(suffix)]
-   return name
 
 class Chassis(ChassisBase):
    REBOOT_CAUSE_DICT = {
@@ -92,6 +87,8 @@ class Chassis(ChassisBase):
          for programmable in self._inventory.getProgrammables():
             self._component_list.append(Component(self, programmable))
       elif isinstance(self._platform, Supervisor):
+         for programmable in self._inventory.getProgrammables():
+            self._component_list.append(Component(self, programmable))
          chassis = self._platform.getChassis()
          for supervisor in chassis.iterSupervisors(presentOnly=False):
             if supervisor is not None:

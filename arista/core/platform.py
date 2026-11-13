@@ -8,6 +8,9 @@ from .identity.factory import createPlatformIdentity
 from .log import getLogger
 from .platform_loader import platform_loader
 
+# Preserve the import used by arista_7060_prefdl_gen.py.
+from .prerequisites import loadPrerequisites # pylint: disable=unused-import
+
 logging = getLogger(__name__)
 
 syseeprom = None

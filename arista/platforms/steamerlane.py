@@ -115,6 +115,7 @@ class SteamerLaneChassis(FixedChassis):
 
 class SteamerLaneBase(FixedSystem):
    CHASSIS = SteamerLaneChassis
+   CPU_CLS = MarconiCpu
    OSFP_PORTS_PER_SCD = 32
 
    PORTS = PortLayout(
@@ -138,7 +139,7 @@ class SteamerLaneBase(FixedSystem):
 
       self.psuCounter = 1
 
-      self.cpu = self.newComponent(MarconiCpu)
+      self.cpu = self.newComponent(self.CPU_CLS)
 
       # NOTE: should all the devices that hangs off the CPU i2c bus be declared
       # in a dedicated method. If the BMC takes ownership of those it would
